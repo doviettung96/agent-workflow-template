@@ -71,6 +71,7 @@ bd setup codex
 Then copy or scaffold:
 
 - `BEADS_WORKFLOW.md`
+- `.codex/skills/build-and-test/SKILL.md`
 - `AGENTS.md` snippet outside the Beads-managed block
 - `CLAUDE.md` snippet
 

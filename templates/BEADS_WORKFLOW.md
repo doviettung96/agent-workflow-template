@@ -2,30 +2,58 @@
 
 This repo uses **bd** for task state and selected execution-quality skills for planning and delivery. Beads remains the source of truth for `epic`, `task`, `bug`, and `chore` state.
 
-## Recommended Flow
+## Two-Session Model
 
-1. `brainstorming`
-   Use when the problem is still fuzzy and needs scope, constraints, and risks clarified.
-2. `beads-planner`
-   Use to turn the approved problem or approved execution plan into Beads epics, tasks, and dependencies.
-3. Claim a bead
-   Use `bd ready --json`, choose the next task, then `bd update <id> --claim --json`.
-4. `writing-plans`
-   Use for the local execution plan of that one bead. This is not the same as the Beads planning step.
-5. Implement
-   Execute the task in the current session or worktree.
-6. `systematic-debugging` if blocked
-   Use when the task is blocked by unclear behavior, runtime failures, or conflicting assumptions.
-7. `requesting-code-review` or `verification-before-completion`
-   Use before marking the bead complete.
-8. `beads-task-cycle`
-   Close or update the bead, create discovered follow-up beads, sync Beads if you are publishing task state, then sync code if this repo's workflow publishes code immediately.
+Work is split into two distinct session types. Each session has its own skill chain and responsibilities.
 
-## Default Mode vs Plan Mode
+## Codex Workflow Skills
 
-- Use default mode when the problem is already clear and you just need to create beads or execute one claimed bead.
-- Use plan mode when the problem is ambiguous, high-risk, or needs discussion before bead creation.
-- If plan mode already produced an approved execution plan, `beads-planner` should use that plan directly instead of re-planning.
+Codex can enter the workflow through global skills installed under `~/.codex/skills`:
+
+- **`plan-beads`** - planner-only entry point; use the current conversation topic or an explicit planning request in your prompt
+- **`executor-once`** - run one full executor cycle for one bead; optionally provide a bead id or selector in the request
+- **`executor-loop`** - repeat executor cycles bead-by-bead until no ready work remains or a blocker requires input
+
+When an executor skill stops on a blocker, continue in normal chat by telling Codex to resume or continue the blocked bead in the same session.
+
+### Planner Session
+
+Turns a fuzzy idea into structured, claimable beads. No code is written.
+
+1. **`brainstorming`** - explore the problem, clarify scope/constraints/risks, produce an approved design spec
+2. **`beads-planner`** - translate the approved spec into Beads epics, tasks, and dependencies
+
+**Entry:** A problem statement, feature idea, or bug report.
+**Exit:** Beads created with dependencies, ready for `bd ready`.
+
+### Executor Session
+
+Claims one bead and delivers it. All code happens here.
+
+1. **`beads-claim`** - `bd ready`, choose the next task, inspect it, then `bd update <id> --status=in_progress`; Codex slash commands may auto-claim when the bead choice is unambiguous
+2. **`writing-plans`** - write a detailed execution plan for that one bead (bite-sized steps, exact files, TDD, verification section)
+3. **Implement** - execute the plan in the current session or worktree
+4. **`systematic-debugging`** - use if blocked by unclear behavior, runtime failures, or conflicting assumptions
+5. **`build-and-test`** - repo-local Codex skill at `.codex/skills/build-and-test/SKILL.md`; build, deploy, and test only the affected components. If tests fail, loop back to step 3 to fix, then re-run step 5.
+6. **`requesting-code-review`** or **`verification-before-completion`** - verify work before marking complete
+7. **`beads-close`** - close the bead, create discovered follow-up beads, `bd dolt pull`, commit locally
+
+**Entry:** A claimed bead from `bd ready`.
+**Exit:** Bead closed, code committed, follow-up beads created if needed.
+
+## Session Boundaries
+
+- **Planner sessions do not write code.** If the design reveals implementation is trivial, the planner still creates a bead - the executor handles it.
+- **Executor sessions do not re-plan from scratch.** The bead description and any linked spec are the starting point. `writing-plans` produces a local execution plan for that one bead, not a project-level re-plan.
+- **Multiple executor sessions can run in parallel** on different beads (use worktrees for isolation).
+
+## Local Workflow
+
+This workflow assumes ephemeral branches merged to main locally. There is no upstream push.
+
+- Run `bd dolt pull` at session start and before committing
+- Commit code changes locally
+- Merge to main when ready (local merge, not push)
 
 ## Ownership Rules
 
@@ -33,6 +61,7 @@ This repo uses **bd** for task state and selected execution-quality skills for p
 - Execution-quality skills improve clarity, debugging, review, and worktree hygiene, but they do not replace Beads tracking.
 - The main session owns Beads updates.
 - Subagents can help with implementation, testing, or review, but should not mutate Beads unless explicitly asked.
+- For Codex, the repo-specific `build-and-test` skill is repo-local at `.codex/skills/build-and-test/SKILL.md`, not machine-wide.
 
 ## Multi-Agent Note
 

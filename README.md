@@ -4,8 +4,9 @@ Reusable Beads-based project bootstrap for Codex and Claude.
 
 This template repo is intentionally self-contained:
 
-- `skills/` bundles the Codex skills used by the workflow
+- `skills/` bundles the machine-wide Codex skills used by the workflow
 - `templates/` contains repo-local files and snippets
+- `templates/.codex/skills/build-and-test/` contains the repo-local Codex testing skill
 - `scripts/windows/` and `scripts/posix/` provide setup helpers
 - `docs/` contains platform-specific installation guides
 
@@ -18,23 +19,32 @@ Install once per machine:
 - Codex skills from `skills/`
 - Claude global Beads hooks via `bd setup claude`
 
-Run once per repo:
+Scaffold per repo:
 
 - `bd init -p <prefix>`
 - `bd setup codex`
-- copy `BEADS_WORKFLOW.md`
-- add the `AGENTS.md` and `CLAUDE.md` snippets outside any Beads-managed block
+- `BEADS_WORKFLOW.md`
+- `.codex/skills/build-and-test/SKILL.md`
+- `AGENTS.md` and `CLAUDE.md` snippets outside any Beads-managed block
 
 ## Recommended Workflow
 
-1. `brainstorming`
-2. `beads-planner`
-3. claim a bead
-4. `writing-plans`
-5. implement
-6. `systematic-debugging` if blocked
+### Planner Session
+
+1. `plan-beads`
+2. `brainstorming`
+3. `beads-planner`
+
+### Executor Session
+
+1. `executor-once` or `executor-loop`
+2. `beads-claim`
+3. `writing-plans`
+4. implement
+5. `systematic-debugging` if blocked
+6. repo-local `build-and-test`
 7. `requesting-code-review` or `verification-before-completion`
-8. `beads-task-cycle`
+8. `beads-close`
 
 Beads is the source of truth for task state. The execution-quality skills improve planning and delivery, but they do not replace Beads tracking.
 
@@ -46,7 +56,7 @@ Beads is the source of truth for task state. The execution-quality skills improv
 
 ## Quick Start
 
-### 1. Install the bundled Codex skills
+### 1. Install the bundled global Codex skills
 
 Windows:
 
@@ -76,12 +86,14 @@ macOS/Linux:
 bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo myproj
 ```
 
-By default the bootstrap scripts print the Beads commands they would run, then scaffold the workflow files. Pass the execution flag described in the script help to run `bd init` and `bd setup codex` automatically.
+By default the bootstrap scripts print the Beads commands they would run, then scaffold the repo-local workflow files and the repo-local Codex `build-and-test` skill.
 
 ## Template Contents
 
 - `templates/BEADS_WORKFLOW.md`
   Shared planner/executor workflow for a repo
+- `templates/.codex/skills/build-and-test/SKILL.md`
+  Repo-local Codex testing skill scaffolded into each target repo
 - `templates/AGENTS.snippet.md`
   Snippet to append to `AGENTS.md` outside any Beads-managed block
 - `templates/CLAUDE.snippet.md`
@@ -93,6 +105,7 @@ By default the bootstrap scripts print the Beads commands they would run, then s
 
 - `bd init` is always per repo.
 - `bd setup codex` is per repo because it updates repo instructions.
+- Repo-local Codex `build-and-test` is scaffolded into `.codex/skills/build-and-test/SKILL.md`.
 - `bd setup claude` is primarily machine-wide because it installs global hooks; repo-local Claude guidance still lives in `CLAUDE.md`.
 - The scaffolding scripts never edit inside the Beads-managed `AGENTS.md` block.
 

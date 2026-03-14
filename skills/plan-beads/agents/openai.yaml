@@ -1,0 +1,3 @@
+display_name: Plan Beads
+short_description: Planner-only Beads workflow
+default_prompt: Turn the current problem into an approved execution plan and then into Beads, without implementing.

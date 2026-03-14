@@ -1,0 +1,4 @@
+interface:
+  display_name: "Beads Close"
+  short_description: "Close one completed bead locally"
+  default_prompt: "Use $beads-close after verification to close the current bead and sync local state."

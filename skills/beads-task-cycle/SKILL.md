@@ -1,39 +1,27 @@
 ---
 name: beads-task-cycle
-description: Execute one Beads task from claim through completion and sync. Use when the user wants Codex to work on a chosen bead, pick the next ready bead, or follow the Beads lifecycle before and after implementation without inventing a separate tracking flow.
+description: "Deprecated compatibility shim for older prompts that still mention beads-task-cycle. Use only to route to the split executor workflow: beads-claim, writing-plans, build-and-test, verification, and beads-close."
 ---
 
-# Beads Task Cycle
+# Beads Task Cycle (Deprecated)
 
-Run one bead cleanly from start to finish while keeping Beads as the source of truth for task state.
+This skill is kept only for backward compatibility with older prompts. Do not use it as the primary executor workflow.
 
-## Use This Workflow
+## Current Executor Workflow
 
-1. Before coding:
-   - if no bead was specified, inspect ready work and select the next appropriate bead
-   - claim the bead with `bd update <id> --claim --json`
-   - inspect it with `bd show <id> --json`
-   - make a short execution plan for that one bead
-2. During work:
-   - implement and test
-   - if blocked, update the bead instead of silently stopping
-   - if new work is discovered, create linked follow-up beads
-3. After work:
-   - close the bead when complete
-   - create follow-up beads before ending the session if they are needed
-   - sync Beads with `bd dolt push`
-   - sync code with `git push`
+1. Start with `beads-claim`
+2. Use `writing-plans`
+3. Implement
+4. Use `systematic-debugging` if blocked
+5. Use repo-local `build-and-test`
+6. Run `verification-before-completion` or `requesting-code-review`
+7. Finish with `beads-close`
 
-## Ownership Rules
+## Routing Rules
 
-- Keep Beads mutations in the main session.
-- Use subagents for implementation, testing, review, or exploration, but do not let them own the bead lifecycle unless the user explicitly asks.
-- Do not create markdown TODOs or alternate task lists.
-- Do not close the bead until implementation, verification, and any required follow-up beads are handled.
+- If the user is starting executor work, invoke `beads-claim`.
+- If the user is mid-implementation and needs a local plan, invoke `writing-plans`.
+- If the user is ready to build or verify runtime changes, use repo-local `build-and-test`.
+- If the user has finished implementation and verification, invoke `beads-close`.
 
-## Completion Rules
-
-- Prefer `bd close <id> --reason "Completed"` for completed work.
-- If execution is blocked, leave the bead open and record the blocking reason.
-- If new tasks are discovered, link them with Beads dependencies before ending the session.
-- Treat `bd dolt push` and `git push` as part of finishing the bead, not optional cleanup.
+Do not introduce a separate monolithic lifecycle on top of the split workflow.

@@ -17,6 +17,11 @@ fi
 cp "${template_root}/templates/BEADS_WORKFLOW.md" "${repo_path}/BEADS_WORKFLOW.md"
 printf 'Copied BEADS_WORKFLOW.md\n'
 
+mkdir -p "${repo_path}/.codex/skills"
+rm -rf "${repo_path}/.codex/skills/build-and-test"
+cp -R "${template_root}/templates/.codex/skills/build-and-test" "${repo_path}/.codex/skills/build-and-test"
+printf 'Copied repo-local Codex build-and-test skill\n'
+
 add_snippet() {
   local target_path="$1"
   local snippet_path="$2"

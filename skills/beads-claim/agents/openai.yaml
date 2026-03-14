@@ -1,0 +1,4 @@
+interface:
+  display_name: "Beads Claim"
+  short_description: "Claim one ready bead for work"
+  default_prompt: "Use $beads-claim to find and claim a ready bead for this executor session."

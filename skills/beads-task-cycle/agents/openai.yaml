@@ -1,4 +1,4 @@
 interface:
-  display_name: "Beads Task Cycle"
-  short_description: "Run one Beads task lifecycle"
-  default_prompt: "Use $beads-task-cycle to work one claimed Beads task from claim through close and sync."
+  display_name: "Beads Task Cycle (Deprecated)"
+  short_description: "Legacy alias for split Beads flow"
+  default_prompt: "Use $beads-task-cycle only to route older prompts to beads-claim, writing-plans, build-and-test, verification, and beads-close."

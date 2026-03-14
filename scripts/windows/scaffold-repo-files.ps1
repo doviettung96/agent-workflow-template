@@ -10,11 +10,16 @@ if (-not (Test-Path $RepoPath)) {
 }
 
 $workflowSource = Join-Path $TemplateRoot "templates\\BEADS_WORKFLOW.md"
+$codexSkillSource = Join-Path $TemplateRoot "templates\\.codex\\skills\\build-and-test"
 $agentsSnippet = Join-Path $TemplateRoot "templates\\AGENTS.snippet.md"
 $claudeSnippet = Join-Path $TemplateRoot "templates\\CLAUDE.snippet.md"
 
 Copy-Item -Force $workflowSource (Join-Path $RepoPath "BEADS_WORKFLOW.md")
 Write-Host "Copied BEADS_WORKFLOW.md"
+
+New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath ".codex\\skills") | Out-Null
+Copy-Item -Recurse -Force $codexSkillSource (Join-Path $RepoPath ".codex\\skills\\build-and-test")
+Write-Host "Copied repo-local Codex build-and-test skill"
 
 function Add-Snippet {
     param(

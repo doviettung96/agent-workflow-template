@@ -1,35 +1,39 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before touching code
+description: "Use when you have a spec or requirements for a multi-step task, before touching code. This is an executor skill - use only when a bead has been claimed and you are in an executor session, NOT in a planner session."
 ---
 
 # Writing Plans
+
+**Workflow position:** Executor session, step 2 of 7 (after claiming bead). Next: implement -> `build-and-test` -> `verification-before-completion` or `requesting-code-review` -> `beads-close`. See BEADS_WORKFLOW.md.
 
 ## Overview
 
 Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
 
-Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
+Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they do not know good test design very well.
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
-**Context:** This should be run in a dedicated worktree (created by brainstorming skill).
+<HARD-GATE>
+This is an **executor skill**. It should only be invoked in a session where a bead has been claimed via `bd update <id> --status=in_progress`. Do NOT invoke this in a planner session that just ran `brainstorming` or `beads-planner`.
+</HARD-GATE>
 
-**Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+**Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
 
 ## Scope Check
 
-If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it was not, suggest breaking this into separate plans - one per subsystem. Each plan should produce working, testable software on its own.
 
 ## File Structure
 
 Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
 
 - Design units with clear boundaries and well-defined interfaces. Each file should have one clear responsibility.
-- You reason best about code you can hold in context at once, and your edits are more reliable when files are focused. Prefer smaller, focused files over large ones that do too much.
+- Prefer smaller, focused files over large ones that do too much.
 - Files that change together should live together. Split by responsibility, not by technical layer.
-- In existing codebases, follow established patterns. If the codebase uses large files, don't unilaterally restructure - but if a file you're modifying has grown unwieldy, including a split in the plan is reasonable.
+- In existing codebases, follow established patterns.
 
 This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
 
@@ -49,7 +53,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Use Codex subagents when appropriate to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -103,45 +107,63 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
+## Verification Section (REQUIRED)
+
+Every plan MUST end with a `## Verification` section that defines how to test the changes against the live system. This section is what `build-and-test` will execute after implementation.
+
+Include:
+- **What to build** - which components need rebuilding
+- **How to deploy** - exact deploy commands
+- **What to test** - specific API calls, expected responses, or observable behaviors
+- **Success criteria** - what output or behavior means "it works"
+
+Example:
+````markdown
+## Verification
+
+**Build:** `cd native-lib && bash build.sh x64`
+**Deploy:** `python inject.py --device emulator-5564 --launch`
+**Smoke test:** `curl http://localhost:32164/ping` -> `{"status": "ok"}`
+
+**Functional tests:**
+1. Start campaign: `curl -X POST http://localhost:8787/campaign/start -d 'stage=1'` -> 200
+2. Check state: `curl http://localhost:8787/status` -> expected state payload
+3. Observe: bot performs the expected in-game behavior
+
+**Success criteria:** All functional tests pass, no crashes in `adb logcat -s tgunmod:V`
+````
+
+Without this section, `build-and-test` will not know what to verify. Make it specific to the bead.
+
 ## Remember
+
 - Exact file paths always
 - Complete code in plan (not "add validation")
 - Exact commands with expected output
-- Reference relevant skills with @ syntax
 - DRY, YAGNI, TDD, frequent commits
 
 ## Plan Review Loop
 
 After completing each chunk of the plan:
 
-1. Dispatch plan-document-reviewer subagent (see plan-document-reviewer-prompt.md) with precisely crafted review context — never your session history. This keeps the reviewer focused on the plan, not your thought process.
+1. Dispatch a plan-document-reviewer subagent (see `plan-document-reviewer-prompt.md`) with precisely crafted review context - never your session history.
    - Provide: chunk content, path to spec document
-2. If ❌ Issues Found:
+2. If issues are found:
    - Fix the issues in the chunk
    - Re-dispatch reviewer for that chunk
-   - Repeat until ✅ Approved
-3. If ✅ Approved: proceed to next chunk (or execution handoff if last chunk)
+   - Repeat until approved
+3. If approved: proceed to next chunk (or execution handoff if last chunk)
 
-**Chunk boundaries:** Use `## Chunk N: <name>` headings to delimit chunks. Each chunk should be ≤1000 lines and logically self-contained.
-
-**Review loop guidance:**
-- Same agent that wrote the plan fixes it (preserves context)
-- If loop exceeds 5 iterations, surface to human for guidance
-- Reviewers are advisory - explain disagreements if you believe feedback is incorrect
+**Chunk boundaries:** Use `## Chunk N: <name>` headings to delimit chunks. Each chunk should be <=1000 lines and logically self-contained.
 
 ## Execution Handoff
 
 After saving the plan:
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Ready to execute?"**
+**"Plan complete and saved to `docs/plans/<filename>.md`. Ready to execute?"**
 
-**Execution path depends on harness capabilities:**
+Wait for user confirmation before proceeding. Do NOT auto-dispatch implementation subagents.
 
-**If harness has subagents (Claude Code, etc.):**
-- **REQUIRED:** Use superpowers:subagent-driven-development
-- Do NOT offer a choice - subagent-driven is the standard approach
-- Fresh subagent per task + two-stage review
+**When user confirms:** Use Codex subagents when they help, with code review (`requesting-code-review`) after each major task.
 
-**If harness does NOT have subagents:**
-- Execute plan in current session using superpowers:executing-plans
-- Batch execution with checkpoints for review
+**After implementation is complete:** If the changes modify runtime logic, invoke `build-and-test` to build, deploy, and run the functional tests from the Verification section. If `build-and-test` fails, fix the implementation and re-run it before moving to verification.
