@@ -1,0 +1,4 @@
+interface:
+  display_name: "Beads Planner"
+  short_description: "Plan work into Beads tasks"
+  default_prompt: "Use $beads-planner to turn an approved execution plan into Beads epics and tasks."

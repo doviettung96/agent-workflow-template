@@ -1,0 +1,4 @@
+interface:
+  display_name: "Beads Task Cycle"
+  short_description: "Run one Beads task lifecycle"
+  default_prompt: "Use $beads-task-cycle to work one claimed Beads task from claim through close and sync."
