@@ -11,6 +11,10 @@ if (-not (Test-Path $RepoPath)) {
 
 $skillsSource = Join-Path $TemplateRoot "skills"
 
+# Workflow files
+Copy-Item -Force (Join-Path $TemplateRoot "templates\BEADS_WORKFLOW.md") (Join-Path $RepoPath "BEADS_WORKFLOW.md")
+Write-Host "Updated BEADS_WORKFLOW.md"
+
 # Codex skills
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath ".codex\skills") | Out-Null
 Get-ChildItem $skillsSource -Directory | ForEach-Object {

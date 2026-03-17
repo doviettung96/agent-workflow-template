@@ -88,7 +88,7 @@ macOS/Linux:
 bash ./scripts/posix/update-skills.sh /path/to/repo
 ```
 
-This re-copies all skills from `skills/` into both `.codex/skills/` and `.claude/skills/` in the target repo without touching workflow files or snippets.
+This re-copies all skills from `skills/` into both `.codex/skills/` and `.claude/skills/`, and updates `BEADS_WORKFLOW.md` in the target repo.
 
 ## Editing Skills
 

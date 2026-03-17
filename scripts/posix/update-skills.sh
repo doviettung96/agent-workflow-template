@@ -15,6 +15,10 @@ if [[ ! -d "${repo_path}" ]]; then
   exit 1
 fi
 
+# Workflow files
+cp "${template_root}/templates/BEADS_WORKFLOW.md" "${repo_path}/BEADS_WORKFLOW.md"
+printf 'Updated BEADS_WORKFLOW.md\n'
+
 # Codex skills
 mkdir -p "${repo_path}/.codex/skills"
 for skill_dir in "${skills_source}"/*; do
