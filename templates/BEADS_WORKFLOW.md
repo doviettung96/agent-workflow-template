@@ -6,13 +6,14 @@ This repo uses **bd** for task state and selected execution-quality skills for p
 
 Work is split into two distinct session types. Each session has its own skill chain and responsibilities.
 
-## Codex Workflow Skills
+## Workflow Skills
 
-Codex can enter the workflow through global skills installed under `~/.codex/skills`:
+Codex and Claude Code can enter the workflow through repo-local skills installed under `.codex/skills/` and `.claude/skills/`:
 
 - **`plan-beads`** - planner-only entry point; use the current conversation topic or an explicit planning request in your prompt
 - **`executor-once`** - run one full executor cycle for one bead; optionally provide a bead id or selector in the request
 - **`executor-loop`** - repeat executor cycles bead-by-bead until no ready work remains or a blocker requires input
+- **`executor-loop-epic`** - repeat executor cycles, but only across ready descendant beads under one epic
 
 When an executor skill stops on a blocker, continue in normal chat by telling Codex to resume or continue the blocked bead in the same session.
 
@@ -61,7 +62,7 @@ This workflow assumes ephemeral branches merged to main locally. There is no ups
 - Execution-quality skills improve clarity, debugging, review, and worktree hygiene, but they do not replace Beads tracking.
 - The main session owns Beads updates.
 - Subagents can help with implementation, testing, or review, but should not mutate Beads unless explicitly asked.
-- For Codex, the repo-specific `build-and-test` skill is repo-local at `.codex/skills/build-and-test/SKILL.md`, not machine-wide.
+- All skills are repo-local: Codex skills live under `.codex/skills/`, Claude skills under `.claude/skills/`.
 
 ## Multi-Agent Note
 

@@ -34,16 +34,6 @@ Verify:
 dolt version
 ```
 
-## Install Bundled Codex Skills
-
-From this template repo:
-
-```powershell
-pwsh -File .\scripts\windows\install-codex-skills.ps1
-```
-
-Restart Codex after installing skills.
-
 ## Verify Claude Hooks
 
 If you use Claude Code, install global Beads hooks once:
@@ -62,14 +52,7 @@ bd init -p yourprefix
 bd setup codex
 ```
 
-Then copy or scaffold:
-
-- `BEADS_WORKFLOW.md`
-- `.codex/skills/build-and-test/SKILL.md`
-- `AGENTS.md` snippet outside the Beads-managed block
-- `CLAUDE.md` snippet
-
-You can use:
+Or use the bootstrap script to scaffold everything (workflow files, all Codex skills, all Claude skills):
 
 ```powershell
 pwsh -File .\scripts\windows\bootstrap-new-repo.ps1 -RepoPath D:\path\to\repo -Prefix yourprefix
