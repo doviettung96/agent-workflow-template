@@ -48,13 +48,14 @@ Claims one bead and delivers it. All code happens here.
 - **Executor sessions do not re-plan from scratch.** The bead description and any linked spec are the starting point. `writing-plans` produces a local execution plan for that one bead, not a project-level re-plan.
 - **Multiple executor sessions can run in parallel** on different beads (use worktrees for isolation).
 
-## Local Workflow
+## Branch and PR Workflow
 
-This workflow assumes ephemeral branches merged to main locally. There is no upstream push.
+Work happens on feature branches. Merging to main is done via pull requests, not local merges.
 
 - Run `bd dolt pull` at session start and before committing
-- Commit code changes locally
-- Merge to main when ready (local merge, not push)
+- Commit code changes on the feature branch
+- When work is complete, push the branch and create a PR targeting main
+- `finishing-a-development-branch` handles push, PR creation, and worktree cleanup
 
 ## Ownership Rules
 
