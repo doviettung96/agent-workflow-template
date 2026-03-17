@@ -5,7 +5,6 @@ This template repo bundles a curated set of agent skills.
 ## Bundled Skills Created for This Template
 
 - `skills/beads-planner`
-- `skills/beads-task-cycle`
 - `skills/finishing-a-development-branch`
 
 These were written locally for a Beads-first planning and execution workflow.

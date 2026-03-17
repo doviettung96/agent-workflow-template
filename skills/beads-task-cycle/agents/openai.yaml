@@ -1,4 +1,0 @@
-interface:
-  display_name: "Beads Task Cycle (Deprecated)"
-  short_description: "Legacy alias for split Beads flow"
-  default_prompt: "Use $beads-task-cycle only to route older prompts to beads-claim, writing-plans, build-and-test, verification, and beads-close."
