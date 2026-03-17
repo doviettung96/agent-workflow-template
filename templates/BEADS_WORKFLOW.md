@@ -37,7 +37,7 @@ Claims one bead and delivers it. All code happens here.
 4. **`systematic-debugging`** - use if blocked by unclear behavior, runtime failures, or conflicting assumptions
 5. **`build-and-test`** - repo-local Codex skill at `.codex/skills/build-and-test/SKILL.md`; build, deploy, and test only the affected components. If tests fail, loop back to step 3 to fix, then re-run step 5.
 6. **`requesting-code-review`** or **`verification-before-completion`** - verify work before marking complete
-7. **`beads-close`** - close the bead, create discovered follow-up beads, `bd dolt pull`, commit locally
+7. **`beads-close`** - close the bead, create discovered follow-up beads, commit
 
 **Entry:** A claimed bead from `bd ready`.
 **Exit:** Bead closed, code committed, follow-up beads created if needed.
@@ -52,8 +52,8 @@ Claims one bead and delivers it. All code happens here.
 
 Work happens on feature branches. Merging to main is done via pull requests, not local merges.
 
-- Run `bd dolt pull` at session start and before committing
-- Commit code changes on the feature branch
+- Beads state (`.beads/`) is committed to git — no Dolt remote needed
+- Commit code changes on the feature branch (beads state is included in git commits)
 - When work is complete, push the branch and create a PR targeting main
 - `finishing-a-development-branch` handles push, PR creation, and worktree cleanup
 

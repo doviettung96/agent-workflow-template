@@ -34,12 +34,7 @@ Do NOT invoke this skill:
    bd dep add <new-id> <other-id>
    ```
 
-3. **Sync beads state:**
-   ```bash
-   bd dolt pull
-   ```
-
-4. **Commit code changes:**
+3. **Commit code changes** (beads state in `.beads/` is included via git):
    ```bash
    git add <changed files>
    git commit -m "<type>: <description>"
@@ -56,5 +51,4 @@ Do NOT invoke this skill:
   ```bash
   bd close <id1> <id2> ... --reason "Completed"
   ```
-- This repo uses ephemeral branches merged to main locally - there is no upstream push.
-- Always run `bd dolt pull` before committing to avoid sync conflicts.
+- Work happens on feature branches — merging to main is done via PR, not local merge.

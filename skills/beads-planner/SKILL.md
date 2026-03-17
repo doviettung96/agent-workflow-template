@@ -52,7 +52,7 @@ Do NOT:
 - Run `bd ready` and pick up work
 
 DO:
-- Run `bd dolt pull` and commit any changes if needed
+- Commit beads changes if needed (beads state in `.beads/` is tracked by git)
 - Report what beads were created and their dependency structure
 - Tell the user: "Beads created. Claim one with `bd ready` in an executor session."
 - If `/plan-beads` invoked this skill, stop after reporting the created beads and wait for a later executor session.
