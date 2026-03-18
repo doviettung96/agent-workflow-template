@@ -18,15 +18,6 @@ fi
 cp "${template_root}/templates/BEADS_WORKFLOW.md" "${repo_path}/BEADS_WORKFLOW.md"
 printf 'Copied BEADS_WORKFLOW.md\n'
 
-# Ensure .beads/dolt/ is tracked by git (bd init ignores it by default)
-beads_gitignore="${repo_path}/.beads/.gitignore"
-if [[ -f "${beads_gitignore}" ]] && grep -q '^dolt/$' "${beads_gitignore}"; then
-  sed -i '/^dolt\/$/d' "${beads_gitignore}"
-  # Also remove the comment line above it if present
-  sed -i '/^# Dolt database (managed by Dolt, not git)$/d' "${beads_gitignore}"
-  printf 'Removed dolt/ from .beads/.gitignore (tracked by git for worktree support)\n'
-fi
-
 # Codex skills: copy all skills + build-and-test into .codex/skills/
 mkdir -p "${repo_path}/.codex/skills"
 rm -rf "${repo_path}/.codex/skills/build-and-test"

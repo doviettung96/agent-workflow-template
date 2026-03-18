@@ -98,7 +98,20 @@ git worktree add "$path" -b "$BRANCH_NAME"
 cd "$path"
 ```
 
-### 3. Run Project Setup
+### 3. Copy Beads Dolt Database
+
+The Dolt database (`.beads/dolt/`) is gitignored (runtime writes would block git operations), so it must be copied manually into the worktree:
+
+```bash
+main_tree=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
+if [ -d "${main_tree}/.beads/dolt" ]; then
+  cp -R "${main_tree}/.beads/dolt" "$path/.beads/dolt"
+fi
+```
+
+This gives the worktree its own Dolt instance so `bd` commands work locally.
+
+### 4. Run Project Setup
 
 Auto-detect and run appropriate setup:
 
@@ -117,7 +130,7 @@ if [ -f pyproject.toml ]; then poetry install; fi
 if [ -f go.mod ]; then go mod download; fi
 ```
 
-### 4. Verify Clean Baseline
+### 5. Verify Clean Baseline
 
 Run tests to ensure worktree starts clean:
 
@@ -133,7 +146,7 @@ go test ./...
 
 **If tests pass:** Report ready.
 
-### 5. Report Location
+### 6. Report Location
 
 ```
 Worktree ready at <full-path>

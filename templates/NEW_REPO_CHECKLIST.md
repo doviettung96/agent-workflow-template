@@ -10,9 +10,8 @@
 
 1. `cd <repo>`
 2. `bd init -p <prefix>`
-3. Remove `dolt/` line from `.beads/.gitignore` so the Dolt database is tracked by git (needed for worktrees)
-4. `bd setup codex`
-5. Run the bootstrap script (copies all workflow files, Codex skills, and Claude skills)
+3. `bd setup codex`
+4. Run the bootstrap script (copies all workflow files, Codex skills, and Claude skills)
 5. **Customize `.codex/skills/build-and-test/SKILL.md`** for your project's build, deploy, and test commands
 6. Add the `AGENTS.md` snippet outside the Beads-managed block
 7. Add the `CLAUDE.md` snippet if the repo uses Claude
