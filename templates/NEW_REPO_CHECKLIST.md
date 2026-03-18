@@ -21,6 +21,7 @@
 
 The bootstrap script installs:
 - `BEADS_WORKFLOW.md`
+- `.beads/PRIME.md` — overrides `bd prime` output (removes dolt pull/push, uses PR workflow)
 - `.codex/skills/` — all Codex skills including a `build-and-test` template
 - `.claude/skills/` — all Claude Code skills
 - `AGENTS.md` and `CLAUDE.md` snippets

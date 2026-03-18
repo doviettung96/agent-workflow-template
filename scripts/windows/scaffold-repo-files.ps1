@@ -18,6 +18,13 @@ $claudeSnippet = Join-Path $TemplateRoot "templates\\CLAUDE.snippet.md"
 Copy-Item -Force $workflowSource (Join-Path $RepoPath "BEADS_WORKFLOW.md")
 Write-Host "Copied BEADS_WORKFLOW.md"
 
+# Override bd prime output (removes dolt pull/push references)
+$beadsDir = Join-Path $RepoPath ".beads"
+if (Test-Path $beadsDir) {
+    Copy-Item -Force (Join-Path $TemplateRoot "templates\\PRIME.md") (Join-Path $beadsDir "PRIME.md")
+    Write-Host "Copied .beads/PRIME.md"
+}
+
 # Codex skills: copy all skills + build-and-test into .codex/skills/
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath ".codex\\skills") | Out-Null
 Copy-Item -Recurse -Force $codexSkillSource (Join-Path $RepoPath ".codex\\skills\\build-and-test")

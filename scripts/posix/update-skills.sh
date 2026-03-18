@@ -19,6 +19,11 @@ fi
 cp "${template_root}/templates/BEADS_WORKFLOW.md" "${repo_path}/BEADS_WORKFLOW.md"
 printf 'Updated BEADS_WORKFLOW.md\n'
 
+if [[ -d "${repo_path}/.beads" ]]; then
+  cp "${template_root}/templates/PRIME.md" "${repo_path}/.beads/PRIME.md"
+  printf 'Updated .beads/PRIME.md\n'
+fi
+
 # Codex skills
 mkdir -p "${repo_path}/.codex/skills"
 for skill_dir in "${skills_source}"/*; do

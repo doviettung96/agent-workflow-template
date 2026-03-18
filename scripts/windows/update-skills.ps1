@@ -15,6 +15,12 @@ $skillsSource = Join-Path $TemplateRoot "skills"
 Copy-Item -Force (Join-Path $TemplateRoot "templates\BEADS_WORKFLOW.md") (Join-Path $RepoPath "BEADS_WORKFLOW.md")
 Write-Host "Updated BEADS_WORKFLOW.md"
 
+$beadsDir = Join-Path $RepoPath ".beads"
+if (Test-Path $beadsDir) {
+    Copy-Item -Force (Join-Path $TemplateRoot "templates\PRIME.md") (Join-Path $beadsDir "PRIME.md")
+    Write-Host "Updated .beads/PRIME.md"
+}
+
 # Codex skills
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath ".codex\skills") | Out-Null
 Get-ChildItem $skillsSource -Directory | ForEach-Object {

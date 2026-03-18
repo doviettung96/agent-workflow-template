@@ -18,6 +18,12 @@ fi
 cp "${template_root}/templates/BEADS_WORKFLOW.md" "${repo_path}/BEADS_WORKFLOW.md"
 printf 'Copied BEADS_WORKFLOW.md\n'
 
+# Override bd prime output (removes dolt pull/push references)
+if [[ -d "${repo_path}/.beads" ]]; then
+  cp "${template_root}/templates/PRIME.md" "${repo_path}/.beads/PRIME.md"
+  printf 'Copied .beads/PRIME.md\n'
+fi
+
 # Codex skills: copy all skills + build-and-test into .codex/skills/
 mkdir -p "${repo_path}/.codex/skills"
 rm -rf "${repo_path}/.codex/skills/build-and-test"
