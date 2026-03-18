@@ -162,8 +162,9 @@ After saving the plan:
 
 **"Plan complete and saved to `docs/plans/<filename>.md`. Ready to execute?"**
 
-Wait for user confirmation before proceeding. Do NOT auto-dispatch implementation subagents.
+- If this skill was invoked by `/executor-loop`, `/executor-loop-epic`, or `/executor-once`, proceed to implementation automatically — do not wait for confirmation.
+- Otherwise, wait for user confirmation before proceeding.
 
-**When user confirms:** Use Codex subagents when they help, with code review (`requesting-code-review`) after each major task.
+**When proceeding:** Use Codex subagents when they help, with code review (`requesting-code-review`) after each major task.
 
 **After implementation is complete:** If the changes modify runtime logic, invoke `build-and-test` to build, deploy, and run the functional tests from the Verification section. If `build-and-test` fails, fix the implementation and re-run it before moving to verification.
