@@ -21,6 +21,16 @@ Do NOT invoke this skill:
 - To close beads you did not work on in this session
 </HARD-GATE>
 
+## Worktree Rule
+
+`bd` commands must always run from the **main repo directory**, not from inside a worktree. If you are in a worktree, prefix bd commands with:
+
+```bash
+cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...
+```
+
+Code changes happen in the worktree. Beads state management happens from the main directory.
+
 ## Steps
 
 1. **Close the bead:**

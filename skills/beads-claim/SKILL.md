@@ -21,6 +21,16 @@ Do NOT invoke this skill when:
 - You are in the middle of brainstorming or beads-planner
 </HARD-GATE>
 
+## Worktree Rule
+
+`bd` commands must always run from the **main repo directory**, not from inside a worktree. If you are in a worktree, prefix bd commands with:
+
+```bash
+cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...
+```
+
+Code changes happen in the worktree. Beads state management happens from the main directory.
+
 ## Steps
 
 1. **Find ready work:**

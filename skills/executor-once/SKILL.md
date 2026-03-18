@@ -7,6 +7,16 @@ description: "Run exactly one full executor cycle for one bead: claim, write a l
 
 Run exactly one full executor cycle for one bead.
 
+## Worktree Rule
+
+`bd` commands must always run from the **main repo directory**, not from inside a worktree. If you are in a worktree, prefix bd commands with:
+
+```bash
+cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...
+```
+
+Code changes happen in the worktree. Beads state management happens from the main directory.
+
 ## Steps
 
 1. If the current repo is not initialized for Beads, stop and tell the user to run `bd init -p <prefix>` and `bd setup codex`.
