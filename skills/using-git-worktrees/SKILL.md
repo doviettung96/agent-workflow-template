@@ -11,6 +11,8 @@ Git worktrees create isolated workspaces sharing the same repository, allowing w
 
 **Core principle:** Systematic directory selection + safety verification = reliable isolation.
 
+**IMPORTANT:** Always use `git worktree add` to create worktrees. Do NOT use Claude's `EnterWorktree` or Codex built-in worktree features — those create directory copies that don't share the `.beads/` database. Proper `git worktree add` worktrees share the main repo's beads database automatically.
+
 **Announce at start:** "I'm using the using-git-worktrees skill to set up an isolated workspace."
 
 ## Directory Selection Process

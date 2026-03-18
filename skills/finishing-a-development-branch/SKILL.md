@@ -48,7 +48,7 @@ gh pr create --base main --fill
 - If the user has provided a PR title or description, use `--title` and `--body` instead
 - Report the PR URL to the user
 
-### 4. Clean up the worktree
+### 4. Clean up the worktree and commit beads state
 
 If currently working inside a worktree:
 
@@ -58,15 +58,28 @@ worktree_path=$(git rev-parse --show-toplevel)
 branch_name=$(git rev-parse --abbrev-ref HEAD)
 
 # Move back to the main working tree
-cd $(git worktree list --porcelain | head -1 | sed 's/worktree //')
+main_tree=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
+cd "$main_tree"
 
 # Remove the worktree
 git worktree remove "$worktree_path"
 ```
 
-If NOT in a worktree (working directly on a branch in the main tree), skip cleanup.
+If NOT in a worktree (working directly on a branch in the main tree), skip worktree cleanup.
 
-### 5. Report completion
+### 5. Commit beads state on main
+
+`bd` commands write to the main repo's `.beads/` (shared database), so those changes need to be committed on main:
+
+```bash
+cd "$main_tree"  # already here after worktree cleanup
+git add .beads/
+git commit -m "beads: update state after <epic/bead summary>"
+```
+
+Skip if `.beads/` has no changes.
+
+### 6. Report completion
 
 ```
 PR created: <url>
