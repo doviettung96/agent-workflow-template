@@ -7,6 +7,17 @@ description: "Run repeated executor cycles bead-by-bead until the ready queue is
 
 Run repeated executor cycles bead-by-bead until the queue is exhausted or a blocker requires user input.
 
+## Worktree Awareness
+
+When running inside a git worktree, `bd` must be run from the main working tree (where the Dolt database lives). Detect and handle this automatically:
+
+```bash
+main_tree=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
+# Run bd commands with: cd "$main_tree" && bd ...
+```
+
+If you are NOT in a worktree (main tree is the current directory), run `bd` normally.
+
 ## Steps
 
 1. If the current repo is not initialized for Beads, stop and tell the user to run `bd init -p <prefix>` and `bd setup codex`.

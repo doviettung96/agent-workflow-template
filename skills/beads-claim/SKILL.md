@@ -21,6 +21,17 @@ Do NOT invoke this skill when:
 - You are in the middle of brainstorming or beads-planner
 </HARD-GATE>
 
+## Worktree Awareness
+
+When running inside a git worktree, `bd` must be run from the main working tree (where the Dolt database lives). Detect and handle this automatically:
+
+```bash
+main_tree=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
+# Run bd commands with: cd "$main_tree" && bd ...
+```
+
+If you are NOT in a worktree (main tree is the current directory), run `bd` normally.
+
 ## Steps
 
 1. **Find ready work:**
