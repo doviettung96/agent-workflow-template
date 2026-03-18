@@ -18,6 +18,18 @@ $claudeSnippet = Join-Path $TemplateRoot "templates\\CLAUDE.snippet.md"
 Copy-Item -Force $workflowSource (Join-Path $RepoPath "BEADS_WORKFLOW.md")
 Write-Host "Copied BEADS_WORKFLOW.md"
 
+# Ensure .beads/dolt/ is tracked by git (bd init ignores it by default)
+$beadsGitignore = Join-Path $RepoPath ".beads\\.gitignore"
+if (Test-Path $beadsGitignore) {
+    $content = Get-Content $beadsGitignore -Raw
+    if ($content -match '(?m)^dolt/$') {
+        $content = $content -replace '(?m)^# Dolt database \(managed by Dolt, not git\)\r?\n', ''
+        $content = $content -replace '(?m)^dolt/\r?\n', ''
+        Set-Content -Path $beadsGitignore -Value $content.TrimEnd()
+        Write-Host "Removed dolt/ from .beads/.gitignore (tracked by git for worktree support)"
+    }
+}
+
 # Codex skills: copy all skills + build-and-test into .codex/skills/
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath ".codex\\skills") | Out-Null
 Copy-Item -Recurse -Force $codexSkillSource (Join-Path $RepoPath ".codex\\skills\\build-and-test")
