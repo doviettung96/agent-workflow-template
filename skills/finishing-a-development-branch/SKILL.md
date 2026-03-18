@@ -1,13 +1,13 @@
 ---
 name: finishing-a-development-branch
-description: "Use after all work on a feature branch is complete and verified. Pushes the branch, creates a PR targeting main, and cleans up the worktree."
+description: "Use after all work on a feature branch is complete and verified. Pushes the branch and creates a PR targeting main."
 ---
 
 # Finishing a Development Branch
 
 **Workflow position:** Final step after all beads are closed and build-and-test passes. See BEADS_WORKFLOW.md.
 
-**Announce at start:** "I'm using the finishing-a-development-branch skill to push, create a PR, and clean up."
+**Announce at start:** "I'm using the finishing-a-development-branch skill to push and create a PR."
 
 ## Prerequisites
 
@@ -48,43 +48,17 @@ gh pr create --base main --fill
 - If the user has provided a PR title or description, use `--title` and `--body` instead
 - Report the PR URL to the user
 
-### 4. Clean up the worktree and commit beads state
+### 4. Commit beads state on main
 
-If currently working inside a worktree:
+If `.beads/` has changes on the current branch that need to be visible on main, they will be included in the PR.
 
-```bash
-# Record the worktree path and branch name
-worktree_path=$(git rev-parse --show-toplevel)
-branch_name=$(git rev-parse --abbrev-ref HEAD)
+Skip this step if `.beads/` has no changes.
 
-# Move back to the main working tree
-main_tree=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
-cd "$main_tree"
-
-# Remove the worktree
-git worktree remove "$worktree_path"
-```
-
-If NOT in a worktree (working directly on a branch in the main tree), skip worktree cleanup.
-
-### 5. Commit beads state on main
-
-`bd` commands write to the main repo's `.beads/` (shared database), so those changes need to be committed on main:
-
-```bash
-cd "$main_tree"  # already here after worktree cleanup
-git add .beads/
-git commit -m "beads: update state after <epic/bead summary>"
-```
-
-Skip if `.beads/` has no changes.
-
-### 6. Report completion
+### 5. Report completion
 
 ```
 PR created: <url>
 Branch: <branch-name>
-Worktree cleaned up: <path> (if applicable)
 ```
 
 ## Hard Rules
@@ -92,7 +66,6 @@ Worktree cleaned up: <path> (if applicable)
 - Never force-push unless the user explicitly asks
 - Never delete the remote branch — let the PR merge process handle that
 - Never merge locally — the PR is the merge mechanism
-- If the worktree has uncommitted changes, stop and report instead of discarding
 - If `gh` is not available, push the branch and report the branch name for manual PR creation
 
 ## Quick Reference
@@ -103,7 +76,6 @@ Worktree cleaned up: <path> (if applicable)
 | No commits ahead of main | Stop, nothing to PR |
 | Push fails | Report error, stop |
 | `gh` not installed | Push branch, report for manual PR |
-| Not in a worktree | Skip worktree cleanup |
 | PR creation fails | Report error, branch is pushed |
 
 ## Integration
@@ -113,5 +85,4 @@ Worktree cleaned up: <path> (if applicable)
 - Any workflow that completes work on a feature branch
 
 **Pairs with:**
-- **`using-git-worktrees`** — creates the worktree this skill cleans up
 - **`build-and-test`** — must pass before invoking this skill

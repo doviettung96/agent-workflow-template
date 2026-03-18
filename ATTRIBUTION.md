@@ -23,6 +23,5 @@ Bundled derived skills:
 - `skills/systematic-debugging`
 - `skills/requesting-code-review`
 - `skills/verification-before-completion`
-- `skills/using-git-worktrees`
 
 These copies are included so the template repo remains self-contained. They should be treated as vendored workflow assets. When updating them, review upstream changes intentionally rather than overwriting local customizations blindly.

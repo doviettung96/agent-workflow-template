@@ -13,14 +13,13 @@
 [ ] 3. git commit -m "..."     (commit code changes)
 ```
 
-**Note:** Work happens on feature branches. Merging to main is done via PR, not local merge. Beads state is shared via the main repo's `.beads/` directory (auto-discovered by `bd` in git worktrees).
+**Note:** Work happens on feature branches. Merging to main is done via PR, not local merge.
 
 ## Core Rules
 - **Default**: Use beads for ALL task tracking (`bd create`, `bd ready`, `bd close`)
 - **Prohibited**: Do NOT use TodoWrite, TaskCreate, or markdown files for task tracking
 - **Workflow**: Create beads issue BEFORE writing code, mark in_progress when starting
 - **Memory**: Use `bd remember "insight"` for persistent knowledge across sessions. Do NOT use MEMORY.md files — they fragment across accounts. Search with `bd memories <keyword>`.
-- **Worktrees**: Use `git worktree add`, NOT Claude's `EnterWorktree` or Codex built-in worktree features
 - **No dolt remote**: Do NOT run `bd dolt pull` or `bd dolt push` — beads state is tracked by git, not Dolt remotes
 - Session management: check `bd ready` for available work
 

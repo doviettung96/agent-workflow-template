@@ -21,27 +21,17 @@ Do NOT invoke this skill:
 - To close beads you did not work on in this session
 </HARD-GATE>
 
-## Worktree Rule
-
-`bd` commands must always run from the **main repo directory**, not from inside a worktree. If you are in a worktree, prefix bd commands with:
-
-```bash
-(cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...)
-```
-
-Code changes happen in the worktree. Beads state management happens from the main directory.
-
 ## Steps
 
-1. **Close the bead** (from main repo — NEVER run bd from a worktree):
+1. **Close the bead:**
    ```bash
-   (cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd close <id> --reason "Completed: <brief summary of what was done>")
+   bd close <id> --reason "Completed: <brief summary of what was done>"
    ```
 
 2. **Create follow-up beads** if new work was discovered during implementation:
    ```bash
-   (cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd create --title="Follow-up: ..." --description="Discovered during <id>: ..." --type=task)
-   (cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd dep add <new-id> <other-id>)
+   bd create --title="Follow-up: ..." --description="Discovered during <id>: ..." --type=task
+   bd dep add <new-id> <other-id>
    ```
 
 3. **Commit code changes** (beads state in `.beads/` is included via git):
@@ -54,7 +44,7 @@ Code changes happen in the worktree. Beads state management happens from the mai
 
 - If execution was blocked and the bead is NOT complete, do NOT close it. Instead update it:
   ```bash
-  (cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd update <id> --notes="Blocked: <reason>")
+  bd update <id> --notes="Blocked: <reason>"
   ```
 - When `/executor-loop` is driving the workflow, hand control back to the loop only after the current bead is closed and the local commit is complete.
 - If multiple beads were completed, close them together:

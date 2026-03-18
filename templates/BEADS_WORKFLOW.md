@@ -33,7 +33,7 @@ Claims one bead and delivers it. All code happens here.
 
 1. **`beads-claim`** - `bd ready`, choose the next task, inspect it, then `bd update <id> --status=in_progress`; Codex slash commands may auto-claim when the bead choice is unambiguous
 2. **`writing-plans`** - write a detailed execution plan for that one bead (bite-sized steps, exact files, TDD, verification section)
-3. **Implement** - execute the plan in the current session or worktree
+3. **Implement** - execute the plan on the feature branch
 4. **`systematic-debugging`** - use if blocked by unclear behavior, runtime failures, or conflicting assumptions
 5. **`build-and-test`** - repo-local Codex skill at `.codex/skills/build-and-test/SKILL.md`; build, deploy, and test only the affected components. If tests fail, loop back to step 3 to fix, then re-run step 5.
 6. **`requesting-code-review`** or **`verification-before-completion`** - verify work before marking complete
@@ -46,7 +46,6 @@ Claims one bead and delivers it. All code happens here.
 
 - **Planner sessions do not write code.** If the design reveals implementation is trivial, the planner still creates a bead - the executor handles it.
 - **Executor sessions do not re-plan from scratch.** The bead description and any linked spec are the starting point. `writing-plans` produces a local execution plan for that one bead, not a project-level re-plan.
-- **Multiple executor sessions can run in parallel** on different beads (use worktrees for isolation).
 
 ## Branch and PR Workflow
 
@@ -55,16 +54,12 @@ Work happens on feature branches. Merging to main is done via pull requests, not
 - Beads state (`.beads/`) is committed to git — no Dolt remote needed
 - Commit code changes on the feature branch (beads state is included in git commits)
 - When work is complete, push the branch and create a PR targeting main
-- `finishing-a-development-branch` handles push, PR creation, and worktree cleanup
+- `finishing-a-development-branch` handles push and PR creation
 
 ## Ownership Rules
 
 - Beads owns task state.
-- Execution-quality skills improve clarity, debugging, review, and worktree hygiene, but they do not replace Beads tracking.
+- Execution-quality skills improve clarity, debugging, review, and delivery, but they do not replace Beads tracking.
 - The main session owns Beads updates.
 - Subagents can help with implementation, testing, or review, but should not mutate Beads unless explicitly asked.
 - All skills are repo-local: Codex skills live under `.codex/skills/`, Claude skills under `.claude/skills/`.
-
-## Multi-Agent Note
-
-Plain Beads plus careful claiming and `git worktree` is the default workflow. Heavier multi-agent coordination layers are optional and should only be added if manual worktree discipline stops scaling.
