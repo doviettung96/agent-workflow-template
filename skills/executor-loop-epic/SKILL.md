@@ -7,17 +7,6 @@ description: "Run repeated executor cycles scoped to a single epic: pick the nex
 
 Run repeated executor cycles bead-by-bead, but only within one epic.
 
-## Worktree Awareness
-
-When running inside a git worktree, `bd` must be run from the main working tree (where the Dolt database lives). Detect and handle this automatically:
-
-```bash
-main_tree=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
-# Run bd commands with: cd "$main_tree" && bd ...
-```
-
-If you are NOT in a worktree (main tree is the current directory), run `bd` normally. After the worktree is created in step 4, all `bd` commands must use the main tree path.
-
 ## Steps
 
 1. If the current repo is not initialized for Beads, stop and tell the user to run `bd init -p <prefix>` and `bd setup codex`.
