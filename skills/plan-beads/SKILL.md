@@ -15,7 +15,7 @@ Run a planner-only Beads session.
 4. If the topic is still unclear, ask clarifying questions before planning.
 5. Use `brainstorming` when the problem is still fuzzy or underexplored.
 6. Produce or confirm an execution plan.
-7. Require explicit user approval of the execution plan before creating beads.
+7. If there are unresolved questions or blockers, ask the user before proceeding. Otherwise, auto-approve and continue.
 8. Use `beads-planner` to create or update the beads from the approved plan.
 9. Stop after beads are created.
 
