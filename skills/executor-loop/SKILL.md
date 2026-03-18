@@ -23,7 +23,7 @@ Code changes happen in the worktree. Beads state management happens from the mai
 2. Determine the first bead:
    - if the user supplied a bead id in the current request, start there
    - if the user supplied freeform selector text, treat it as a selector or hint for the first bead
-   - otherwise inspect `bd ready --json` and choose the best ready bead autonomously
+   - otherwise inspect `bd ready --json` (from main repo: `cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --json`) and choose the best ready bead autonomously
 3. Run one full executor cycle for that bead by invoking:
    - `beads-claim`
    - `writing-plans`
@@ -32,7 +32,7 @@ Code changes happen in the worktree. Beads state management happens from the mai
    - repo-local `build-and-test` when needed
    - `verification-before-completion` or `requesting-code-review`
    - `beads-close`
-4. After a successful close and local commit, inspect `bd ready --json` again and choose the next best ready bead using the same preference order.
+4. After a successful close and local commit, inspect `bd ready --json` again (from main repo) and choose the next best ready bead using the same preference order.
 5. Repeat until one of these stop conditions is reached:
    - no ready bead remains
    - a blocker requires user input

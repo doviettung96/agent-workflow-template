@@ -33,16 +33,16 @@ Code changes happen in the worktree. Beads state management happens from the mai
 
 ## Steps
 
-1. **Find ready work:**
+1. **Find ready work** (from main repo — NEVER run bd from a worktree):
    ```bash
-   bd ready --json
+   cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --json
    ```
 
 2. **Select a bead** - if the user specified one, use that. Otherwise, choose the best ready bead based on current context, priority, and dependencies.
 
 3. **Show the bead details** before claiming:
    ```bash
-   bd show <id> --json
+   cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd show <id> --json
    ```
 
 4. **Confirm or auto-claim**:
@@ -52,7 +52,7 @@ Code changes happen in the worktree. Beads state management happens from the mai
 
 5. **Claim it:**
    ```bash
-   bd update <id> --status=in_progress
+   cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd update <id> --status=in_progress
    ```
 
 6. **Report** - state the claimed bead ID and title, then proceed to `writing-plans` for the execution plan.
