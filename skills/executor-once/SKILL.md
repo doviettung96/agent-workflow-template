@@ -12,7 +12,7 @@ Run exactly one full executor cycle for one bead.
 `bd` commands must always run from the **main repo directory**, not from inside a worktree. If you are in a worktree, prefix bd commands with:
 
 ```bash
-cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...
+(cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...)
 ```
 
 Code changes happen in the worktree. Beads state management happens from the main directory.
@@ -23,7 +23,7 @@ Code changes happen in the worktree. Beads state management happens from the mai
 2. Determine the target bead:
    - if the user supplied a bead id in the current request, use that bead
    - if the user supplied freeform selector text, treat it as a selector or hint
-   - otherwise inspect `bd ready --json` (from main repo: `cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --json`) and choose the best ready bead autonomously
+   - otherwise inspect `bd ready --json` (from main repo: `(cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --json)`) and choose the best ready bead autonomously
 3. Preferred bead choice order:
    - first, a ready bead clearly related to the current repo context or recent planner discussion
    - otherwise, the highest-priority ready bead

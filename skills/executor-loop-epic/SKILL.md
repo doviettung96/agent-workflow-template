@@ -12,7 +12,7 @@ Run repeated executor cycles bead-by-bead, but only within one epic.
 `bd` commands must always run from the **main repo directory**, not from inside a worktree. If you are in a worktree, prefix bd commands with:
 
 ```bash
-cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...
+(cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...)
 ```
 
 Code changes happen in the worktree. Beads state management happens from the main directory.
@@ -25,12 +25,12 @@ Code changes happen in the worktree. Beads state management happens from the mai
    - otherwise ask for the epic id or enough selector text to identify one unambiguously
 3. Verify the epic exists and inspect it (from main repo — NEVER run bd from a worktree):
    ```bash
-   cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd show <epic-id> --json
+   (cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd show <epic-id> --json)
    ```
 4. **`using-git-worktrees`** — create an isolated worktree with a feature branch for this epic (e.g., `epic/<epic-id>`). All subsequent code changes happen inside the worktree. All `bd` commands run from the main repo directory.
 5. Find ready work only within that epic's descendant tree:
    ```bash
-   cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --parent <epic-id> --json
+   (cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --parent <epic-id> --json)
    ```
 6. Choose the next ready descendant bead using this preference order:
    - first, the ready descendant bead most clearly related to the current repo context or recent discussion
@@ -45,7 +45,7 @@ Code changes happen in the worktree. Beads state management happens from the mai
    - `beads-close`
 8. After a successful close and local commit, inspect the epic again for more ready descendants:
    ```bash
-   cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --parent <epic-id> --json
+   (cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --parent <epic-id> --json)
    ```
 9. Repeat until one of these stop conditions is reached:
    - no ready descendant beads remain under the epic

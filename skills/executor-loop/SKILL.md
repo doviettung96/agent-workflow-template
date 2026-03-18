@@ -12,7 +12,7 @@ Run repeated executor cycles bead-by-bead until the queue is exhausted or a bloc
 `bd` commands must always run from the **main repo directory**, not from inside a worktree. If you are in a worktree, prefix bd commands with:
 
 ```bash
-cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...
+(cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ...)
 ```
 
 Code changes happen in the worktree. Beads state management happens from the main directory.
@@ -23,7 +23,7 @@ Code changes happen in the worktree. Beads state management happens from the mai
 2. Determine the first bead:
    - if the user supplied a bead id in the current request, start there
    - if the user supplied freeform selector text, treat it as a selector or hint for the first bead
-   - otherwise inspect `bd ready --json` (from main repo: `cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --json`) and choose the best ready bead autonomously
+   - otherwise inspect `bd ready --json` (from main repo: `(cd "$(git worktree list --porcelain | head -1 | sed 's/worktree //')" && bd ready --json)`) and choose the best ready bead autonomously
 3. Run one full executor cycle for that bead by invoking:
    - `beads-claim`
    - `writing-plans`
