@@ -21,6 +21,8 @@
 - **Workflow**: Create beads issue BEFORE writing code, mark in_progress when starting
 - **Memory**: Use `bd remember "insight"` for persistent knowledge across sessions. Do NOT use MEMORY.md files — they fragment across accounts. Search with `bd memories <keyword>`.
 - **No dolt remote**: Do NOT run `bd dolt pull` or `bd dolt push` — beads state is tracked by git, not Dolt remotes
+- **Bead threshold**: If a task is expected to take more than 5 minutes, create a bead for it — do not just do it inline
+- **Always group into epics**: When creating multiple beads in one turn, always parent them under an epic (existing or new). Never leave a batch of beads as orphan top-level items.
 - Session management: check `bd ready` for available work
 
 ## Essential Commands
