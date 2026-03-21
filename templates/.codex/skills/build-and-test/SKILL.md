@@ -71,6 +71,8 @@ Wait a moment for ports to free up.
 
 ### 6. Launch the exe
 
+> **IMPORTANT:** You MUST have killed all previous instances (step 5) before launching. If you skip this, the new instance will fail to bind ports or behave unpredictably.
+
 ```bash
 ./dist/BotName.exe &
 ```
