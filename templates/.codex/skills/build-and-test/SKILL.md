@@ -92,15 +92,37 @@ curl -s http://localhost:8787/status
 
 Both must return valid JSON responses.
 
-### 8. Functional tests
+### 8. Live session test (ALWAYS)
 
-Run the verification plan. This means testing the **actual behavior** the bead changed — not just that endpoints return 200. If the bead changed campaign logic, start a campaign and verify it progresses. If it changed login flow, trigger login and verify success. The execution plan's `## Verification` section defines exactly what to test and what success looks like.
+Every build-and-test cycle MUST include a live session test. Do not skip this. Do not settle for "API returns 200" — you must observe the actual behavior.
 
-Compare actual output and observed behavior against the documented success criteria.
+**Procedure:**
+
+1. **Kill the running game/app on the device** (if applicable):
+   ```bash
+   adb -s <serial> shell am force-stop <package>
+   ```
+
+2. **Stop the bot if running:**
+   ```bash
+   taskkill /F /IM BotName.exe 2>/dev/null || true
+   ```
+
+3. **Launch a fresh bot session:**
+   ```bash
+   ./dist/BotName.exe &
+   ```
+   Wait for the API server and device connection (poll `/ping` and `/devices`).
+
+4. **Trigger the automation flow being tested** via API — use whatever the verification plan specifies.
+
+5. **Watch the logs and poll status** to verify the behavior is correct. Keep polling for a reasonable duration (30-60s depending on the flow) to confirm the automation actually progresses, not just starts.
+
+6. **Check results against the verification plan.** The execution plan's `## Verification` section defines exactly what success looks like — match observed behavior against it.
 
 ### 9. Report results
 
-State what was built, launched, and tested with actual output. Do NOT claim success without evidence.
+State what was built, launched, and tested with **actual observed behavior** — log output, status responses, and whether the app performed the expected actions. Do NOT claim success without evidence.
 
 ### 10. Cleanup
 
