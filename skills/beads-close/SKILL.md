@@ -46,7 +46,7 @@ Do NOT invoke this skill:
   ```bash
   bd update <id> --notes="Blocked: <reason>"
   ```
-- When `/executor-loop` is driving the workflow, hand control back to the loop only after the current bead is closed and the local commit is complete.
+- When `/executor-loop`, `/executor-loop-epic`, or any loop is driving the workflow, hand control back to the loop after the current bead is closed and the local commit is complete. Do NOT stop the session — the loop decides when to stop.
 - If multiple beads were completed, close them together:
   ```bash
   bd close <id1> <id2> ... --reason "Completed"
