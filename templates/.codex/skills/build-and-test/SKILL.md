@@ -94,7 +94,9 @@ Both must return valid JSON responses.
 
 ### 8. Functional tests
 
-Run the API calls specified in the execution plan's `## Verification` section. Compare actual output against the documented success criteria.
+Run the verification plan. This means testing the **actual behavior** the bead changed — not just that endpoints return 200. If the bead changed campaign logic, start a campaign and verify it progresses. If it changed login flow, trigger login and verify success. The execution plan's `## Verification` section defines exactly what to test and what success looks like.
+
+Compare actual output and observed behavior against the documented success criteria.
 
 ### 9. Report results
 
