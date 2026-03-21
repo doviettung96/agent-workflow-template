@@ -92,9 +92,11 @@ curl -s http://localhost:8787/status
 
 Both must return valid JSON responses.
 
-### 8. Live session test (ALWAYS)
+### 8. Live session test (when logic changed)
 
-Every build-and-test cycle MUST include a live session test. Do not skip this. Do not settle for "API returns 200" — you must observe the actual behavior.
+If the bead changed runtime logic (bot behavior, automation flows, API handlers, deploy/injection), you MUST run a live session test. Do not settle for "API returns 200" — you must observe the actual behavior.
+
+Skip this step only when changes are purely structural (refactoring with no behavior change, documentation, config that doesn't affect runtime).
 
 **Procedure:**
 
