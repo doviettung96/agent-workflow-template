@@ -22,7 +22,7 @@ Build, launch, and test only the components affected by the current changes.
 | Spec file | `launcher.spec` |
 | Output exe | `dist/BotName.exe` |
 | API port | `8787` |
-| Launch args | `--no-ui` |
+| Launch args | (none by default) |
 
 ## Steps
 
@@ -72,7 +72,7 @@ Wait a moment for ports to free up.
 ### 6. Launch the exe
 
 ```bash
-./dist/BotName.exe --no-ui &
+./dist/BotName.exe &
 ```
 
 Wait for the API server to become available:
