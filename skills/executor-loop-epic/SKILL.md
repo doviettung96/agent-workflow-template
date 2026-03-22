@@ -29,12 +29,12 @@ Run repeated executor cycles bead-by-bead, but only within one epic.
 6. Choose the next ready descendant bead using this preference order:
    - first, the ready descendant bead most clearly related to the current repo context or recent discussion
    - otherwise, the highest-priority ready descendant bead
-7. Run one full executor cycle for that bead by invoking:
+7. Run one full executor cycle for that bead by invoking **every step in order**:
    - `beads-claim`
    - `writing-plans`
    - implementation
    - `systematic-debugging` if blocked
-   - repo-local `build-and-test` when needed
+   - **`build-and-test`** — REQUIRED after implementation. Read the skill at `.codex/skills/build-and-test/SKILL.md` and follow it. Do NOT skip this step.
    - `verification-before-completion` or `requesting-code-review`
    - `beads-close`
 8. After a successful close and local commit, inspect the epic again for more ready descendants:

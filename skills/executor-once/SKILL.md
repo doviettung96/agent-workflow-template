@@ -18,12 +18,12 @@ Run exactly one full executor cycle for one bead.
    - first, a ready bead clearly related to the current repo context or recent planner discussion
    - otherwise, the highest-priority ready bead
 4. If bead choice is ambiguous, ask before claiming.
-5. Claim the bead and run the executor workflow in this order:
+5. Claim the bead and run the executor workflow — **every step in order**:
    - `beads-claim`
    - `writing-plans`
    - implementation
    - `systematic-debugging` if blocked
-   - repo-local `build-and-test` when runtime verification is needed
+   - **`build-and-test`** — REQUIRED after implementation. Read the skill at `.codex/skills/build-and-test/SKILL.md` and follow it. Do NOT skip this step.
    - `verification-before-completion` or `requesting-code-review`
    - `beads-close`
 6. If separate work is discovered, create follow-up beads during execution or before close.

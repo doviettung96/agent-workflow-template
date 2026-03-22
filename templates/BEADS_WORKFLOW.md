@@ -35,7 +35,7 @@ Claims one bead and delivers it. All code happens here.
 2. **`writing-plans`** - write a detailed execution plan for that one bead (bite-sized steps, exact files, TDD, verification section)
 3. **Implement** - execute the plan on the feature branch
 4. **`systematic-debugging`** - use if blocked by unclear behavior, runtime failures, or conflicting assumptions
-5. **`build-and-test`** - repo-local Codex skill at `.codex/skills/build-and-test/SKILL.md`; build, deploy, and test only the affected components. If tests fail, loop back to step 3 to fix, then re-run step 5.
+5. **`build-and-test`** — REQUIRED. Read `.codex/skills/build-and-test/SKILL.md` and follow it. Build, deploy, and test the affected components. If tests fail, loop back to step 3 to fix, then re-run step 5. Do NOT skip this step.
 6. **`requesting-code-review`** or **`verification-before-completion`** - verify work before marking complete
 7. **`beads-close`** - close the bead, create discovered follow-up beads, commit
 

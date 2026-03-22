@@ -14,12 +14,12 @@ Run repeated executor cycles bead-by-bead until the queue is exhausted or a bloc
    - if the user supplied a bead id in the current request, start there
    - if the user supplied freeform selector text, treat it as a selector or hint for the first bead
    - otherwise inspect `bd ready --json` and choose the best ready bead autonomously
-3. Run one full executor cycle for that bead by invoking:
+3. Run one full executor cycle for that bead by invoking **every step in order**:
    - `beads-claim`
    - `writing-plans`
    - implementation
    - `systematic-debugging` if blocked
-   - repo-local `build-and-test` when needed
+   - **`build-and-test`** — REQUIRED after implementation. Read the skill at `.codex/skills/build-and-test/SKILL.md` and follow it. Do NOT skip this step.
    - `verification-before-completion` or `requesting-code-review`
    - `beads-close`
 4. After a successful close and local commit, inspect `bd ready --json` again and choose the next best ready bead using the same preference order.

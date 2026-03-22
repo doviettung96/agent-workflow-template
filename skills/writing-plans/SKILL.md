@@ -167,4 +167,4 @@ After saving the plan:
 
 **When proceeding:** Use Codex subagents when they help, with code review (`requesting-code-review`) after each major task.
 
-**After implementation is complete:** If the changes modify runtime logic, invoke `build-and-test` to build, deploy, and run the functional tests from the Verification section. If `build-and-test` fails, fix the implementation and re-run it before moving to verification.
+**After implementation is complete:** Invoke `build-and-test` (read `.codex/skills/build-and-test/SKILL.md` and follow it). The skill itself decides whether a rebuild and live test are needed based on what changed. If `build-and-test` fails, fix the implementation and re-run it before moving to verification. Do NOT skip this step.
