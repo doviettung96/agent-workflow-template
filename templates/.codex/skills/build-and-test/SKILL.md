@@ -62,11 +62,20 @@ pyinstaller launcher.spec
 
 Output: `dist/BotName.exe`
 
-### 5. Kill any existing process
+### 5. Clean state (REQUIRED before every launch)
+
+You MUST stop everything before launching. Do not skip any of these:
 
 ```bash
+# 1. Stop the bot exe explicitly by name
 taskkill /F /IM BotName.exe 2>/dev/null || true
+
+# 2. Stop the game/app on all connected devices
+for serial in $(adb devices | grep -w device | awk '{print $1}'); do
+  adb -s "$serial" shell am force-stop <package>
+done
 ```
+
 Wait a moment for ports to free up.
 
 ### 6. Launch the exe
