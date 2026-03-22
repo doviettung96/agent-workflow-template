@@ -34,7 +34,8 @@
 - `bd show <id>` - Detailed issue view with dependencies
 
 ### Creating & Updating
-- `bd create --title="Summary" --description="Details" --type=task|bug|feature --priority=2` - New issue
+- `bd create --title="Summary" --description="Details" --type=task|bug|feature|epic --priority=2` - New issue
+  - **Epics MUST use `--type=epic`** — this is how `bd ready --parent` finds children. Never create an epic as a `task` or `feature`.
   - Priority: 0-4 or P0-P4 (0=critical, 2=medium, 4=backlog). NOT "high"/"medium"/"low"
 - `bd update <id> --status=in_progress` - Claim work
 - `bd update <id> --title/--description/--notes/--design` - Update fields inline

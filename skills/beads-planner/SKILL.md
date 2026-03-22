@@ -14,10 +14,11 @@ Turn planning output into a Beads structure that another agent or engineer can e
 1. Confirm whether the conversation already produced an approved execution plan or whether `/plan-beads` supplied a clear topic that still needs planning.
 2. If no plan exists, create a lightweight execution plan first.
 3. Translate the approved plan into Beads:
-   - one `epic` for the main outcome when it improves coordination
+   - one `epic` for the main outcome — MUST use `--type=epic` so `bd` recognizes it as an epic and `bd ready --parent` works correctly
    - small executable `task` beads for implementation work
    - `bug` beads for concrete broken behavior
    - `chore` beads for tooling, cleanup, or maintenance work
+   - parent all child beads under the epic: `bd dep add <child-id> <epic-id>`
 4. Add dependencies explicitly instead of relying on ordering in prose.
 5. Include validation work as its own bead when it is meaningful:
    - tests
