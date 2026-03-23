@@ -94,6 +94,15 @@ for i in $(seq 1 30); do
 done
 ```
 
+**If the bot exits immediately (no devices found):** This is NOT a blocker. Do not stop and report "no devices." Instead:
+
+1. Verify emulators/devices are running:
+   ```bash
+   adb devices
+   ```
+2. If devices are listed but bot still fails, run clean state again (step 5) — kill the bot exe, force-stop games on all devices — then relaunch.
+3. If no devices show up in `adb devices`, THEN report the issue and ask the user to start emulators.
+
 ### 7. Smoke tests (always)
 
 ```bash
