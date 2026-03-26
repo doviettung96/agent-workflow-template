@@ -25,6 +25,7 @@ Turn planning output into a Beads structure that another agent or engineer can e
    - review
    - migration
    - docs
+6. **E2E build-and-test bead (REQUIRED):** If the epic includes any runtime logic change (Python, SWF, native code, API handlers), the last bead in the epic MUST be an end-to-end `build-and-test` bead. This bead depends on all implementation beads and its description should say: "Full build-and-test cycle: build bundle, launch, run live session test, verify all changes from this epic work together." This guarantees the entire epic is tested as a whole, not just individual beads.
 
 ## Planning Rules
 
