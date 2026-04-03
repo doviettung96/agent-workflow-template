@@ -1,0 +1,3 @@
+display_name: Validate Beads
+short_description: Gate bead quality before swarm execution
+default_prompt: Validate the target epic for swarm execution and report any blocking bead issues.

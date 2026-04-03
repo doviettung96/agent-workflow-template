@@ -1,0 +1,3 @@
+display_name: Start Epic Worktree
+short_description: Prepare a dedicated epic worktree
+default_prompt: Create or reuse the dedicated worktree for an epic, then continue swarm execution from that isolated checkout.

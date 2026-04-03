@@ -1,46 +1,33 @@
 # Windows Setup
 
-## Install Beads
+## Install `br`
 
-Use the official PowerShell installer:
+Recommended for native Windows:
 
 ```powershell
-irm https://raw.githubusercontent.com/steveyegge/beads/main/install.ps1 | iex
+cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
 ```
 
 Verify:
 
 ```powershell
-bd version
+br version
 ```
 
-## Install Dolt
+## Install Python
 
-Use the latest Windows installer from the Dolt releases page, or Chocolatey if that is already part of your workflow.
-
-Official installer:
-
-- https://github.com/dolthub/dolt/releases
-
-Chocolatey:
-
-```powershell
-choco install dolt
-```
+The Agent Mail wrappers and shared control-plane helpers use Python. Ensure either `py`, `python`, or `python3` is on `PATH`.
 
 Verify:
 
 ```powershell
-dolt version
+py -3 --version
 ```
 
-## Verify Claude Hooks
-
-If you use Claude Code, install global Beads hooks once:
+or:
 
 ```powershell
-bd setup claude
-bd setup claude --check
+python --version
 ```
 
 ## Per-Repo Setup
@@ -48,12 +35,19 @@ bd setup claude --check
 In each new repo:
 
 ```powershell
-bd init -p yourprefix
-bd setup codex
+br init --prefix yourprefix
 ```
 
-Or use the bootstrap script to scaffold everything (workflow files, all Codex skills, all Claude skills):
+Then scaffold the workflow files:
 
 ```powershell
 pwsh -File .\scripts\windows\bootstrap-new-repo.ps1 -RepoPath D:\path\to\repo -Prefix yourprefix
+```
+
+The bootstrap script now scaffolds only. Run `br init --prefix yourprefix` first.
+
+## Migrate an Existing `bd` Repo
+
+```powershell
+pwsh -File .\scripts\windows\migrate-downstream-to-br.ps1 -RepoPath D:\path\to\repo
 ```

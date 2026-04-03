@@ -1,0 +1,3 @@
+display_name: Execute Bead Worker
+short_description: Execute one assigned swarm bead
+default_prompt: Implement one assigned bead inside a swarm and report verification evidence back to the coordinator.

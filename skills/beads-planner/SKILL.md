@@ -5,27 +5,33 @@ description: "Break a discussed or approved problem into Beads epics and tasks w
 
 # Beads Planner
 
-**Workflow position:** Planner session, step 2 of 2 (after `brainstorming`). Session ends after this. See BEADS_WORKFLOW.md.
+**Workflow position:** Planner session, step 2 of 2 (after `brainstorming`). When `plan-beads` invokes this skill, validation should happen immediately after bead creation in the same planner session. See `BEADS_WORKFLOW.md`.
 
 Turn planning output into a Beads structure that another agent or engineer can execute directly.
 
 ## Use This Workflow
 
-1. Confirm whether the conversation already produced an approved execution plan or whether `/plan-beads` supplied a clear topic that still needs planning.
+1. Confirm whether the conversation already produced an approved execution plan or whether `plan-beads` supplied a clear topic that still needs planning.
 2. If no plan exists, create a lightweight execution plan first.
 3. Translate the approved plan into Beads:
-   - one `epic` for the main outcome — MUST use `--type=epic` so `bd` recognizes it as an epic and `bd ready --parent` works correctly
+   - one `epic` for the main outcome; use `--type epic` so `br` recognizes it as an epic and `br ready --parent` works correctly
    - small executable `task` beads for implementation work
    - `bug` beads for concrete broken behavior
    - `chore` beads for tooling, cleanup, or maintenance work
-   - parent all child beads under the epic: `bd dep add <child-id> <epic-id>`
+   - parent all child beads under the epic: `br dep add <child-id> <epic-id>`
 4. Add dependencies explicitly instead of relying on ordering in prose.
 5. Include validation work as its own bead when it is meaningful:
    - tests
    - review
    - migration
    - docs
-6. **E2E build-and-test bead (REQUIRED):** If the epic includes any runtime logic change (Python, SWF, native code, API handlers), the last bead in the epic MUST be an end-to-end `build-and-test` bead. This bead depends on all implementation beads and its description should say: "Full build-and-test cycle: build bundle, launch, run live session test, verify all changes from this epic work together." This guarantees the entire epic is tested as a whole, not just individual beads.
+6. If the epic includes runtime logic changes, make the last bead an end-to-end `build-and-test` bead that depends on all implementation beads.
+7. For any bead that may run under `swarm-epic`, encode this execution contract directly in the description or notes:
+   - `Files:` exact file paths or directory scope the worker may touch
+   - `Verify:` exact commands or checks required before success can be reported
+   - `Risk:` `low`, `medium`, or `high`
+   - `Parallel:` whether the bead can run in parallel and what it must not overlap with
+   - `Escalate:` what to do if blocked, underspecified, or forced out of scope
 
 ## Planning Rules
 
@@ -34,28 +40,32 @@ Turn planning output into a Beads structure that another agent or engineer can e
 - Prefer a few clear beads over a large brainstorm list.
 - Keep Beads as the source of truth for task state. Do not create parallel markdown task lists.
 - Separate project-level planning from single-task execution plans. Detailed execution plans belong to the execution phase, not the bead decomposition phase.
+- Swarm-ready beads should be specific enough that a worker can start from the bead alone plus local code inspection.
 
 ## Output Shape
 
 - State the proposed epic title when an epic is warranted.
 - Group tasks by dependency order.
-- Call out any tasks that can proceed in parallel.
+- Call out tasks that can proceed in parallel.
 - Flag important assumptions or unresolved risks that should become beads or notes before execution starts.
+- Say whether the resulting epic is ready for `validate-beads` or what still needs to be tightened first.
 
 ## Session Boundary - STOP HERE
 
 <HARD-GATE>
-This is a **planner skill**. After beads are created, the session is DONE.
+This is a planner skill. After beads are created, the session is done.
 
-Do NOT:
-- Claim or execute any of the beads you just created
-- Invoke `beads-claim`, `writing-plans`, `build-and-test`, `beads-close`, or any implementation skill
-- Start coding or dispatch implementation subagents
-- Run `bd ready` and pick up work
+Do not:
 
-DO:
-- Commit beads changes if needed (beads state in `.beads/` is tracked by git)
-- Report what beads were created and their dependency structure
-- Tell the user: "Beads created. Claim one with `bd ready` in an executor session."
-- If `/plan-beads` invoked this skill, stop after reporting the created beads and wait for a later executor session.
+- claim or execute the beads you just created
+- invoke `beads-claim`, `writing-plans`, `build-and-test`, `swarm-epic`, or `beads-close`
+- start coding or dispatch implementation subagents
+- run `br ready` and pick up work
+
+Do:
+
+- commit beads changes if needed; beads state in `.beads/` is tracked by git
+- report what beads were created and their dependency structure
+- if this skill was invoked directly, tell the user: "Beads created. Run `validate-beads` before `swarm-epic`, or claim one with `br ready` in a manual executor session."
+- if `plan-beads` invoked this skill, immediately hand back to `plan-beads` so it can run `validate-beads` before ending the planner session
 </HARD-GATE>

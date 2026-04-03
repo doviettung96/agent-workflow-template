@@ -1,0 +1,3 @@
+display_name: Swarm Epic
+short_description: Coordinate epic-scoped multi-agent work
+default_prompt: Coordinate multi-agent execution for one epic using runtime state, reservations, and coordinator-owned bead updates.

@@ -1,0 +1,3 @@
+display_name: Review Epic
+short_description: Run an epic-level review gate
+default_prompt: Review the completed epic, classify findings as P1, P2, or P3, and decide whether it is ready for PR.

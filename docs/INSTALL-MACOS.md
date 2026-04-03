@@ -1,52 +1,33 @@
 # macOS Setup
 
-## Install Beads
+## Install `br`
 
 Recommended:
 
 ```bash
-brew install beads
+curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/beads_rust/main/install.sh?$(date +%s)" | bash
 ```
 
-Alternative official install script:
+Alternative:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
+cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
 ```
 
 Verify:
 
 ```bash
-bd version
+br version
 ```
 
-## Install Dolt
+## Install Python
 
-Recommended:
-
-```bash
-brew install dolt
-```
-
-Alternative official install script:
-
-```bash
-sudo bash -c 'curl -L https://github.com/dolthub/dolt/releases/latest/download/install.sh | bash'
-```
+The Agent Mail wrappers and shared control-plane helpers use Python.
 
 Verify:
 
 ```bash
-dolt version
-```
-
-## Verify Claude Hooks
-
-If you use Claude Code, install global Beads hooks once:
-
-```bash
-bd setup claude
-bd setup claude --check
+python3 --version
 ```
 
 ## Per-Repo Setup
@@ -54,12 +35,19 @@ bd setup claude --check
 In each new repo:
 
 ```bash
-bd init -p yourprefix
-bd setup codex
+br init --prefix yourprefix
 ```
 
-Or use the bootstrap script to scaffold everything (workflow files, all Codex skills, all Claude skills):
+Then scaffold the workflow files:
 
 ```bash
 bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo yourprefix
+```
+
+The bootstrap script now scaffolds only. Run `br init --prefix yourprefix` first.
+
+## Migrate an Existing `bd` Repo
+
+```bash
+bash ./scripts/posix/migrate-downstream-to-br.sh /path/to/repo
 ```

@@ -1,48 +1,33 @@
 # New Repo Checklist
 
-## Machine-Wide Once
+## Machine Setup
 
-- Install `bd`
-- Install `dolt`
-- If using Claude Code, run `bd setup claude` once and verify with `bd setup claude --check`
+- Install `br`
+- Install `git`
+- Install Python 3 for Agent Mail
 
-## Per Repo
+## Repo Setup
 
-1. `cd <repo>`
-2. `bd init -p <prefix>`
-3. `bd setup codex`
-4. Run the bootstrap script (copies all workflow files, Codex skills, and Claude skills)
-5. **Customize `.codex/skills/build-and-test/SKILL.md`** for your project's build, deploy, and test commands
-6. Add the `AGENTS.md` snippet outside the Beads-managed block
-7. Add the `CLAUDE.md` snippet if the repo uses Claude
-8. Verify:
-   - `bd setup codex --check`
-   - `bd ready --json`
+1. `git init` or clone the repo
+2. `br init --prefix <prefix>`
+3. Run the template bootstrap script
+4. Verify:
+   - `br version`
+   - `br ready --json`
+   - `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh`
 
-The bootstrap script installs:
+## Expected Files
+
+- `.beads/config.yaml` with `no-db: true`
+- `.beads/PRIME.md`
+- `.beads/workflow/`
 - `BEADS_WORKFLOW.md`
-- `.beads/PRIME.md` — overrides `bd prime` output (removes dolt pull/push, uses PR workflow)
-- `.codex/skills/` — all Codex skills including a `build-and-test` template
-- `.claude/skills/` — all Claude Code skills
-- `AGENTS.md` and `CLAUDE.md` snippets
+- `.codex/skills/`
+- `.claude/skills/`
+- `scripts/windows/agent-mail.ps1` or `scripts/posix/agent-mail.sh`
+- `scripts/windows/start-epic-worktree.ps1` or `scripts/posix/start-epic-worktree.sh`
+- managed blocks in `AGENTS.md` and `CLAUDE.md`
 
-Note: `build-and-test` is project-specific and must be customized after bootstrap. It is NOT overwritten by `update-skills`.
+## Existing `bd` Repo
 
-## Working Style
-
-### Planner Session
-
-1. Use `plan-beads` as the planner entry point
-2. Use `brainstorming` if the problem is still fuzzy
-3. Use `beads-planner` to break approved work into beads
-
-### Executor Session
-
-1. Use `executor-once`, `executor-loop`, or `executor-loop-epic`
-2. Use `beads-claim` to start the executor cycle
-3. Use `writing-plans` for the local execution plan
-4. Implement
-5. Use `systematic-debugging` if blocked
-6. Use repo-local `build-and-test`
-7. Use `requesting-code-review` or `verification-before-completion`
-8. Use `beads-close` to finish cleanly
+If the repo already has `bd` state, run the downstream migration script instead of reinitializing it manually.

@@ -1,31 +1,42 @@
 # Agent Workflow Template
 
-Reusable Beads-based project bootstrap for Codex and Claude.
+Reusable Beads workflow scaffold for Codex and Claude, standardized on `br` (`beads_rust`) with repo-local `.beads/` state plus shared swarm coordination in Git's common dir.
 
-This template repo is intentionally self-contained:
+## What This Template Standardizes
 
-- `skills/` contains the workflow skills scaffolded into each repo
-- `templates/` contains repo-local files and snippets
-- `templates/.codex/skills/build-and-test/` contains the repo-local Codex testing skill
-- `scripts/windows/` and `scripts/posix/` provide setup helpers
-- `docs/` contains platform-specific installation guides
+- `br` is the issue tracker CLI
+- `.beads/config.yaml` is committed with `no-db: true`
+- `.beads/issues.jsonl` is the repo-shared source of truth
+- Agent workflow docs, skills, status scripts, and Agent Mail wrappers are scaffolded per repo
+- AGENTS/CLAUDE instructions are template-owned, not generated from stock `br agents`
 
-## What Is Machine-Wide vs Per-Repo
+This keeps downstream repos cloneable across machines without local Dolt state or `bd` runtime artifacts.
 
-Install once per machine:
+## Install Once Per Machine
 
-- `bd`
-- `dolt`
-- Claude global Beads hooks via `bd setup claude`
+- `br`
+- `git`
+- Python 3 for the repo-local Agent Mail wrappers and shared control-plane helpers
 
-Scaffold per repo:
+Install guides:
 
-- `bd init -p <prefix>`
-- `bd setup codex`
+- Windows: [docs/INSTALL-WINDOWS.md](docs/INSTALL-WINDOWS.md)
+- macOS: [docs/INSTALL-MACOS.md](docs/INSTALL-MACOS.md)
+- Ubuntu/Linux: [docs/INSTALL-UBUNTU.md](docs/INSTALL-UBUNTU.md)
+
+## Scaffold Per Repo
+
+- run `br init --prefix <prefix>` first
+- Template-managed `.beads/config.yaml`, `.beads/.gitignore`, `.beads/metadata.json`, `.beads/README.md`, `.beads/PRIME.md`
 - `BEADS_WORKFLOW.md`
-- `.codex/skills/` — all Codex skills from `skills/` plus `build-and-test`
-- `.claude/skills/` — all Claude Code skills from `skills/`
-- `AGENTS.md` and `CLAUDE.md` snippets outside any Beads-managed block
+- `.beads/workflow/` local worktree runtime files for swarm coordination
+- `.codex/skills/`
+- `.claude/skills/`
+- `scripts/windows/start-epic-worktree.ps1`
+- `scripts/posix/start-epic-worktree.sh`
+- `scripts/windows/workflow-status.ps1`
+- `scripts/posix/workflow-status.sh`
+- template-owned managed blocks in `AGENTS.md` and `CLAUDE.md`
 
 ## Recommended Workflow
 
@@ -34,8 +45,9 @@ Scaffold per repo:
 1. `plan-beads`
 2. `brainstorming`
 3. `beads-planner`
+4. `validate-beads` runs automatically before the planner session ends when the epic is intended for swarm execution
 
-### Executor Session
+### Manual Executor Session
 
 1. `executor-once`, `executor-loop`, or `executor-loop-epic`
 2. `beads-claim`
@@ -46,17 +58,30 @@ Scaffold per repo:
 7. `requesting-code-review` or `verification-before-completion`
 8. `beads-close`
 
-Beads is the source of truth for task state. The execution-quality skills improve planning and delivery, but they do not replace Beads tracking.
+### Swarm Executor Session
 
-## Install Guides
+1. `swarm-epic`
+3. `execute-bead-worker`
+4. repo-local `build-and-test`
+5. `review-epic`
+6. `finishing-a-development-branch`
 
-- Windows: [docs/INSTALL-WINDOWS.md](docs/INSTALL-WINDOWS.md)
-- macOS: [docs/INSTALL-MACOS.md](docs/INSTALL-MACOS.md)
-- Ubuntu/Linux: [docs/INSTALL-UBUNTU.md](docs/INSTALL-UBUNTU.md)
+Beads remains the source of truth for task state. Agent Mail is the shared reservation and coordination layer for swarm execution across all worktrees for the repo.
+
+`swarm-epic` is the composed epic executor now:
+- it assumes validation already happened during `plan-beads`
+- it creates or reuses the epic worktree if needed
+- it runs epic-level review before finishing
 
 ## Quick Start
 
-### 1. Bootstrap a repo
+### 1. Initialize `br`, Then Scaffold a New Repo
+
+Run `br` once per repo first:
+
+```bash
+br init --prefix myproj
+```
 
 Windows:
 
@@ -70,11 +95,9 @@ macOS/Linux:
 bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo myproj
 ```
 
-By default the bootstrap scripts print the Beads commands they would run, then scaffold all workflow files, Codex skills, and Claude skills into the target repo.
+The bootstrap scripts now scaffold only. They expect `.beads/` to already exist and then copy workflow files, managed instruction blocks, status scripts, worktree helpers, and repo-local skills.
 
-### 2. Update skills in an existing repo
-
-After editing skills in this template, sync them to a target repo:
+### 2. Sync Template Changes Into an Existing Repo
 
 Windows:
 
@@ -88,41 +111,53 @@ macOS/Linux:
 bash ./scripts/posix/update-skills.sh /path/to/repo
 ```
 
-This re-copies all skills from `skills/` into both `.codex/skills/` and `.claude/skills/`, and updates `BEADS_WORKFLOW.md` in the target repo.
+This refreshes workflow docs, managed AGENTS/CLAUDE blocks, repo-local skills, `.beads/` template files, Agent Mail helpers, worktree helpers, and workflow status scripts.
+
+### 3. Migrate an Existing `bd` Repo
+
+Windows:
+
+```powershell
+pwsh -File .\scripts\windows\migrate-downstream-to-br.ps1 -RepoPath D:\path\to\repo
+```
+
+macOS/Linux:
+
+```bash
+bash ./scripts/posix/migrate-downstream-to-br.sh /path/to/repo
+```
+
+The migration helpers export the current `bd` issue state first, replace stale `bd`/Dolt settings, initialize `br`, switch the repo to `no-db: true`, and sync the template-owned workflow files.
 
 ## Editing Skills
 
-This template's `skills/` directory is the **single source of truth** for all workflow skills. Codex and Claude read skills from different locations (`.codex/skills/` and `.claude/skills/`), so each target repo carries two copies.
+This template's `skills/` directory is the single source of truth for workflow skills. Codex and Claude read skills from different locations, so each downstream repo carries two copies.
 
 When updating a skill:
 
-1. Edit the skill in this repo's `skills/<name>/`
-2. Run `update-skills` against each target repo to sync both Codex and Claude copies
+1. Edit `skills/<name>/`
+2. Run `update-skills` against each downstream repo
 
-Never edit skills directly in a target repo's `.codex/skills/` or `.claude/skills/` — those are overwritten on sync.
+Do not edit skills directly inside a target repo's `.codex/skills/` or `.claude/skills/`.
 
 ## Template Contents
 
 - `templates/BEADS_WORKFLOW.md`
-  Shared planner/executor workflow for a repo
-- `skills/executor-loop-epic/`
-  Optional epic-scoped loop skill for focused autonomous execution within one epic
-- `templates/.codex/skills/build-and-test/SKILL.md`
-  Codex testing skill scaffolded into each target repo
+- `templates/.beads/`
+- `templates/.codex/skills/build-and-test/`
 - `templates/AGENTS.snippet.md`
-  Snippet to append to `AGENTS.md` outside any Beads-managed block
 - `templates/CLAUDE.snippet.md`
-  Snippet to append to `CLAUDE.md`
-- `templates/NEW_REPO_CHECKLIST.md`
-  Human checklist for setting up a new project
+- `skills/`
+- `scripts/windows/`
+- `scripts/posix/`
+- `scripts/shared/agent_mail.py`
 
 ## Notes
 
-- `bd init` is always per repo.
-- `bd setup codex` is per repo because it updates repo instructions.
-- All workflow skills are scaffolded per repo: Codex skills in `.codex/skills/`, Claude skills in `.claude/skills/`.
-- `bd setup claude` is machine-wide because it installs global hooks; repo-local Claude guidance lives in `CLAUDE.md` and `.claude/skills/`.
-- The scaffolding scripts never edit inside the Beads-managed `AGENTS.md` block.
+- The template standard is `br` plus `.beads/config.yaml` with `no-db: true`.
+- In no-db mode, normal `br` mutations write the repo-shared JSONL directly. Downstream repos do not need routine `br sync --flush-only` in normal sessions.
+- `br sync --import-only` or other sync commands are reserved for migration, recovery, or non-standard storage setups.
+- In swarm mode, local runtime stays in `.beads/workflow/`, while shared locks, reservations, and mailbox threads live under `git rev-parse --git-common-dir`.
 
 ## Attribution
 

@@ -9,7 +9,7 @@ Run a planner-only Beads session.
 
 ## Steps
 
-1. If the current repo is not initialized for Beads, stop and tell the user to run `bd init -p <prefix>` and `bd setup codex`.
+1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `br init --prefix <prefix>` plus the repo scaffolding steps.
 2. If the user provided a planning topic in the current request, treat it as the planning topic.
 3. Otherwise, use the current conversation topic.
 4. If the topic is still unclear, ask clarifying questions before planning.
@@ -17,18 +17,21 @@ Run a planner-only Beads session.
 6. Produce or confirm an execution plan.
 7. If there are unresolved questions or blockers, ask the user before proceeding. Otherwise, auto-approve and continue.
 8. Use `beads-planner` to create or update the beads from the approved plan.
-9. Stop after beads are created.
+9. If the plan is intended for epic-scoped autonomous execution, immediately run `validate-beads` in the same planner session.
+10. If validation fails, tighten the beads, dependencies, or execution contract, then re-run `validate-beads` before ending the session.
+11. Stop after the beads are created and either validated for swarm execution or explicitly marked as manual-only.
 
 ## Hard Rules
 
 - Planner session only.
 - Do not claim beads.
 - Do not start implementation.
-- Do not invoke `beads-claim`, `writing-plans`, repo-local `build-and-test`, or `beads-close`.
+- Do not invoke `beads-claim`, `writing-plans`, repo-local `build-and-test`, `swarm-epic`, or `beads-close`.
 - Keep Beads as the source of truth for task state.
 
 ## Final Output
 
 - Summarize the approved plan briefly.
 - List the created or updated beads and important dependencies.
+- Say whether the epic passed `validate-beads` or why it is manual-only.
 - End by telling the user that executor work should start in a separate session.

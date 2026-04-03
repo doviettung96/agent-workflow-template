@@ -1,65 +1,118 @@
 # Beads Workflow
 
-This repo uses **bd** for task state and selected execution-quality skills for planning and delivery. Beads remains the source of truth for `epic`, `task`, `bug`, and `chore` state.
+This repo uses `br` (`beads_rust`) for task state and selected execution-quality skills for planning and delivery. Beads remains the source of truth for `epic`, `task`, `bug`, and `chore` state.
+
+The template standard is `.beads/config.yaml` with `no-db: true`, so normal `br` mutations write the repo-shared JSONL directly. In ordinary sessions you commit `.beads/` alongside code; you do not need routine `br sync --flush-only`.
 
 ## Two-Session Model
 
-Work is split into two distinct session types. Each session has its own skill chain and responsibilities.
+Work is split into planner sessions and executor sessions. Planner sessions define bead structure. Executor sessions deliver one bead manually or coordinate many beads under one epic.
 
 ## Workflow Skills
 
-Codex and Claude Code can enter the workflow through repo-local skills installed under `.codex/skills/` and `.claude/skills/`:
+Codex and Claude can enter the workflow through repo-local skills installed under `.codex/skills/` and `.claude/skills/`:
 
-- **`plan-beads`** - planner-only entry point; use the current conversation topic or an explicit planning request in your prompt
-- **`executor-once`** - run one full executor cycle for one bead; optionally provide a bead id or selector in the request
-- **`executor-loop`** - repeat executor cycles bead-by-bead until no ready work remains or a blocker requires input
-- **`executor-loop-epic`** - repeat executor cycles, but only across ready descendant beads under one epic
+- `plan-beads`
+- `validate-beads`
+- `start-epic-worktree`
+- `executor-once`
+- `executor-loop`
+- `executor-loop-epic`
+- `swarm-epic`
+- `review-epic`
 
-When an executor skill stops on a blocker, continue in normal chat by telling Codex to resume or continue the blocked bead in the same session.
+`execute-bead-worker` is a worker contract invoked by `swarm-epic` for assigned bead execution.
 
-### Planner Session
+## Planner Session
 
-Turns a fuzzy idea into structured, claimable beads. No code is written.
+1. `brainstorming`
+2. `beads-planner`
+3. `validate-beads` in the same planner session before it ends when the epic is intended for swarm execution
 
-1. **`brainstorming`** - explore the problem, clarify scope/constraints/risks, produce an approved design spec
-2. **`beads-planner`** - translate the approved spec into Beads epics, tasks, and dependencies
+Entry: a problem statement, feature idea, or bug report.  
+Exit: beads created with dependencies and, for swarmable epics, a validated execution contract.
 
-**Entry:** A problem statement, feature idea, or bug report.
-**Exit:** Beads created with dependencies, ready for `bd ready`.
+## Manual Executor Session
 
-### Executor Session
+1. `beads-claim` - `br ready`, choose the next task, inspect it, then `br update <id> --status=in_progress`
+2. `writing-plans`
+3. implement
+4. `systematic-debugging` if blocked
+5. `build-and-test`
+6. `requesting-code-review` or `verification-before-completion`
+7. `beads-close`
 
-Claims one bead and delivers it. All code happens here.
+Entry: a claimed bead from `br ready`.  
+Exit: bead closed, code committed, follow-up beads created if needed.
 
-1. **`beads-claim`** - `bd ready`, choose the next task, inspect it, then `bd update <id> --status=in_progress`; Codex slash commands may auto-claim when the bead choice is unambiguous
-2. **`writing-plans`** - write a detailed execution plan for that one bead (bite-sized steps, exact files, TDD, verification section)
-3. **Implement** - execute the plan on the feature branch
-4. **`systematic-debugging`** - use if blocked by unclear behavior, runtime failures, or conflicting assumptions
-5. **`build-and-test`** — REQUIRED. Read `.codex/skills/build-and-test/SKILL.md` and follow it. Build, deploy, and test the affected components. If tests fail, loop back to step 3 to fix, then re-run step 5. Do NOT skip this step.
-6. **`requesting-code-review`** or **`verification-before-completion`** - verify work before marking complete
-7. **`beads-close`** - close the bead, create discovered follow-up beads, commit
+## Swarm Executor Session
 
-**Entry:** A claimed bead from `bd ready`.
-**Exit:** Bead closed, code committed, follow-up beads created if needed.
+1. `swarm-epic` - create or reuse the dedicated worktree for `epic/<epic-id>` if needed, run inside that worktree, initialize `.beads/workflow/`, acquire the shared epic lock, inspect ready descendants, coordinate execution, and finish with epic review
+3. `execute-bead-worker` - workers reserve file scope through Agent Mail, implement one assigned bead, verify it, and report evidence back to the coordinator
+4. `build-and-test`
+5. `review-epic`
+6. `finishing-a-development-branch`
+
+Entry: a validated epic id.  
+Exit: all intended child beads are closed or blocked with handoff state, the epic has been reviewed automatically by the swarm flow, and the branch is ready for PR or waiting on a blocker.
+
+`start-epic-worktree` remains available as a standalone helper, but the default operator path is to invoke `swarm-epic` directly and let it ensure the correct worktree.
+
+## Swarm-Ready Bead Contract
+
+Any bead intended for `swarm-epic` should encode enough detail for a worker to start without replaying the full planning conversation:
+
+- `Files:` exact file paths or directory scope the worker may touch
+- `Verify:` exact commands or checks the worker must run before reporting success
+- `Risk:` `low`, `medium`, or `high`
+- `Parallel:` whether the bead can run in parallel and what it must not overlap with
+- `Escalate:` what the worker should do if blocked or if the scope expands
+
+If these fields are missing, `validate-beads` should fail the epic for swarm use until the bead is corrected.
+
+## Runtime Files
+
+Swarm execution uses `.beads/workflow/` for repo-local runtime state:
+
+- `state.json`
+- `STATE.md`
+- `HANDOFF.json`
+
+Use `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh` to inspect the current worktree runtime plus shared control-plane state.
+
+## Agent Mail
+
+Swarm execution uses a shared control plane under `git rev-parse --git-common-dir` so every worktree for the repo sees the same mailbox and reservation state:
+
+- `agents.json`
+- `reservations.json`
+- `locks/epic-*.json`
+- `threads/*.jsonl`
+
+Use:
+
+- `scripts/windows/agent-mail.ps1`
+- `scripts/posix/agent-mail.sh`
 
 ## Session Boundaries
 
-- **Planner sessions do not write code.** If the design reveals implementation is trivial, the planner still creates a bead - the executor handles it.
-- **Executor sessions do not re-plan from scratch.** The bead description and any linked spec are the starting point. `writing-plans` produces a local execution plan for that one bead, not a project-level re-plan.
+- Planner sessions do not write code.
+- Manual executor sessions do not re-plan from scratch.
+- Swarm workers do not mutate bead state. They implement, verify, and report. The coordinator handles `br update` and `br close`.
 
 ## Branch and PR Workflow
 
-Work happens on feature branches. Merging to main is done via pull requests, not local merges.
+Work happens on feature branches. Swarm execution uses one dedicated worktree per epic branch. Merging to `main` is done via pull requests, not local merges.
 
-- Beads state (`.beads/`) is committed to git — no Dolt remote needed
-- Commit code changes on the feature branch (beads state is included in git commits)
-- When work is complete, push the branch and create a PR targeting main
-- `finishing-a-development-branch` handles push and PR creation
+- Beads state (`.beads/`) is committed to git
+- Commit code changes and `.beads/` issue changes together
+- Do not commit `.beads/workflow/`; it is local worktree runtime
+- Use pull requests to merge to `main`
 
 ## Ownership Rules
 
 - Beads owns task state.
-- Execution-quality skills improve clarity, debugging, review, and delivery, but they do not replace Beads tracking.
-- The main session owns Beads updates.
-- Subagents can help with implementation, testing, or review, but should not mutate Beads unless explicitly asked.
+- The main coordinator session owns Beads updates during `swarm-epic`.
+- Manual executor sessions own their own Beads updates through `beads-claim` and `beads-close`.
+- Agent Mail owns shared epic locks, worker mail, and file reservations during swarm execution.
 - All skills are repo-local: Codex skills live under `.codex/skills/`, Claude skills under `.claude/skills/`.

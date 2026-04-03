@@ -1,46 +1,33 @@
 # Ubuntu/Linux Setup
 
-## Install Beads
+## Install `br`
 
-Use the official install script:
+Recommended:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
+curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/beads_rust/main/install.sh?$(date +%s)" | bash
 ```
 
-If you already use Homebrew on Linux, this also works:
+Alternative:
 
 ```bash
-brew install beads
-```
-
-Verify:
-
-```bash
-bd version
-```
-
-## Install Dolt
-
-Use the official Linux installer:
-
-```bash
-sudo bash -c 'curl -L https://github.com/dolthub/dolt/releases/latest/download/install.sh | bash'
+cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
 ```
 
 Verify:
 
 ```bash
-dolt version
+br version
 ```
 
-## Verify Claude Hooks
+## Install Python
 
-If you use Claude Code, install global Beads hooks once:
+The Agent Mail wrappers and shared control-plane helpers use Python.
+
+Verify:
 
 ```bash
-bd setup claude
-bd setup claude --check
+python3 --version
 ```
 
 ## Per-Repo Setup
@@ -48,12 +35,19 @@ bd setup claude --check
 In each new repo:
 
 ```bash
-bd init -p yourprefix
-bd setup codex
+br init --prefix yourprefix
 ```
 
-Or use the bootstrap script to scaffold everything (workflow files, all Codex skills, all Claude skills):
+Then scaffold the workflow files:
 
 ```bash
 bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo yourprefix
+```
+
+The bootstrap script now scaffolds only. Run `br init --prefix yourprefix` first.
+
+## Migrate an Existing `bd` Repo
+
+```bash
+bash ./scripts/posix/migrate-downstream-to-br.sh /path/to/repo
 ```
