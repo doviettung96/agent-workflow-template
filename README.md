@@ -43,8 +43,8 @@ Install guides:
 ### Planner Session
 
 1. `plan-beads`
-2. `brainstorming`
-3. `planner-research` when discussion still leaves material technical or domain uncertainty
+2. `brainstorming` to lock intent and separate decisions, assumptions, and factual unknowns
+3. `planner-research` only when discussion still leaves material technical or domain uncertainty
 4. `beads-planner`
 5. `validate-beads` runs automatically before the planner session ends when the epic is intended for swarm execution
 
@@ -69,7 +69,9 @@ Install guides:
 
 Beads remains the source of truth for task state. Agent Mail is the shared reservation and coordination layer for swarm execution across all worktrees for the repo.
 
-`planner-research` is intentionally planner-only. It exists to answer factual unknowns before bead creation and should fold findings back into the approved design and bead descriptions instead of creating a second planning/state system.
+`brainstorming` is planner-only in this template. It stops at an approved Beads-ready design and should hand back to `planner-research` or `beads-planner`, not to `writing-plans`.
+
+`planner-research` is intentionally planner-only. It exists to answer factual unknowns before bead creation and should fold verified facts, assumptions, and open questions back into the approved design and bead descriptions instead of creating a second planning/state system.
 
 `swarm-epic` is the composed epic executor now:
 - it assumes validation already happened during `plan-beads`

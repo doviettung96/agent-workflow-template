@@ -39,9 +39,9 @@ Typical flow:
 2. Prioritize only the unknowns that would change the plan or bead decomposition.
 3. Investigate using local repo inspection first, then user-provided references, then external authoritative sources when needed.
 4. Summarize findings in terms of planning impact:
-   - what was confirmed
-   - what assumption changed
-   - what remains unresolved
+   - verified facts
+   - assumptions that still remain assumptions
+   - open questions that could not be resolved
    - how the plan or bead contract should change
 5. Fold those findings back into the approved design/spec and any bead notes or descriptions.
 
@@ -50,9 +50,10 @@ Typical flow:
 Keep the output compact and decision-oriented:
 
 - `Unknowns:` the specific questions being answered
-- `Findings:` the factual answers with source context
+- `Verified facts:` the factual answers with source context
+- `Assumptions:` any assumptions that still remain provisional
+- `Open questions:` only what still could not be resolved
 - `Planning impact:` what changes in the design or Beads because of those findings
-- `Remaining risks:` only if something still cannot be resolved
 
 ## Hard Rules
 

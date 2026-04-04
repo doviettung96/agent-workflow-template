@@ -5,14 +5,14 @@ description: "You MUST use this before any creative work - creating features, bu
 
 # Brainstorming Ideas Into Designs
 
-Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+Help turn ideas into an approved Beads-ready design through natural collaborative dialogue.
 
 In this template, `brainstorming` is the primary discuss stage. Use it to lock intent, separate decisions from assumptions, and identify any factual unknowns early enough that `planner-research` can resolve them before Beads are created.
 
 Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
 
 <HARD-GATE>
-Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+This is a planner skill. Do NOT invoke any implementation skill, write any code, scaffold any project, claim a bead, or take any implementation action. The goal is an approved design that can flow into `planner-research` or `beads-planner`, not executor planning.
 </HARD-GATE>
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
@@ -23,17 +23,14 @@ Every project goes through this process. A todo list, a single-function utility,
 
 You MUST create a task for each of these items and complete them in order:
 
-1. **Explore project context** - check files, docs, recent commits
+1. **Explore project context** - check files, docs, and recent commits
 2. **Offer visual companion** (if topic will involve visual questions) - this is its own message, not combined with a clarifying question. See the Visual Companion section below.
 3. **Ask clarifying questions** - one at a time, understand purpose, constraints, and success criteria
 4. **Propose 2-3 approaches** - with trade-offs and your recommendation
 5. **State what is already decided vs still unknown** - explicitly separate locked decisions, assumptions, and factual unknowns
 6. **Use `planner-research` if needed** - only when unresolved factual unknowns would weaken the design or produce poor Beads
-7. **Present design** - in sections scaled to their complexity, get user approval after each section
-8. **Write design doc** - save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
-9. **Spec review loop** - dispatch spec-document-reviewer subagent with precisely crafted review context (never your session history); fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-10. **User reviews written spec** - ask user to review the spec file before proceeding
-11. **Transition to implementation** - invoke writing-plans skill to create implementation plan
+7. **Present the approved design** - in sections scaled to complexity, including swarm-relevant constraints when parallel execution may matter
+8. **Stop at planner handoff** - hand the approved design back to `plan-beads`, `planner-research`, or `beads-planner`
 
 ## Process Flow
 
@@ -49,11 +46,7 @@ digraph brainstorming {
     "Invoke planner-research" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
-    "Write design doc" [shape=box];
-    "Spec review loop" [shape=box];
-    "Spec review passed?" [shape=diamond];
-    "User reviews spec?" [shape=diamond];
-    "Invoke writing-plans skill" [shape=doublecircle];
+    "Hand back to plan-beads/beads-planner" [shape=doublecircle];
 
     "Explore project context" -> "Visual questions ahead?";
     "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
@@ -67,17 +60,11 @@ digraph brainstorming {
     "Invoke planner-research" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write design doc" [label="yes"];
-    "Write design doc" -> "Spec review loop";
-    "Spec review loop" -> "Spec review passed?";
-    "Spec review passed?" -> "Spec review loop" [label="issues found,\nfix and re-dispatch"];
-    "Spec review passed?" -> "User reviews spec?" [label="approved"];
-    "User reviews spec?" -> "Write design doc" [label="changes requested"];
-    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+    "User approves design?" -> "Hand back to plan-beads/beads-planner" [label="yes"];
 }
 ```
 
-**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
+**The terminal state is planner handoff.** Do NOT invoke `writing-plans`, `swarm-epic`, `beads-claim`, or any implementation skill from `brainstorming`.
 
 ## The Process
 
@@ -85,7 +72,7 @@ digraph brainstorming {
 
 - Check out the current project state first (files, docs, recent commits)
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (for example, "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Do not spend questions refining details of a project that needs to be decomposed first.
-- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec -> plan -> implementation cycle.
+- If the project is too large for a single design, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own discuss -> plan -> execution cycle.
 - For appropriately scoped projects, ask questions one at a time to refine the idea.
 - Prefer multiple choice questions when possible, but open-ended is fine too.
 - Only one question per message. If a topic needs more exploration, break it into multiple questions.
@@ -107,7 +94,7 @@ digraph brainstorming {
 - Use `planner-research` only for factual unknowns that materially affect the design or bead decomposition.
 - Good triggers: unknown integration points, unclear library or platform behavior, uncertain repo conventions, external API constraints, or open feasibility questions.
 - Do not use `planner-research` just to avoid asking the user preference questions.
-- After research, fold findings into the approved design/spec. Do not create a separate planning tracker or second source of truth.
+- After research, fold findings into the approved design and later bead descriptions or notes. Do not create a separate planning tracker or second source of truth.
 
 **Presenting the design:**
 
@@ -131,33 +118,25 @@ digraph brainstorming {
 - Where existing code has problems that affect the work (for example, a file that has grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design.
 - Do not propose unrelated refactoring. Stay focused on what serves the current goal.
 
-## After the Design
+## Planner Handoff
 
-**Documentation:**
+After the design is approved:
 
-- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
-  - User preferences for spec location override this default.
-- Use the writing-clearly-and-concisely skill if available.
-- Commit the design document to git.
+1. State the approved design briefly.
+2. List:
+   - goals and success criteria
+   - locked decisions
+   - assumptions
+   - factual unknowns, if any remain
+3. If factual unknowns remain that still matter, hand off to `planner-research`.
+4. Otherwise hand off to `beads-planner`, usually through `plan-beads`.
 
-**Spec Review Loop:**
-After writing the spec document:
+Do not:
 
-1. Dispatch spec-document-reviewer subagent (see `spec-document-reviewer-prompt.md`).
-2. If issues are found, fix them, re-dispatch, and repeat until approved.
-3. If the loop exceeds 5 iterations, surface it to a human for guidance.
-
-**User Review Gate:**
-After the spec review loop passes, ask the user to review the written spec before proceeding:
-
-> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
-
-Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
-
-**Implementation:**
-
-- Invoke the writing-plans skill to create a detailed implementation plan.
-- Do NOT invoke any other skill. `writing-plans` is the next step.
+- write or commit a spec document as part of this template workflow
+- invoke `writing-plans`
+- claim beads
+- start execution
 
 ## Key Principles
 

@@ -34,7 +34,9 @@ Codex and Claude can enter the workflow through repo-local skills installed unde
 Entry: a problem statement, feature idea, or bug report.  
 Exit: beads created with dependencies and, for swarmable epics, a validated execution contract.
 
-`planner-research` is a planner helper, not a second workflow system. Its output should be folded into the approved design/spec and the resulting bead descriptions or notes rather than stored as a separate source of truth.
+`brainstorming` is the discuss stage. It should end with an approved Beads-ready design, not a committed spec doc or executor handoff.
+
+`planner-research` is a planner helper, not a second workflow system. Its output should be folded into the approved design and the resulting bead descriptions or notes rather than stored as a separate source of truth.
 
 ## Manual Executor Session
 
