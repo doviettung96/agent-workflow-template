@@ -13,6 +13,7 @@ Work is split into planner sessions and executor sessions. Planner sessions defi
 Codex and Claude can enter the workflow through repo-local skills installed under `.codex/skills/` and `.claude/skills/`:
 
 - `plan-beads`
+- `planner-research`
 - `validate-beads`
 - `start-epic-worktree`
 - `executor-once`
@@ -26,11 +27,14 @@ Codex and Claude can enter the workflow through repo-local skills installed unde
 ## Planner Session
 
 1. `brainstorming`
-2. `beads-planner`
-3. `validate-beads` in the same planner session before it ends when the epic is intended for swarm execution
+2. `planner-research` only when discussion still leaves factual uncertainty that affects the plan
+3. `beads-planner`
+4. `validate-beads` in the same planner session before it ends when the epic is intended for swarm execution
 
 Entry: a problem statement, feature idea, or bug report.  
 Exit: beads created with dependencies and, for swarmable epics, a validated execution contract.
+
+`planner-research` is a planner helper, not a second workflow system. Its output should be folded into the approved design/spec and the resulting bead descriptions or notes rather than stored as a separate source of truth.
 
 ## Manual Executor Session
 

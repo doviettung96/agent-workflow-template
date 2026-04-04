@@ -5,7 +5,7 @@ description: "Break a discussed or approved problem into Beads epics and tasks w
 
 # Beads Planner
 
-**Workflow position:** Planner session, step 2 of 2 (after `brainstorming`). When `plan-beads` invokes this skill, validation should happen immediately after bead creation in the same planner session. See `BEADS_WORKFLOW.md`.
+**Workflow position:** Planner session, after `brainstorming` and any optional `planner-research`. When `plan-beads` invokes this skill, validation should happen immediately after bead creation in the same planner session. See `BEADS_WORKFLOW.md`.
 
 Turn planning output into a Beads structure that another agent or engineer can execute directly.
 

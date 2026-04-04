@@ -16,7 +16,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
 <HARD-GATE>
-This is an **executor skill**. It should only be invoked in a session where a bead has been claimed via `br update <id> --status in_progress`. Do NOT invoke this in a planner session that just ran `brainstorming` or `beads-planner`.
+This is an **executor skill**. It should only be invoked in a session where a bead has been claimed via `br update <id> --status in_progress`. Do NOT invoke this in a planner session that just ran `brainstorming`, `planner-research`, or `beads-planner`.
 </HARD-GATE>
 
 **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
