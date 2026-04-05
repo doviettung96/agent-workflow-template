@@ -1,4 +1,4 @@
----
+﻿---
 name: swarm-epic
 description: "Coordinate multi-agent execution for one epic. Use after planning when the user wants parallel work across ready descendant beads with coordinator-owned Beads state, automatic worktree setup, automatic epic review, runtime files, and Agent Mail reservations."
 ---
@@ -9,35 +9,34 @@ Coordinate epic-scoped execution across one or more workers.
 
 ## Goal
 
-Drive an epic to completion while keeping the shared live `br`/`.beads` store as the single source of truth and avoiding split-brain state between workers.
+Drive an epic to completion while keeping the main checkout’s local `bd`/`.beads` store as the single source of truth across worktrees.
 
 ## Steps
 
-1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `br init --prefix <prefix>` plus the repo scaffolding steps.
+1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.
 2. Determine the target epic:
    - if the user supplied an epic id, use it
    - otherwise ask for the epic id or enough selector text to identify one unambiguously
 3. Inspect the epic:
    ```bash
-   br show <epic-id> --json
+   bd show <epic-id> --json
    ```
 4. Ensure the epic has passed `validate-beads`. In the normal flow this should already be true because `plan-beads` ends with validation. If the epic has not been validated, stop and run that gate first.
 5. Ensure the current execution context is the dedicated worktree for `epic/<epic-id>`:
    - if already inside the correct worktree on branch `epic/<epic-id>`, continue
    - otherwise automatically run `start-epic-worktree`, switch to or reopen the returned worktree, and continue there
    - do not continue epic swarm execution from a shared checkout when concurrent epic work is possible
-6. Ensure this worktree is attached to the shared live Beads store before execution:
+6. Confirm this worktree resolves the shared Beads database correctly:
    ```bash
-   ./scripts/posix/shared-beads.sh --repo . attach
+   bd where
    ```
-   On Windows, use `.\scripts\windows\shared-beads.ps1 --repo . attach`.
 7. Initialize or refresh local `.beads/workflow/` in this worktree:
    - `state.json` tracks mode, coordinator identity, workers, assignments, reservations, blockers, and next action
    - `STATE.md` summarizes the current swarm status for humans
    - `HANDOFF.json` captures pause and resume details when the session stops early
 8. Inspect ready descendants:
    ```bash
-   br ready --parent <epic-id> --json
+   bd ready --parent <epic-id> --json
    ```
 9. Initialize shared Agent Mail and acquire the epic lock for this coordinator:
    - Windows:
@@ -56,7 +55,7 @@ Drive an epic to completion while keeping the shared live `br`/`.beads` store as
    - preferred: coordinator plus workers with Agent Mail reservations
    - fallback: sequential epic execution in the current session when Agent Mail or worker spawning is unavailable
 11. Coordinator rules:
-   - the coordinator is the only writer for `br update` and `br close`
+   - the coordinator is the only writer for `bd update` and `bd close`
    - move only assigned ready leaf beads to `in_progress`; do not mark the epic itself `in_progress` just because child work has started
    - each worker owns at most one bead at a time
    - do not assign a bead until its file scope is reserved or confirmed conflict-free in the shared control plane
@@ -83,14 +82,9 @@ Drive an epic to completion while keeping the shared live `br`/`.beads` store as
 16. When the epic has no ready descendants left:
     - run the repo-local `build-and-test` skill one final time for the whole epic
     - automatically run `review-epic` as part of swarm completion
-    - flush the latest Beads state back to the shared live JSONL before branch completion:
-      ```bash
-      br sync --flush-only
-      ```
     - if the review passes or only yields non-blocking follow-up work, use `finishing-a-development-branch`
 17. When stopping early:
     - write `HANDOFF.json`
-    - run `br sync --flush-only` so handoff and status changes are preserved in the shared live JSONL
     - release any outstanding reservations owned by the coordinator
     - release the epic lock if no worker still depends on this session
     - summarize active workers, claimed or assigned beads, blockers, and the next command to run
@@ -112,3 +106,4 @@ Drive an epic to completion while keeping the shared live `br`/`.beads` store as
 - The coordinator should not implement code directly unless the run has explicitly fallen back to sequential mode.
 - If `acquire-epic` fails because another coordinator owns the lock, stop and inspect `workflow-status` instead of forcing progress.
 - Treat worktree setup and epic review as part of the default `swarm-epic` composition, not optional operator memory.
+

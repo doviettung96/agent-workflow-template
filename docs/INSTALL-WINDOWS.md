@@ -1,22 +1,30 @@
 # Windows Setup
 
-## Install `br`
+## Install `bd`
 
-Recommended for native Windows:
+Recommended:
 
 ```powershell
-cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
+irm https://raw.githubusercontent.com/steveyegge/beads/main/install.ps1 | iex
 ```
 
 Verify:
 
 ```powershell
-br version
+bd version
+```
+
+## Install `dolt`
+
+Install Dolt on the machine and verify:
+
+```powershell
+dolt version
 ```
 
 ## Install Python
 
-The Agent Mail wrappers and shared control-plane helpers use Python. Ensure either `py`, `python`, or `python3` is on `PATH`.
+The Agent Mail wrappers and worktree helpers use Python. Ensure either `py`, `python`, or `python3` is on `PATH`.
 
 Verify:
 
@@ -24,18 +32,14 @@ Verify:
 py -3 --version
 ```
 
-or:
-
-```powershell
-python --version
-```
-
 ## Per-Repo Setup
 
 In each new repo:
 
 ```powershell
-br init --prefix yourprefix
+bd init -p yourprefix --server --non-interactive --role maintainer --skip-agents --skip-hooks
+bd setup codex
+bd setup claude --check
 ```
 
 Then scaffold the workflow files:
@@ -44,10 +48,8 @@ Then scaffold the workflow files:
 pwsh -File .\scripts\windows\bootstrap-new-repo.ps1 -RepoPath D:\path\to\repo -Prefix yourprefix
 ```
 
-The bootstrap script now scaffolds only. Run `br init --prefix yourprefix` first.
-
-## Migrate an Existing `bd` Repo
+## Migrate an Existing `br` Repo
 
 ```powershell
-pwsh -File .\scripts\windows\migrate-downstream-to-br.ps1 -RepoPath D:\path\to\repo
+pwsh -File .\scripts\windows\migrate-downstream-to-bd.ps1 -RepoPath D:\path\to\repo
 ```

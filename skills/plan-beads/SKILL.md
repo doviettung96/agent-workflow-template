@@ -1,4 +1,4 @@
----
+﻿---
 name: plan-beads
 description: "Run a planner-only Beads session: brainstorm, produce or confirm an execution plan, get user approval, then create beads and stop. Use when the user wants to turn a current problem or topic into Beads without implementing."
 ---
@@ -9,7 +9,7 @@ Run a planner-only Beads session.
 
 ## Steps
 
-1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `br init --prefix <prefix>` plus the repo scaffolding steps.
+1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.
 2. If the user provided a planning topic in the current request, treat it as the planning topic.
 3. Otherwise, use the current conversation topic.
 4. If the topic is still unclear, ask clarifying questions before planning.
@@ -37,3 +37,4 @@ Run a planner-only Beads session.
 - List the created or updated beads and important dependencies.
 - Say whether the epic passed `validate-beads` or why it is manual-only.
 - End by telling the user that executor work should start in a separate session.
+

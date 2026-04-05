@@ -27,20 +27,13 @@ Give each epic its own Git checkout so multiple coordinators can run in parallel
 4. Read the returned JSON and capture:
    - `worktree_path`
    - `branch`
-   - `shared_beads_root`
    - whether the worktree was created or reused
    - the suggested next command
 5. Switch into that worktree.
-6. Ensure the worktree is attached to the shared live Beads store before any execution:
-   - Windows:
-     ```powershell
-     .\scripts\windows\shared-beads.ps1 --repo . status
-     ```
-   - POSIX:
-     ```bash
-     ./scripts/posix/shared-beads.sh --repo . status
-     ```
-   The helper attaches the worktree automatically. Use `status` only to confirm the shared root and snapshot drift.
+6. Confirm the worktree resolves the main checkout’s Beads database:
+   ```bash
+   bd where
+   ```
 7. Run `swarm-epic` from inside the dedicated worktree, not from the main checkout.
 
 In the normal operator flow, this helper is usually invoked by `swarm-epic` rather than called manually.
@@ -49,4 +42,4 @@ In the normal operator flow, this helper is usually invoked by `swarm-epic` rath
 
 - Do not run `swarm-epic` for concurrent epic work from a shared checkout.
 - Do not create a second worktree for the same epic if one already exists.
-- Treat the worktree helper as the only supported entrypoint for epic swarm branches.
+- Treat the worktree helper or native `bd worktree create` as the only supported entrypoint for epic swarm branches.

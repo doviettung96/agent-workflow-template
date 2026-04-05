@@ -1,42 +1,33 @@
-# Database
+# Dolt database and server runtime
+dolt/
+dolt-access.lock
+dolt-server.pid
+dolt-server.log
+dolt-server.lock
+dolt-server.port
+
+# Local Beads state (not shared via git)
+config.yaml
+metadata.json
+issues.jsonl
+interactions.jsonl
+backup/
+last-touched
+bd.sock
+bd.sock.startlock
+sync-state.json
+push-state.json
+workflow/
+redirect
+
+# Local sidecars / stale files from previous backends
+.br_history/
+.br_recovery/
+.local_version
+.sync.lock
 *.db
 *.db-journal
 *.db-shm
 *.db-wal
-
-# Lock files
-*.lock
-
-# Temporary
-last-touched
-*.tmp
-
-# Local history backups
-.br_history/
-
-# Sync state (local-only, per-machine)
-.sync.lock
-sync_base.jsonl
-
-# Merge artifacts
-beads.base.jsonl
-beads.base.meta.json
-beads.left.jsonl
-beads.left.meta.json
-beads.right.jsonl
-beads.right.meta.json
-
-# Runtime files
-daemon.lock
-daemon.log
-daemon.pid
-bd.sock
-sync-state.json
-workflow/
-agent-mail/
-
-# Worktree redirect file
-redirect
-
-# beads_viewer lock file
-.bv.lock
+db.sqlite
+bd.db

@@ -10,6 +10,7 @@ LEGACY_BLOCKS = [
     ("<!-- BEGIN BEADS INTEGRATION -->", "<!-- END BEADS INTEGRATION -->"),
     ("<!-- br-agent-instructions-v", "<!-- end-br-agent-instructions -->"),
     ("<!-- bv-agent-instructions-v", "<!-- end-bv-agent-instructions -->"),
+    ("<!-- BEGIN TEMPLATE BR WORKFLOW -->", "<!-- END TEMPLATE BR WORKFLOW -->"),
 ]
 
 LEGACY_SNIPPETS = [

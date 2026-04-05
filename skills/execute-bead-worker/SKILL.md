@@ -1,4 +1,4 @@
----
+﻿---
 name: execute-bead-worker
 description: "Execute one assigned bead inside a swarm coordinated by swarm-epic. Use only when a coordinator has assigned the bead, file scope, and verification contract; the worker implements, verifies, and reports without mutating bead state."
 ---
@@ -76,8 +76,9 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
 
 ## Hard Rules
 
-- Do not run `br update`, `br close`, or any other bead status mutation.
+- Do not run `bd update`, `bd close`, or any other bead status mutation.
 - Do not expand the file scope without coordinator approval.
 - Do not silently skip verification.
 - Do not keep reservations after you stop working.
 - Do not assume another worktree can see local `.beads/workflow/`; shared coordination only happens through Agent Mail.
+

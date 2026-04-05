@@ -11,9 +11,14 @@ $ErrorActionPreference = "Stop"
 Write-Host "Repo:   $RepoPath"
 Write-Host "Prefix: $Prefix"
 
-if (-not (Test-Path (Join-Path $RepoPath ".beads"))) {
-    throw ("This script now scaffolds only. Run 'br init --prefix {0}' in {1} first." -f $Prefix, $RepoPath)
+Push-Location $RepoPath
+try {
+    bd init -p $Prefix --server --non-interactive --role maintainer --skip-agents --skip-hooks
+    bd setup codex
+    bd setup claude --check
+} finally {
+    Pop-Location
 }
 
 & (Join-Path $PSScriptRoot "scaffold-repo-files.ps1") -RepoPath $RepoPath -Prefix $Prefix -TemplateRoot $TemplateRoot
-Write-Host "Scaffold complete."
+Write-Host "Bootstrap complete."

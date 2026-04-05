@@ -1,4 +1,4 @@
----
+﻿---
 name: validate-beads
 description: "Validate a planned epic before autonomous execution. Use after beads-planner and before swarm-epic to check dependency quality, bead size, file scope, verification instructions, and parallel-safety notes."
 ---
@@ -13,11 +13,11 @@ Catch planning defects before workers start coding. This is a planner-side valid
 
 ## Steps
 
-1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `br init --prefix <prefix>` plus the repo scaffolding steps.
+1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.
 2. Determine the target epic:
    - if the user supplied an epic id, use it
    - otherwise use the most recent planning context and ask only if the target epic is ambiguous
-3. Inspect the epic and its child beads. Use `br show <epic-id> --json` plus the current planning context and `.beads/` state as needed.
+3. Inspect the epic and its child beads. Use `bd show <epic-id> --json` plus the current planning context and `.beads/` state as needed.
 4. Validate the epic against this checklist:
    - the target is actually an epic
    - child beads are small enough for one focused worker session
@@ -49,3 +49,4 @@ Catch planning defects before workers start coding. This is a planner-side valid
 - Do not implement code.
 - Do not approve a swarm run while any bead is missing `Files` or `Verify`.
 - When in doubt about parallel safety, fail closed and mark the work as sequential.
+

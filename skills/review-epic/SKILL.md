@@ -1,4 +1,4 @@
----
+﻿---
 name: review-epic
 description: "Run an epic-level review after swarm or sequential epic execution. Use after all intended child beads are complete to classify remaining issues as P1, P2, or P3 and decide whether the epic can close or needs follow-up beads."
 ---
@@ -15,7 +15,7 @@ Catch integration, regression, and quality issues that bead-level verification c
 
 1. Confirm the target epic and inspect it:
    ```bash
-   br show <epic-id> --json
+   bd show <epic-id> --json
    ```
 2. Review the epic goal, closed child beads, open follow-up beads, and changed files or commits for the branch.
 3. Run the final repo-local `build-and-test` workflow if it has not already been run for the whole epic in the current session.
@@ -47,3 +47,4 @@ Present findings first, ordered by severity. Include file references when the fi
 - Do not treat child bead completion as proof that the epic is complete.
 - Do not suppress `P1` issues to preserve momentum.
 - Create explicit follow-up beads for meaningful `P2` work instead of burying it in prose.
+

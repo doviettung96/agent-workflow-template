@@ -42,7 +42,6 @@ $statePath = Join-Path $workflowRoot "state.json"
 $handoffPath = Join-Path $workflowRoot "HANDOFF.json"
 $summaryPath = Join-Path $workflowRoot "STATE.md"
 $agentMailScript = Join-Path $repoRoot "scripts\windows\agent-mail.ps1"
-$sharedBeadsScript = Join-Path $repoRoot "scripts\windows\shared-beads.ps1"
 
 Write-Host ("Repo: {0}" -f $repoRoot)
 
@@ -138,11 +137,9 @@ if (-not $hasHandoff) {
     Write-Host ("Handoff next action: {0}" -f (Get-ValueOrDefault -Value $handoff.next_action -Default "none"))
 }
 
-if ((Get-Command br -ErrorAction SilentlyContinue) -and $state -and $state.epic_id) {
-    $previousRustLog = $env:RUST_LOG
+if ((Get-Command bd -ErrorAction SilentlyContinue) -and $state -and $state.epic_id) {
     try {
-        $env:RUST_LOG = "error"
-        $readyRaw = br ready --parent $state.epic_id --json
+        $readyRaw = bd ready --parent $state.epic_id --json
         $ready = @($readyRaw | ConvertFrom-Json)
         if ($ready.Count -eq 0) {
             Write-Host "Ready descendants: none"
@@ -158,12 +155,6 @@ if ((Get-Command br -ErrorAction SilentlyContinue) -and $state -and $state.epic_
         }
     } catch {
         Write-Warning "Failed to inspect ready descendants for the active epic."
-    } finally {
-        if ($null -eq $previousRustLog) {
-            Remove-Item Env:\RUST_LOG -ErrorAction SilentlyContinue
-        } else {
-            $env:RUST_LOG = $previousRustLog
-        }
     }
 } else {
     Write-Host "Ready descendants: skipped"
@@ -214,22 +205,30 @@ if (Test-Path $agentMailScript) {
     Write-Host "Shared control plane: unavailable"
 }
 
-if (Test-Path $sharedBeadsScript) {
+if (Get-Command bd -ErrorAction SilentlyContinue) {
     try {
-        $sharedRaw = & $sharedBeadsScript --repo $repoRoot status
-        $shared = $sharedRaw | ConvertFrom-Json
-        if ($shared.ok) {
-            Write-Host ("Shared Beads root: {0}" -f (Get-ValueOrDefault -Value $shared.shared_root -Default "unknown"))
-            Write-Host ("Shared Beads attached: {0}" -f ($(if ($shared.attached) { "yes" } else { "no" })))
-            Write-Host ("Shared Beads redirect: {0}" -f (Get-ValueOrDefault -Value $shared.redirect_target -Default "none"))
-            Write-Host ("Snapshot path: {0}" -f (Get-ValueOrDefault -Value $shared.repo_snapshot_path -Default "unknown"))
-            Write-Host ("Snapshot drift: {0}" -f (Get-ValueOrDefault -Value $shared.snapshot_state -Default "unknown"))
+        Write-Host "Beads location:"
+        bd where
+        $contextRaw = bd context --json
+        $context = $contextRaw | ConvertFrom-Json
+        $backendValue = $null
+        if ($context.PSObject.Properties.Name -contains "backend") {
+            $backendValue = $context.backend
+        }
+
+        if ($backendValue -is [string]) {
+            Write-Host ("Beads backend: {0}" -f (Get-ValueOrDefault -Value $backendValue -Default "unknown"))
+            Write-Host ("Beads mode: {0}" -f (Get-ValueOrDefault -Value $context.dolt_mode -Default "unknown"))
+        } elseif ($backendValue) {
+            Write-Host ("Beads backend: {0}" -f (Get-ValueOrDefault -Value $backendValue.type -Default "unknown"))
+            Write-Host ("Beads mode: {0}" -f (Get-ValueOrDefault -Value $backendValue.mode -Default "unknown"))
         } else {
-            Write-Host "Shared Beads: unavailable"
+            Write-Host "Beads backend: unknown"
+            Write-Host "Beads mode: unknown"
         }
     } catch {
-        Write-Warning "Failed to inspect shared Beads state."
+        Write-Warning "Failed to inspect Beads backend state."
     }
 } else {
-    Write-Host "Shared Beads: unavailable"
+    Write-Host "Beads location: unavailable"
 }

@@ -5,12 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
-
-from shared_beads import attach_shared_beads
 
 
 class WorktreeError(Exception):
@@ -34,6 +31,26 @@ def run_git(repo_root: Path, *args: str) -> str:
         raise WorktreeError(
             f"git {' '.join(args)} failed",
             code=3,
+            details={"stdout": exc.stdout.strip(), "stderr": exc.stderr.strip()},
+        ) from exc
+    return completed.stdout.strip()
+
+
+def run_bd(repo_root: Path, *args: str) -> str:
+    try:
+        completed = subprocess.run(
+            ["bd", *args],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
+        )
+    except FileNotFoundError as exc:
+        raise WorktreeError("bd is required for start-epic-worktree", code=4) from exc
+    except subprocess.CalledProcessError as exc:
+        raise WorktreeError(
+            f"bd {' '.join(args)} failed",
+            code=5,
             details={"stdout": exc.stdout.strip(), "stderr": exc.stderr.strip()},
         ) from exc
     return completed.stdout.strip()
@@ -66,28 +83,6 @@ def parse_worktrees(repo_root: Path) -> list[dict[str, str]]:
     if current:
         items.append(current)
     return items
-
-
-def branch_exists(repo_root: Path, branch_ref: str) -> bool:
-    completed = subprocess.run(
-        ["git", "-C", str(repo_root), "show-ref", "--verify", "--quiet", branch_ref],
-        capture_output=True,
-        text=True,
-    )
-    return completed.returncode == 0
-
-
-def choose_base_ref(repo_root: Path, explicit_base: str | None) -> str:
-    if explicit_base:
-        return explicit_base
-    for candidate in ("refs/heads/main", "refs/remotes/origin/main", "refs/heads/master", "refs/remotes/origin/master"):
-        if branch_exists(repo_root, candidate):
-            return candidate
-    return "HEAD"
-
-
-def sanitize_path_component(value: str) -> str:
-    return re.sub(r"[^A-Za-z0-9._-]", "-", value).strip("-") or "epic"
 
 
 def seed_workflow_state(worktree_path: Path, epic_id: str, branch_name: str) -> None:
@@ -173,31 +168,26 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Create or reuse an epic worktree")
     parser.add_argument("--repo", default=".", help="Repo root or existing worktree")
     parser.add_argument("--epic-id", required=True, help="Epic identifier")
-    parser.add_argument("--base-ref", help="Optional base ref for new branches")
     args = parser.parse_args(argv)
 
     try:
-        repo_root = resolve_repo_root(Path(args.repo).resolve())
-        git_common_dir = resolve_git_common_dir(repo_root)
-        main_repo_root = git_common_dir.parent if git_common_dir.name == ".git" else repo_root
+        current_repo_root = resolve_repo_root(Path(args.repo).resolve())
+        git_common_dir = resolve_git_common_dir(current_repo_root)
+        main_repo_root = git_common_dir.parent if git_common_dir.name == ".git" else current_repo_root
         branch_name = f"epic/{args.epic_id}"
         branch_ref = f"refs/heads/{branch_name}"
-        worktrees_root = main_repo_root.parent / f"{main_repo_root.name}.worktrees"
-        worktree_path = worktrees_root / sanitize_path_component(args.epic_id)
 
-        existing_worktrees = parse_worktrees(repo_root)
+        existing_worktrees = parse_worktrees(main_repo_root)
         for item in existing_worktrees:
             if item.get("branch") == branch_ref:
                 existing_path = Path(item["worktree"]).resolve()
-                shared_beads = attach_shared_beads(existing_path, hydrate=True)
                 seed_workflow_state(existing_path, args.epic_id, branch_name)
                 print(
                     json.dumps(
                         {
                             "ok": True,
-                            "repo_root": str(repo_root),
+                            "repo_root": str(main_repo_root),
                             "git_common_dir": str(git_common_dir),
-                            "shared_beads_root": shared_beads["shared_root"],
                             "worktree_path": str(existing_path),
                             "branch": branch_name,
                             "created": False,
@@ -209,29 +199,16 @@ def main(argv: list[str]) -> int:
                 )
                 return 0
 
-        if worktree_path.exists():
-            raise WorktreeError(
-                f"Target worktree path already exists and is not registered: {worktree_path}",
-                code=10,
-                details={"worktree_path": str(worktree_path)},
-            )
-
-        worktrees_root.mkdir(parents=True, exist_ok=True)
-        if branch_exists(repo_root, branch_ref):
-            run_git(repo_root, "worktree", "add", str(worktree_path), branch_name)
-        else:
-            base_ref = choose_base_ref(repo_root, args.base_ref)
-            run_git(repo_root, "worktree", "add", "-b", branch_name, str(worktree_path), base_ref)
-
-        shared_beads = attach_shared_beads(worktree_path, hydrate=True)
+        raw = run_bd(main_repo_root, "worktree", "create", args.epic_id, "--branch", branch_name, "--json")
+        payload = json.loads(raw)
+        worktree_path = Path(payload["path"]).resolve()
         seed_workflow_state(worktree_path, args.epic_id, branch_name)
         print(
             json.dumps(
                 {
                     "ok": True,
-                    "repo_root": str(repo_root),
+                    "repo_root": str(main_repo_root),
                     "git_common_dir": str(git_common_dir),
-                    "shared_beads_root": shared_beads["shared_root"],
                     "worktree_path": str(worktree_path),
                     "branch": branch_name,
                     "created": True,

@@ -1,4 +1,4 @@
----
+﻿---
 name: beads-claim
 description: "Use at the start of a manual executor session to find and claim a ready bead. Do not invoke in planner sessions or inside swarm workers."
 ---
@@ -26,15 +26,15 @@ Do not invoke this skill when:
 
 ## Steps
 
-1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `br init --prefix <prefix>` plus the repo scaffolding steps.
+1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.
 2. Find ready work:
    ```bash
-   br ready --json
+   bd ready --json
    ```
 3. Select a bead. If the user specified one, use that. Otherwise, choose the best ready bead based on current context, priority, and dependencies.
 4. Show the bead details before claiming:
    ```bash
-   br show <id> --json
+   bd show <id> --json
    ```
 5. Confirm or auto-claim:
    - present the bead title and description first
@@ -42,7 +42,7 @@ Do not invoke this skill when:
    - if the choice is ambiguous, ask the user before claiming
 6. Claim it:
    ```bash
-   br update <id> --status in_progress
+   bd update <id> --status in_progress
    ```
 7. Report the claimed bead id and title, then proceed to `writing-plans` for the execution plan.
 
@@ -54,3 +54,4 @@ Do not invoke this skill when:
 - When `executor-once`, `executor-loop`, or `executor-loop-epic` is driving the flow, it is valid to claim without confirmation when bead choice is unambiguous.
 - Do not start coding before claiming. The bead must be `in_progress` before any implementation.
 - `swarm-epic` owns claiming and closing for swarm runs. Workers do not call this skill.
+

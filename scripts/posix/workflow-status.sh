@@ -8,7 +8,6 @@ state_path="${workflow_root}/state.json"
 handoff_path="${workflow_root}/HANDOFF.json"
 summary_path="${workflow_root}/STATE.md"
 agent_mail_script="${repo_root}/scripts/posix/agent-mail.sh"
-shared_beads_script="${repo_root}/scripts/posix/shared-beads.sh"
 
 printf 'Repo: %s\n' "${repo_root}"
 
@@ -139,8 +138,8 @@ PY
 )"
 fi
 
-if command -v br >/dev/null 2>&1 && [[ -n "${epic_id}" ]]; then
-  ready_json="$(RUST_LOG=error br ready --parent "${epic_id}" --json 2>/dev/null || true)"
+if command -v bd >/dev/null 2>&1 && [[ -n "${epic_id}" ]]; then
+  ready_json="$(bd ready --parent "${epic_id}" --json 2>/dev/null || true)"
   if [[ -z "${ready_json}" ]]; then
     printf 'Ready descendants: none\n'
   elif [[ -n "${python_cmd}" ]]; then
@@ -221,33 +220,36 @@ else
   printf 'Shared control plane: unavailable\n'
 fi
 
-if [[ -x "${shared_beads_script}" && -n "${python_cmd}" ]]; then
-  shared_json="$("${shared_beads_script}" --repo "${repo_root}" status 2>/dev/null || true)"
-  if [[ -n "${shared_json}" ]]; then
-    SHARED_JSON="${shared_json}" "${python_cmd}" - <<'PY'
+if command -v bd >/dev/null 2>&1; then
+  printf 'Beads location:\n'
+  bd where || true
+  if [[ -n "${python_cmd}" ]]; then
+    context_json="$(bd context --json 2>/dev/null || true)"
+    if [[ -n "${context_json}" ]]; then
+      CONTEXT_JSON="${context_json}" "${python_cmd}" - <<'PY'
 import json
 import os
 
-raw = os.environ.get("SHARED_JSON", "")
+raw = os.environ.get("CONTEXT_JSON", "")
 try:
     data = json.loads(raw)
 except json.JSONDecodeError:
-    print("Shared Beads: failed to parse")
+    print("Beads location: unavailable")
     raise SystemExit(0)
 
-if not data.get("ok"):
-    print("Shared Beads: unavailable")
-    raise SystemExit(0)
-
-print(f"Shared Beads root: {data.get('shared_root') or 'unknown'}")
-print(f"Shared Beads attached: {'yes' if data.get('attached') else 'no'}")
-print(f"Shared Beads redirect: {data.get('redirect_target') or 'none'}")
-print(f"Snapshot path: {data.get('repo_snapshot_path') or 'unknown'}")
-print(f"Snapshot drift: {data.get('snapshot_state') or 'unknown'}")
+backend = data.get("backend")
+if isinstance(backend, str):
+    print(f"Beads backend: {backend or 'unknown'}")
+    print(f"Beads mode: {data.get('dolt_mode') or 'unknown'}")
+else:
+    backend = backend or {}
+    print(f"Beads backend: {backend.get('type') or 'unknown'}")
+    print(f"Beads mode: {backend.get('mode') or 'unknown'}")
 PY
-  else
-    printf 'Shared Beads: unavailable\n'
+    else
+      printf 'Beads location: unavailable\n'
+    fi
   fi
 else
-  printf 'Shared Beads: unavailable\n'
+  printf 'Beads location: unavailable\n'
 fi

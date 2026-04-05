@@ -1,4 +1,4 @@
----
+﻿---
 name: finishing-a-development-branch
 description: "Use after all work on a feature branch is complete and verified. Pushes the branch and creates a PR targeting main."
 ---
@@ -48,13 +48,7 @@ gh pr create --base main --fill
 - If the user has provided a PR title or description, use `--title` and `--body` instead
 - Report the PR URL to the user
 
-### 4. Snapshot export is separate
-
-The live Beads store is shared per clone outside branch-local tracked files, not carried branch-by-branch in the PR.
-
-If you want the latest Beads state committed for Git sharing across machines, switch to the main checkout after merge and run `shared-beads export-snapshot` there.
-
-### 5. Report completion
+### 4. Report completion
 
 ```
 PR created: <url>
@@ -64,8 +58,8 @@ Branch: <branch-name>
 ## Hard Rules
 
 - Never force-push unless the user explicitly asks
-- Never delete the remote branch — let the PR merge process handle that
-- Never merge locally — the PR is the merge mechanism
+- Never delete the remote branch â€” let the PR merge process handle that
+- Never merge locally â€” the PR is the merge mechanism
 - If `gh` is not available, push the branch and report the branch name for manual PR creation
 
 ## Quick Reference
@@ -78,18 +72,18 @@ Branch: <branch-name>
 | `gh` not installed | Push branch, report for manual PR |
 | PR creation fails | Report error, branch is pushed |
 
-## Sync Discipline
+## Beads Runtime Discipline
 
-- Before checking `git status`, run `br sync --flush-only`.
-- Treat `br sync --flush-only` as part of branch completion, not optional cleanup.
-- Do not expect a feature branch PR to carry the Beads snapshot by default; snapshot export happens explicitly from main.
-- If `git status` is dirty after the flush, stop and resolve that state before pushing or creating a PR.
+- Before checking `git status`, confirm the worktree still resolves the Beads database with `bd where`.
+- Treat Beads as local runtime. Do not try to publish live `.beads` state through Git during normal branch completion.
+- If `bd where` fails, stop and repair the worktree or main checkout before pushing or creating a PR.
 
 ## Integration
 
 **Called by:**
-- **`executor-loop-epic`** — after all beads in the epic are closed
+- **`executor-loop-epic`** â€” after all beads in the epic are closed
 - Any workflow that completes work on a feature branch
 
 **Pairs with:**
-- **`build-and-test`** — must pass before invoking this skill
+- **`build-and-test`** â€” must pass before invoking this skill
+

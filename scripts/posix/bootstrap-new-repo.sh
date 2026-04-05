@@ -15,10 +15,12 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 printf 'Repo:   %s\n' "${repo_path}"
 printf 'Prefix: %s\n' "${prefix}"
 
-if [[ ! -d "${repo_path}/.beads" ]]; then
-  printf "this script now scaffolds only. run 'br init --prefix %s' in %s first.\n" "${prefix}" "${repo_path}" >&2
-  exit 1
-fi
+(
+  cd "${repo_path}"
+  bd init -p "${prefix}" --server --non-interactive --role maintainer --skip-agents --skip-hooks
+  bd setup codex
+  bd setup claude --check
+)
 
 "${script_dir}/scaffold-repo-files.sh" "${repo_path}" "${prefix}"
-printf 'Scaffold complete.\n'
+printf 'Bootstrap complete.\n'

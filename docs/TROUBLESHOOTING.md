@@ -1,60 +1,76 @@
 # Troubleshooting
 
-## `br` mutation errors in one worktree
+## Worktree cannot find the Beads database
 
-Use this only as a fallback. It is not part of the normal skill flow.
+Symptoms:
 
-Typical symptoms:
+- `bd where` fails inside a worktree
+- `bd ready` or `bd show` says the database is missing
+- the worktree was created with raw `git worktree add`
 
-- `br update <id> --status=...` errors with a database or foreign-key failure
-- `br close <id>` errors even though the bead graph looks valid
-- `br show <id>` and the live shared `issues.jsonl` appear to disagree
+Fix:
 
-Normal recovery order:
+1. Check the Beads context from the worktree:
 
-1. Stop issuing further bead mutations.
-2. Inspect the bead with:
    ```bash
-   br show <id> --json
+   bd where
+   bd context
    ```
-3. Run `shared-beads status` and inspect the same id in the live shared `issues.jsonl` path it reports.
-4. If DB and JSONL already agree on the intended state, continue from that state without replaying the mutation.
-5. If DB and JSONL disagree, reconcile JSONL before more status changes or handoff.
 
-## Rebuild the local DB cache
+2. If the worktree was not created through Beads, stop using it for Beads operations.
+3. Recreate the worktree with:
 
-If single-bead mutations keep failing in the same worktree and the live shared `issues.jsonl` looks sane, rebuild the shared DB cache from that JSONL.
+   ```bash
+   bd worktree create <name> --branch epic/<epic-id>
+   ```
 
-This is safe because:
+   or use `start-epic-worktree`.
+4. If the main checkout itself cannot open the database, run:
 
-- the live shared `issues.jsonl` in the clone-local shared Beads root is the intra-clone source of truth
-- `_beads/beads.db*` is the shared clone-local cache
+   ```bash
+   bd bootstrap --yes
+   ```
 
-Windows PowerShell:
+## Local Dolt server endpoint changed
 
-```powershell
-Remove-Item (Join-Path ((.\scripts\windows\shared-beads.ps1 status | ConvertFrom-Json).shared_root) "beads.db"), (Join-Path ((.\scripts\windows\shared-beads.ps1 status | ConvertFrom-Json).shared_root) "beads.db-wal"), (Join-Path ((.\scripts\windows\shared-beads.ps1 status | ConvertFrom-Json).shared_root) "beads.db-shm") -ErrorAction SilentlyContinue
-br doctor --repair
-.\scripts\windows\shared-beads.ps1 --repo . attach
-```
+Symptoms:
 
-POSIX shell:
+- `bd where` or `bd ready` warns that the Dolt server port changed
+- an old worktree is pointing at stale local server info
 
-```bash
-root="$(./scripts/posix/shared-beads.sh --repo . status | python3 -c 'import json,sys; print(json.load(sys.stdin)["shared_root"])')"
-rm -f "${root}/beads.db" "${root}/beads.db-wal" "${root}/beads.db-shm"
-br doctor --repair
-./scripts/posix/shared-beads.sh --repo . attach
-```
+Fix:
 
-After rebuild:
+1. Check server state:
 
-1. Smoke-test one single-bead mutation.
-2. Verify with `br show <id> --json`.
-3. Confirm the live shared `issues.jsonl` matches before continuing.
+   ```bash
+   bd dolt status
+   bd context
+   ```
 
-## Notes
+2. If the main checkout is healthy but a worktree is stale, recreate the worktree through Beads.
+3. If the main checkout is unhealthy, run:
 
-- This is a clone-local recovery step, not a repo-wide migration step.
-- It became especially relevant after migrating old worktrees from the earlier `bd` / `no-db` setup, but it is not limited to migration scenarios.
-- Do not rebuild the DB as a first response. Verify DB vs JSONL first.
+   ```bash
+   bd bootstrap --yes
+   bd doctor
+   ```
+
+## Old `br` artifacts remain after rollback
+
+Symptoms:
+
+- `.beads/redirect` points to an old `*.shared/_beads` path
+- `scripts/windows/shared-beads.ps1` or `scripts/posix/shared-beads.sh` still exist
+- `br`-era files like `.br_history/` remain under `.beads`
+
+Fix:
+
+1. Re-run the rollback scaffold or migration script for the repo.
+2. Confirm the repo now uses `bd`:
+
+   ```bash
+   bd where
+   bd ready --json
+   ```
+
+3. Ignore or remove archived `br` backups under `.beads/backup/` if they are no longer needed.

@@ -1,28 +1,36 @@
 # macOS Setup
 
-## Install `br`
+## Install `bd`
 
-Recommended:
+Homebrew:
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/beads_rust/main/install.sh?$(date +%s)" | bash
+brew install beads
 ```
 
-Alternative:
+or:
 
 ```bash
-cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
+curl -sSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
 ```
 
 Verify:
 
 ```bash
-br version
+bd version
+```
+
+## Install `dolt`
+
+Install Dolt on the machine and verify:
+
+```bash
+dolt version
 ```
 
 ## Install Python
 
-The Agent Mail wrappers and shared control-plane helpers use Python.
+Ensure `python3` or `python` is on `PATH`.
 
 Verify:
 
@@ -32,22 +40,15 @@ python3 --version
 
 ## Per-Repo Setup
 
-In each new repo:
-
 ```bash
-br init --prefix yourprefix
-```
-
-Then scaffold the workflow files:
-
-```bash
+bd init -p yourprefix --server --non-interactive --role maintainer --skip-agents --skip-hooks
+bd setup codex
+bd setup claude --check
 bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo yourprefix
 ```
 
-The bootstrap script now scaffolds only. Run `br init --prefix yourprefix` first.
-
-## Migrate an Existing `bd` Repo
+## Migrate an Existing `br` Repo
 
 ```bash
-bash ./scripts/posix/migrate-downstream-to-br.sh /path/to/repo
+bash ./scripts/posix/migrate-downstream-to-bd.sh /path/to/repo
 ```

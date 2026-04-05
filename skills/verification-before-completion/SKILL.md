@@ -1,4 +1,4 @@
----
+﻿---
 name: verification-before-completion
 description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always
 ---
@@ -65,11 +65,11 @@ Skip any step = lying, not verifying
 | Excuse | Reality |
 |--------|---------|
 | "Should work now" | RUN the verification |
-| "I'm confident" | Confidence ≠ evidence |
+| "I'm confident" | Confidence â‰  evidence |
 | "Just this once" | No exceptions |
-| "Linter passed" | Linter ≠ compiler |
+| "Linter passed" | Linter â‰  compiler |
 | "Agent said success" | Verify independently |
-| "I'm tired" | Exhaustion ≠ excuse |
+| "I'm tired" | Exhaustion â‰  excuse |
 | "Partial check is enough" | Partial proves nothing |
 | "Different words so rule doesn't apply" | Spirit over letter |
 
@@ -77,32 +77,32 @@ Skip any step = lying, not verifying
 
 **Tests:**
 ```
-✅ [Run test command] [See: 34/34 pass] "All tests pass"
-❌ "Should pass now" / "Looks correct"
+âœ… [Run test command] [See: 34/34 pass] "All tests pass"
+âŒ "Should pass now" / "Looks correct"
 ```
 
 **Regression tests (TDD Red-Green):**
 ```
-✅ Write → Run (pass) → Revert fix → Run (MUST FAIL) → Restore → Run (pass)
-❌ "I've written a regression test" (without red-green verification)
+âœ… Write â†’ Run (pass) â†’ Revert fix â†’ Run (MUST FAIL) â†’ Restore â†’ Run (pass)
+âŒ "I've written a regression test" (without red-green verification)
 ```
 
 **Build:**
 ```
-✅ [Run build] [See: exit 0] "Build passes"
-❌ "Linter passed" (linter doesn't check compilation)
+âœ… [Run build] [See: exit 0] "Build passes"
+âŒ "Linter passed" (linter doesn't check compilation)
 ```
 
 **Requirements:**
 ```
-✅ Re-read plan → Create checklist → Verify each → Report gaps or completion
-❌ "Tests pass, phase complete"
+âœ… Re-read plan â†’ Create checklist â†’ Verify each â†’ Report gaps or completion
+âŒ "Tests pass, phase complete"
 ```
 
 **Agent delegation:**
 ```
-✅ Agent reports success → Check VCS diff → Verify changes → Report actual state
-❌ Trust agent report
+âœ… Agent reports success â†’ Check VCS diff â†’ Verify changes â†’ Report actual state
+âŒ Trust agent report
 ```
 
 ## Why This Matters
@@ -111,7 +111,7 @@ From 24 failure memories:
 - your human partner said "I don't believe you" - trust broken
 - Undefined functions shipped - would crash
 - Missing requirements shipped - incomplete features
-- Time wasted on false completion → redirect → rework
+- Time wasted on false completion â†’ redirect â†’ rework
 - Violates: "Honesty is a core value. If you lie, you'll be replaced."
 
 ## When To Apply
@@ -130,12 +130,11 @@ From 24 failure memories:
 - Implications of success
 - ANY communication suggesting completion/correctness
 
-## Beads Sync Gate
+## Beads Runtime Gate
 
-- For DB-backed `br` repos, verified completion is not enough by itself.
-- Before commit, PR creation, handoff, or machine switch, run `br sync --flush-only`.
-- The completion claim is only final once the verified Beads state is present in the shared live Beads store.
-- Export the tracked `.beads/issues.jsonl` snapshot separately from the main checkout when you need Git to carry that state to another machine.
+- For local `bd` repos, verified completion is not enough by itself.
+- Before commit, PR creation, or handoff, confirm the current worktree can still resolve the Beads database with `bd where`.
+- If the worktree cannot resolve Beads, recreate it through `bd worktree create` or repair the main checkout with `bd bootstrap --yes`.
 
 ## The Bottom Line
 
@@ -144,3 +143,4 @@ From 24 failure memories:
 Run the command. Read the output. THEN claim the result.
 
 This is non-negotiable.
+

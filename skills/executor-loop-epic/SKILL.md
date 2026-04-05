@@ -1,4 +1,4 @@
----
+﻿---
 name: executor-loop-epic
 description: "Run repeated manual executor cycles scoped to a single epic: pick the next ready descendant bead under that epic, execute it, then continue until the epic has no ready descendants or a blocker requires user input. Use when the user wants sequential epic progress without swarm coordination."
 ---
@@ -11,13 +11,13 @@ For coordinator-plus-worker execution with reservations, runtime state, and hand
 
 ## Steps
 
-1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `br init --prefix <prefix>` plus the repo scaffolding steps.
+1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.
 2. Determine the target epic:
    - if the user supplied an epic id in the current request, use that epic
    - otherwise ask for the epic id or enough selector text to identify one unambiguously
 3. Verify the epic exists and inspect it:
    ```bash
-   br show <epic-id> --json
+   bd show <epic-id> --json
    ```
 4. Create a feature branch for this epic:
    ```bash
@@ -29,7 +29,7 @@ For coordinator-plus-worker execution with reservations, runtime state, and hand
    ```
 5. Find ready work only within that epic's descendant tree:
    ```bash
-   br ready --parent <epic-id> --json
+   bd ready --parent <epic-id> --json
    ```
 6. Choose the next ready descendant bead using this preference order:
    - first, the ready descendant bead most clearly related to the current repo context or recent discussion
@@ -44,7 +44,7 @@ For coordinator-plus-worker execution with reservations, runtime state, and hand
    - `beads-close`
 8. After a successful close and local commit, inspect the epic again for more ready descendants:
    ```bash
-   br ready --parent <epic-id> --json
+   bd ready --parent <epic-id> --json
    ```
 9. Repeat until one of these stop conditions is reached:
    - no ready descendant beads remain under the epic
@@ -72,3 +72,4 @@ For coordinator-plus-worker execution with reservations, runtime state, and hand
 - If the supplied epic id is not actually an epic, stop and ask the user whether to scope to that parent bead anyway or choose a different epic.
 - Never merge locally; the PR is the merge mechanism.
 - This is a sequential compatibility path, not the primary swarm workflow.
+

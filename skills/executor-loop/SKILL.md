@@ -1,4 +1,4 @@
----
+﻿---
 name: executor-loop
 description: "Run repeated manual executor cycles bead-by-bead until the ready queue is exhausted or a blocker requires user input. Use when the user wants sequential autonomous progress without swarm coordination."
 ---
@@ -11,11 +11,11 @@ For epic-scoped multi-agent work with coordinator-owned bead state, prefer `swar
 
 ## Steps
 
-1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `br init --prefix <prefix>` plus the repo scaffolding steps.
+1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.
 2. Determine the first bead:
    - if the user supplied a bead id in the current request, start there
    - if the user supplied freeform selector text, treat it as a selector or hint for the first bead
-   - otherwise inspect `br ready --json` and choose the best ready bead autonomously
+   - otherwise inspect `bd ready --json` and choose the best ready bead autonomously
 3. Run one full executor cycle for that bead by invoking every step in order:
    - `beads-claim`
    - `writing-plans`
@@ -24,7 +24,7 @@ For epic-scoped multi-agent work with coordinator-owned bead state, prefer `swar
    - `build-and-test` after implementation; read `.codex/skills/build-and-test/SKILL.md` and follow it
    - `verification-before-completion` or `requesting-code-review`
    - `beads-close`
-4. After a successful close and local commit, inspect `br ready --json` again and choose the next best ready bead using the same preference order.
+4. After a successful close and local commit, inspect `bd ready --json` again and choose the next best ready bead using the same preference order.
 5. Repeat until one of these stop conditions is reached:
    - no ready bead remains
    - a blocker requires user input
@@ -42,3 +42,4 @@ For epic-scoped multi-agent work with coordinator-owned bead state, prefer `swar
 - Do not hold multiple claimed beads at once.
 - Never continue past a blocker without user input.
 - This is a sequential path. Do not market it as true multi-agent swarming.
+

@@ -1,4 +1,4 @@
----
+﻿---
 name: writing-plans
 description: "Use when you have a spec or requirements for a multi-step task, before touching code. This is an executor skill - use only when a bead has been claimed and you are in an executor session, NOT in a planner session."
 ---
@@ -16,7 +16,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
 <HARD-GATE>
-This is an **executor skill**. It should only be invoked in a session where a bead has been claimed via `br update <id> --status in_progress`. Do NOT invoke this in a planner session that just ran `brainstorming`, `planner-research`, or `beads-planner`.
+This is an **executor skill**. It should only be invoked in a session where a bead has been claimed via `bd update <id> --status in_progress`. Do NOT invoke this in a planner session that just ran `brainstorming`, `planner-research`, or `beads-planner`.
 </HARD-GATE>
 
 **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
@@ -162,9 +162,10 @@ After saving the plan:
 
 **"Plan complete and saved to `docs/plans/<filename>.md`. Ready to execute?"**
 
-- If this skill was invoked by `/executor-loop`, `/executor-loop-epic`, or `/executor-once`, proceed to implementation automatically — do not wait for confirmation.
+- If this skill was invoked by `/executor-loop`, `/executor-loop-epic`, or `/executor-once`, proceed to implementation automatically â€” do not wait for confirmation.
 - Otherwise, wait for user confirmation before proceeding.
 
 **When proceeding:** Use Codex subagents when they help, with code review (`requesting-code-review`) after each major task.
 
 **After implementation is complete:** Invoke `build-and-test` (read `.codex/skills/build-and-test/SKILL.md` and follow it). The skill itself decides whether a rebuild and live test are needed based on what changed. If `build-and-test` fails, fix the implementation and re-run it before moving to verification. Do NOT skip this step.
+

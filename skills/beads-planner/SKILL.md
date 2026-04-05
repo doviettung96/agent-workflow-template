@@ -1,4 +1,4 @@
----
+﻿---
 name: beads-planner
 description: "Break a discussed or approved problem into Beads epics and tasks with clear dependencies and validation work. Use when the user wants to turn a problem statement, planning discussion, or approved execution plan into a Beads structure instead of ad-hoc TODOs."
 ---
@@ -14,11 +14,11 @@ Turn planning output into a Beads structure that another agent or engineer can e
 1. Confirm whether the conversation already produced an approved execution plan or whether `plan-beads` supplied a clear topic that still needs planning.
 2. If no plan exists, create a lightweight execution plan first.
 3. Translate the approved plan into Beads:
-   - one `epic` for the main outcome; use `--type epic` so `br` recognizes it as an epic and `br ready --parent` works correctly
+   - one `epic` for the main outcome; use `--type epic` so `bd` recognizes it as an epic and `bd ready --parent` works correctly
    - small executable `task` beads for implementation work
    - `bug` beads for concrete broken behavior
    - `chore` beads for tooling, cleanup, or maintenance work
-   - parent all child beads under the epic: `br dep add <child-id> <epic-id>`
+   - parent all child beads under the epic: `bd dep add <child-id> <epic-id>`
 4. Add dependencies explicitly instead of relying on ordering in prose.
 5. Include validation work as its own bead when it is meaningful:
    - tests
@@ -60,12 +60,12 @@ Do not:
 - claim or execute the beads you just created
 - invoke `beads-claim`, `writing-plans`, `build-and-test`, `swarm-epic`, or `beads-close`
 - start coding or dispatch implementation subagents
-- run `br ready` and pick up work
+- run `bd ready` and pick up work
 
 Do:
 
-- commit beads changes if needed; beads state in `.beads/` is tracked by git
-- report what beads were created and their dependency structure
-- if this skill was invoked directly, tell the user: "Beads created. Run `validate-beads` before `swarm-epic`, or claim one with `br ready` in a manual executor session."
+- report the created beads and their dependency structure
+- if this skill was invoked directly, tell the user: "Beads created. Run `validate-beads` before `swarm-epic`, or claim one with `bd ready` in a manual executor session."
 - if `plan-beads` invoked this skill, immediately hand back to `plan-beads` so it can run `validate-beads` before ending the planner session
 </HARD-GATE>
+
