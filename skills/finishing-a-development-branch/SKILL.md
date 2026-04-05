@@ -48,11 +48,11 @@ gh pr create --base main --fill
 - If the user has provided a PR title or description, use `--title` and `--body` instead
 - Report the PR URL to the user
 
-### 4. Commit beads state on main
+### 4. Snapshot export is separate
 
-If `.beads/` has changes on the current branch that need to be visible on main, they will be included in the PR.
+The live Beads store is shared per clone outside branch-local tracked files, not carried branch-by-branch in the PR.
 
-Skip this step if `.beads/` has no changes.
+If you want the latest Beads state committed for Git sharing across machines, switch to the main checkout after merge and run `shared-beads export-snapshot` there.
 
 ### 5. Report completion
 
@@ -77,6 +77,13 @@ Branch: <branch-name>
 | Push fails | Report error, stop |
 | `gh` not installed | Push branch, report for manual PR |
 | PR creation fails | Report error, branch is pushed |
+
+## Sync Discipline
+
+- Before checking `git status`, run `br sync --flush-only`.
+- Treat `br sync --flush-only` as part of branch completion, not optional cleanup.
+- Do not expect a feature branch PR to carry the Beads snapshot by default; snapshot export happens explicitly from main.
+- If `git status` is dirty after the flush, stop and resolve that state before pushing or creating a PR.
 
 ## Integration
 

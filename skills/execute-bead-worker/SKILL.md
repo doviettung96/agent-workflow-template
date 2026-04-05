@@ -49,6 +49,14 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
    - `summary`
    - `next_action`
 7. Post a `started` message to `bead/<bead-id>` so the coordinator and other sessions can see who owns the bead.
+   - Windows:
+     ```powershell
+     .\scripts\windows\agent-mail.ps1 --repo . post --thread bead/<bead-id> --sender worker/<bead-id> --type started --body '{"status":"started"}' --epic-id <epic-id> --bead-id <bead-id>
+     ```
+   - POSIX:
+     ```bash
+     ./scripts/posix/agent-mail.sh --repo . post --thread bead/<bead-id> --sender worker/<bead-id> --type started --body '{"status":"started"}' --epic-id <epic-id> --bead-id <bead-id>
+     ```
 8. Implement only within the assigned scope.
 9. Run the assigned verification commands and any required repo-local `build-and-test` checks for the touched surface area.
 10. Report back to the coordinator with:
@@ -58,6 +66,9 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
    - any new risks or follow-up work
    - confirmation that reservations were released
 11. Release reservations and post either a `completed` or `blocked` message to `bead/<bead-id>`.
+   - release syntax:
+     - Windows: `.\scripts\windows\agent-mail.ps1 --repo . release-reservations --owner worker/<bead-id> --bead-id <bead-id>`
+     - POSIX: `./scripts/posix/agent-mail.sh --repo . release-reservations --owner worker/<bead-id> --bead-id <bead-id>`
 12. If blocked or context-limited:
    - update `HANDOFF.json`
    - release reservations if possible

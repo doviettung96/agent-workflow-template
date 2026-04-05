@@ -50,24 +50,28 @@ function Write-BrConfig {
     @"
 # Beads Project Configuration
 issue_prefix: $ResolvedPrefix
-no-db: true
+no-db: false
 "@ | Set-Content -Path $Path -Encoding UTF8
 }
 
 $pythonCmd = Get-PythonCommand
 $workflowSource = Join-Path $TemplateRoot "templates\BEADS_WORKFLOW.md"
 $workflowStateSource = Join-Path $TemplateRoot "templates\.beads\workflow"
+$troubleshootingSource = Join-Path $TemplateRoot "docs\TROUBLESHOOTING.md"
 $codexBuildSkillSource = Join-Path $TemplateRoot "templates\.codex\skills\build-and-test"
 $skillsSource = Join-Path $TemplateRoot "skills"
 $agentsSnippet = Join-Path $TemplateRoot "templates\AGENTS.snippet.md"
 $claudeSnippet = Join-Path $TemplateRoot "templates\CLAUDE.snippet.md"
 $windowsStatusScript = Join-Path $TemplateRoot "scripts\windows\workflow-status.ps1"
 $windowsAgentMailScript = Join-Path $TemplateRoot "scripts\windows\agent-mail.ps1"
+$windowsSharedBeadsScript = Join-Path $TemplateRoot "scripts\windows\shared-beads.ps1"
 $windowsStartEpicWorktreeScript = Join-Path $TemplateRoot "scripts\windows\start-epic-worktree.ps1"
 $posixStatusScript = Join-Path $TemplateRoot "scripts\posix\workflow-status.sh"
 $posixAgentMailScript = Join-Path $TemplateRoot "scripts\posix\agent-mail.sh"
+$posixSharedBeadsScript = Join-Path $TemplateRoot "scripts\posix\shared-beads.sh"
 $posixStartEpicWorktreeScript = Join-Path $TemplateRoot "scripts\posix\start-epic-worktree.sh"
 $sharedAgentMailScript = Join-Path $TemplateRoot "scripts\shared\agent_mail.py"
+$sharedBeadsScript = Join-Path $TemplateRoot "scripts\shared\shared_beads.py"
 $sharedStartEpicWorktreeScript = Join-Path $TemplateRoot "scripts\shared\start_epic_worktree.py"
 $sharedManageInstructionsScript = Join-Path $TemplateRoot "scripts\shared\manage_instructions.py"
 $resolvedPrefix = Get-RepoPrefix -RepoPath $RepoPath -ExplicitPrefix $Prefix
@@ -127,6 +131,8 @@ Copy-Item -Force $windowsStatusScript (Join-Path $RepoPath "scripts\windows\work
 Write-Host "Copied scripts/windows/workflow-status.ps1"
 Copy-Item -Force $windowsAgentMailScript (Join-Path $RepoPath "scripts\windows\agent-mail.ps1")
 Write-Host "Copied scripts/windows/agent-mail.ps1"
+Copy-Item -Force $windowsSharedBeadsScript (Join-Path $RepoPath "scripts\windows\shared-beads.ps1")
+Write-Host "Copied scripts/windows/shared-beads.ps1"
 Copy-Item -Force $windowsStartEpicWorktreeScript (Join-Path $RepoPath "scripts\windows\start-epic-worktree.ps1")
 Write-Host "Copied scripts/windows/start-epic-worktree.ps1"
 
@@ -135,16 +141,24 @@ Copy-Item -Force $posixStatusScript (Join-Path $RepoPath "scripts\posix\workflow
 Write-Host "Copied scripts/posix/workflow-status.sh"
 Copy-Item -Force $posixAgentMailScript (Join-Path $RepoPath "scripts\posix\agent-mail.sh")
 Write-Host "Copied scripts/posix/agent-mail.sh"
+Copy-Item -Force $posixSharedBeadsScript (Join-Path $RepoPath "scripts\posix\shared-beads.sh")
+Write-Host "Copied scripts/posix/shared-beads.sh"
 Copy-Item -Force $posixStartEpicWorktreeScript (Join-Path $RepoPath "scripts\posix\start-epic-worktree.sh")
 Write-Host "Copied scripts/posix/start-epic-worktree.sh"
 
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath "scripts\shared") | Out-Null
 Copy-Item -Force $sharedAgentMailScript (Join-Path $RepoPath "scripts\shared\agent_mail.py")
+Copy-Item -Force $sharedBeadsScript (Join-Path $RepoPath "scripts\shared\shared_beads.py")
 Copy-Item -Force $sharedStartEpicWorktreeScript (Join-Path $RepoPath "scripts\shared\start_epic_worktree.py")
 Copy-Item -Force $sharedManageInstructionsScript (Join-Path $RepoPath "scripts\shared\manage_instructions.py")
 Write-Host "Copied scripts/shared/agent_mail.py"
+Write-Host "Copied scripts/shared/shared_beads.py"
 Write-Host "Copied scripts/shared/start_epic_worktree.py"
 Write-Host "Copied scripts/shared/manage_instructions.py"
+
+New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath "docs") | Out-Null
+Copy-Item -Force $troubleshootingSource (Join-Path $RepoPath "docs\TROUBLESHOOTING.md")
+Write-Host "Copied docs/TROUBLESHOOTING.md"
 
 if ($pythonCmd -eq "py") {
     & py -3 $sharedManageInstructionsScript (Join-Path $RepoPath "AGENTS.md") $agentsSnippet
@@ -155,3 +169,7 @@ if ($pythonCmd -eq "py") {
 }
 Write-Host "Updated AGENTS.md managed block"
 Write-Host "Updated CLAUDE.md managed block"
+
+$sharedBeadsDestination = Join-Path $RepoPath "scripts\windows\shared-beads.ps1"
+& $sharedBeadsDestination --repo $RepoPath attach | Out-Null
+Write-Host "Attached checkout to shared live Beads store"

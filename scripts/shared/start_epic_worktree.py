@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from shared_beads import attach_shared_beads
+
 
 class WorktreeError(Exception):
     def __init__(self, message: str, *, code: int = 1, details: dict | None = None) -> None:
@@ -187,6 +189,7 @@ def main(argv: list[str]) -> int:
         for item in existing_worktrees:
             if item.get("branch") == branch_ref:
                 existing_path = Path(item["worktree"]).resolve()
+                shared_beads = attach_shared_beads(existing_path, hydrate=True)
                 seed_workflow_state(existing_path, args.epic_id, branch_name)
                 print(
                     json.dumps(
@@ -194,6 +197,7 @@ def main(argv: list[str]) -> int:
                             "ok": True,
                             "repo_root": str(repo_root),
                             "git_common_dir": str(git_common_dir),
+                            "shared_beads_root": shared_beads["shared_root"],
                             "worktree_path": str(existing_path),
                             "branch": branch_name,
                             "created": False,
@@ -219,6 +223,7 @@ def main(argv: list[str]) -> int:
             base_ref = choose_base_ref(repo_root, args.base_ref)
             run_git(repo_root, "worktree", "add", "-b", branch_name, str(worktree_path), base_ref)
 
+        shared_beads = attach_shared_beads(worktree_path, hydrate=True)
         seed_workflow_state(worktree_path, args.epic_id, branch_name)
         print(
             json.dumps(
@@ -226,6 +231,7 @@ def main(argv: list[str]) -> int:
                     "ok": True,
                     "repo_root": str(repo_root),
                     "git_common_dir": str(git_common_dir),
+                    "shared_beads_root": shared_beads["shared_root"],
                     "worktree_path": str(worktree_path),
                     "branch": branch_name,
                     "created": True,

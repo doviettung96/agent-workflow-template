@@ -31,6 +31,12 @@ Run exactly one full executor cycle for one bead.
 8. If build/test fails and the fix is still in scope, return to implementation and retry.
 9. After success, stop with a concise summary. Do not automatically claim a second bead.
 
+## Sync Discipline
+
+- If this executor run happens in a freshly created or refreshed worktree, start with `shared-beads attach`.
+- Before commit, handoff, or machine switch, run `br sync --flush-only`.
+- When you need Beads state to travel by Git to another machine, export the tracked snapshot explicitly from the main checkout with `shared-beads export-snapshot`.
+
 ## Hard Rules
 
 - One bead only.

@@ -42,6 +42,7 @@ $statePath = Join-Path $workflowRoot "state.json"
 $handoffPath = Join-Path $workflowRoot "HANDOFF.json"
 $summaryPath = Join-Path $workflowRoot "STATE.md"
 $agentMailScript = Join-Path $repoRoot "scripts\windows\agent-mail.ps1"
+$sharedBeadsScript = Join-Path $repoRoot "scripts\windows\shared-beads.ps1"
 
 Write-Host ("Repo: {0}" -f $repoRoot)
 
@@ -211,4 +212,24 @@ if (Test-Path $agentMailScript) {
     }
 } else {
     Write-Host "Shared control plane: unavailable"
+}
+
+if (Test-Path $sharedBeadsScript) {
+    try {
+        $sharedRaw = & $sharedBeadsScript --repo $repoRoot status
+        $shared = $sharedRaw | ConvertFrom-Json
+        if ($shared.ok) {
+            Write-Host ("Shared Beads root: {0}" -f (Get-ValueOrDefault -Value $shared.shared_root -Default "unknown"))
+            Write-Host ("Shared Beads attached: {0}" -f ($(if ($shared.attached) { "yes" } else { "no" })))
+            Write-Host ("Shared Beads redirect: {0}" -f (Get-ValueOrDefault -Value $shared.redirect_target -Default "none"))
+            Write-Host ("Snapshot path: {0}" -f (Get-ValueOrDefault -Value $shared.repo_snapshot_path -Default "unknown"))
+            Write-Host ("Snapshot drift: {0}" -f (Get-ValueOrDefault -Value $shared.snapshot_state -Default "unknown"))
+        } else {
+            Write-Host "Shared Beads: unavailable"
+        }
+    } catch {
+        Write-Warning "Failed to inspect shared Beads state."
+    }
+} else {
+    Write-Host "Shared Beads: unavailable"
 }

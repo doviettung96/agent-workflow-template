@@ -336,13 +336,23 @@ def command_release_reservations(store: AgentMailStore, args: argparse.Namespace
 
 def command_post(store: AgentMailStore, args: argparse.Namespace) -> dict[str, Any]:
     store.ensure_layout()
+    message_type = args.message_type
+    if not message_type:
+        try:
+            parsed_body = json.loads(args.body)
+        except json.JSONDecodeError:
+            parsed_body = None
+        if isinstance(parsed_body, dict):
+            message_type = parsed_body.get("type") or parsed_body.get("message_type")
+    if not message_type:
+        message_type = "note"
     message = {
         "id": str(uuid.uuid4()),
         "timestamp": utc_now(),
         "thread": args.thread,
         "sender": args.sender,
         "to": args.to,
-        "type": args.message_type,
+        "type": message_type,
         "epic_id": args.epic_id,
         "bead_id": args.bead_id,
         "repo_root": str(store.repo_root),
@@ -440,7 +450,7 @@ def build_parser() -> argparse.ArgumentParser:
     reserve.add_argument("--owner", required=True)
     reserve.add_argument("--epic-id", required=True)
     reserve.add_argument("--bead-id", required=True)
-    reserve.add_argument("--path", required=True, action="append")
+    reserve.add_argument("--path", "--file", dest="path", required=True, action="append")
     reserve.set_defaults(func=command_reserve)
 
     release_res = subparsers.add_parser("release-reservations")
@@ -448,11 +458,11 @@ def build_parser() -> argparse.ArgumentParser:
     release_res.add_argument("--bead-id")
     release_res.set_defaults(func=command_release_reservations)
 
-    post = subparsers.add_parser("post")
+    post = subparsers.add_parser("post", aliases=["send"])
     post.add_argument("--thread", required=True)
-    post.add_argument("--sender", required=True)
+    post.add_argument("--sender", "--from", dest="sender", required=True)
     post.add_argument("--to", default="*")
-    post.add_argument("--type", dest="message_type", required=True)
+    post.add_argument("--type", dest="message_type")
     post.add_argument("--body", required=True)
     post.add_argument("--epic-id")
     post.add_argument("--bead-id")

@@ -8,6 +8,7 @@ state_path="${workflow_root}/state.json"
 handoff_path="${workflow_root}/HANDOFF.json"
 summary_path="${workflow_root}/STATE.md"
 agent_mail_script="${repo_root}/scripts/posix/agent-mail.sh"
+shared_beads_script="${repo_root}/scripts/posix/shared-beads.sh"
 
 printf 'Repo: %s\n' "${repo_root}"
 
@@ -218,4 +219,35 @@ PY
   fi
 else
   printf 'Shared control plane: unavailable\n'
+fi
+
+if [[ -x "${shared_beads_script}" && -n "${python_cmd}" ]]; then
+  shared_json="$("${shared_beads_script}" --repo "${repo_root}" status 2>/dev/null || true)"
+  if [[ -n "${shared_json}" ]]; then
+    SHARED_JSON="${shared_json}" "${python_cmd}" - <<'PY'
+import json
+import os
+
+raw = os.environ.get("SHARED_JSON", "")
+try:
+    data = json.loads(raw)
+except json.JSONDecodeError:
+    print("Shared Beads: failed to parse")
+    raise SystemExit(0)
+
+if not data.get("ok"):
+    print("Shared Beads: unavailable")
+    raise SystemExit(0)
+
+print(f"Shared Beads root: {data.get('shared_root') or 'unknown'}")
+print(f"Shared Beads attached: {'yes' if data.get('attached') else 'no'}")
+print(f"Shared Beads redirect: {data.get('redirect_target') or 'none'}")
+print(f"Snapshot path: {data.get('repo_snapshot_path') or 'unknown'}")
+print(f"Snapshot drift: {data.get('snapshot_state') or 'unknown'}")
+PY
+  else
+    printf 'Shared Beads: unavailable\n'
+  fi
+else
+  printf 'Shared Beads: unavailable\n'
 fi

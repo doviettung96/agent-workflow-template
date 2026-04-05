@@ -130,6 +130,13 @@ From 24 failure memories:
 - Implications of success
 - ANY communication suggesting completion/correctness
 
+## Beads Sync Gate
+
+- For DB-backed `br` repos, verified completion is not enough by itself.
+- Before commit, PR creation, handoff, or machine switch, run `br sync --flush-only`.
+- The completion claim is only final once the verified Beads state is present in the shared live Beads store.
+- Export the tracked `.beads/issues.jsonl` snapshot separately from the main checkout when you need Git to carry that state to another machine.
+
 ## The Bottom Line
 
 **No shortcuts for verification.**

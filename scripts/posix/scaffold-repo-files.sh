@@ -11,6 +11,7 @@ explicit_prefix="${2:-}"
 template_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 skills_source="${template_root}/skills"
 workflow_state_source="${template_root}/templates/.beads/workflow"
+troubleshooting_source="${template_root}/docs/TROUBLESHOOTING.md"
 python_cmd=""
 
 if command -v python3 >/dev/null 2>&1; then
@@ -55,7 +56,7 @@ write_br_config() {
   cat > "${config_path}" <<EOF
 # Beads Project Configuration
 issue_prefix: ${prefix}
-no-db: true
+no-db: false
 EOF
 }
 
@@ -113,31 +114,45 @@ done
 mkdir -p "${repo_path}/scripts/windows"
 cp "${template_root}/scripts/windows/workflow-status.ps1" "${repo_path}/scripts/windows/workflow-status.ps1"
 cp "${template_root}/scripts/windows/agent-mail.ps1" "${repo_path}/scripts/windows/agent-mail.ps1"
+cp "${template_root}/scripts/windows/shared-beads.ps1" "${repo_path}/scripts/windows/shared-beads.ps1"
 cp "${template_root}/scripts/windows/start-epic-worktree.ps1" "${repo_path}/scripts/windows/start-epic-worktree.ps1"
 printf 'Copied scripts/windows/workflow-status.ps1\n'
 printf 'Copied scripts/windows/agent-mail.ps1\n'
+printf 'Copied scripts/windows/shared-beads.ps1\n'
 printf 'Copied scripts/windows/start-epic-worktree.ps1\n'
 
 mkdir -p "${repo_path}/scripts/posix"
 cp "${template_root}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/workflow-status.sh"
 cp "${template_root}/scripts/posix/agent-mail.sh" "${repo_path}/scripts/posix/agent-mail.sh"
+cp "${template_root}/scripts/posix/shared-beads.sh" "${repo_path}/scripts/posix/shared-beads.sh"
 cp "${template_root}/scripts/posix/start-epic-worktree.sh" "${repo_path}/scripts/posix/start-epic-worktree.sh"
 chmod +x "${repo_path}/scripts/posix/workflow-status.sh"
 chmod +x "${repo_path}/scripts/posix/agent-mail.sh"
+chmod +x "${repo_path}/scripts/posix/shared-beads.sh"
 chmod +x "${repo_path}/scripts/posix/start-epic-worktree.sh"
 printf 'Copied scripts/posix/workflow-status.sh\n'
 printf 'Copied scripts/posix/agent-mail.sh\n'
+printf 'Copied scripts/posix/shared-beads.sh\n'
 printf 'Copied scripts/posix/start-epic-worktree.sh\n'
 
 mkdir -p "${repo_path}/scripts/shared"
 cp "${template_root}/scripts/shared/agent_mail.py" "${repo_path}/scripts/shared/agent_mail.py"
+cp "${template_root}/scripts/shared/shared_beads.py" "${repo_path}/scripts/shared/shared_beads.py"
 cp "${template_root}/scripts/shared/start_epic_worktree.py" "${repo_path}/scripts/shared/start_epic_worktree.py"
 cp "${template_root}/scripts/shared/manage_instructions.py" "${repo_path}/scripts/shared/manage_instructions.py"
 printf 'Copied scripts/shared/agent_mail.py\n'
+printf 'Copied scripts/shared/shared_beads.py\n'
 printf 'Copied scripts/shared/start_epic_worktree.py\n'
 printf 'Copied scripts/shared/manage_instructions.py\n'
+
+mkdir -p "${repo_path}/docs"
+cp "${troubleshooting_source}" "${repo_path}/docs/TROUBLESHOOTING.md"
+printf 'Copied docs/TROUBLESHOOTING.md\n'
 
 "${python_cmd}" "${template_root}/scripts/shared/manage_instructions.py" "${repo_path}/AGENTS.md" "${template_root}/templates/AGENTS.snippet.md"
 printf 'Updated AGENTS.md managed block\n'
 "${python_cmd}" "${template_root}/scripts/shared/manage_instructions.py" "${repo_path}/CLAUDE.md" "${template_root}/templates/CLAUDE.snippet.md"
 printf 'Updated CLAUDE.md managed block\n'
+
+"${python_cmd}" "${repo_path}/scripts/shared/shared_beads.py" --repo "${repo_path}" attach >/dev/null
+printf 'Attached checkout to shared live Beads store\n'
