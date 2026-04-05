@@ -416,7 +416,7 @@ def command_status(store: AgentMailStore, _args: argparse.Namespace) -> dict[str
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Shared Agent Mail transport")
-    parser.add_argument("--repo", default=".", help="Repo root or worktree path")
+    parser.add_argument("--repo", default=".", help="Repo root or checkout path")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     init_parser = subparsers.add_parser("init")

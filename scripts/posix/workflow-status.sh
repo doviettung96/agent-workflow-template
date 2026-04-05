@@ -19,7 +19,7 @@ elif command -v python >/dev/null 2>&1; then
 fi
 
 if [[ ! -d "${workflow_root}" ]]; then
-  printf 'Workflow state: not scaffolded in this worktree\n'
+  printf 'Workflow state: not scaffolded in this checkout\n'
 elif [[ -n "${python_cmd}" && -f "${state_path}" ]]; then
   "${python_cmd}" - "${state_path}" "${handoff_path}" <<'PY'
 import json
@@ -46,7 +46,7 @@ else:
     print(f"Mode: {state.get('mode') or 'unknown'}")
     print(f"Epic: {state.get('epic_id') or 'none'}")
     print(f"Branch: {state.get('branch') or 'unknown'}")
-    print(f"Worktree: {state.get('worktree_path') or 'unknown'}")
+    print(f"Checkout: {state.get('worktree_path') or 'unknown'}")
     print(f"Coordinator: {state.get('coordinator') or 'none'}")
 
     workers = state.get("workers") or []

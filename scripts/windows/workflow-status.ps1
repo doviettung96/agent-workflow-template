@@ -49,14 +49,14 @@ $state = Read-JsonFile -Path $statePath
 $handoff = Read-JsonFile -Path $handoffPath
 
 if (-not (Test-Path $workflowRoot)) {
-    Write-Host "Workflow state: not scaffolded in this worktree"
+    Write-Host "Workflow state: not scaffolded in this checkout"
 } elseif ($state -eq $null) {
     Write-Host "state.json: missing or invalid"
 } else {
     Write-Host ("Mode: {0}" -f (Get-ValueOrDefault -Value $state.mode -Default "unknown"))
     Write-Host ("Epic: {0}" -f (Get-ValueOrDefault -Value $state.epic_id -Default "none"))
     Write-Host ("Branch: {0}" -f (Get-ValueOrDefault -Value $state.branch -Default "unknown"))
-    Write-Host ("Worktree: {0}" -f (Get-ValueOrDefault -Value $state.worktree_path -Default $repoRoot))
+    Write-Host ("Checkout: {0}" -f (Get-ValueOrDefault -Value $state.worktree_path -Default $repoRoot))
     Write-Host ("Coordinator: {0}" -f (Get-ValueOrDefault -Value $state.coordinator -Default "none"))
 
     $workers = @($state.workers)

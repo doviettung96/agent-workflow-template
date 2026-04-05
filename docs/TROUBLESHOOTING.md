@@ -1,31 +1,23 @@
 # Troubleshooting
 
-## Worktree cannot find the Beads database
+## Current checkout cannot find the Beads database
 
 Symptoms:
 
-- `bd where` fails inside a worktree
+- `bd where` fails in the current checkout
 - `bd ready` or `bd show` says the database is missing
-- the worktree was created with raw `git worktree add`
+- `bd context` shows stale server details
 
 Fix:
 
-1. Check the Beads context from the worktree:
+1. Check the Beads context from the current checkout:
 
    ```bash
    bd where
    bd context
    ```
 
-2. If the worktree was not created through Beads, stop using it for Beads operations.
-3. Recreate the worktree with:
-
-   ```bash
-   bd worktree create <name> --branch epic/<epic-id>
-   ```
-
-   or use `start-epic-worktree`.
-4. If the main checkout itself cannot open the database, run:
+2. Repair the repo-local Beads state:
 
    ```bash
    bd bootstrap --yes
@@ -36,7 +28,7 @@ Fix:
 Symptoms:
 
 - `bd where` or `bd ready` warns that the Dolt server port changed
-- an old worktree is pointing at stale local server info
+- the current checkout is pointing at stale local server info
 
 Fix:
 
@@ -47,8 +39,7 @@ Fix:
    bd context
    ```
 
-2. If the main checkout is healthy but a worktree is stale, recreate the worktree through Beads.
-3. If the main checkout is unhealthy, run:
+2. If the checkout is unhealthy, run:
 
    ```bash
    bd bootstrap --yes

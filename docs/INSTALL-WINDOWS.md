@@ -24,7 +24,7 @@ dolt version
 
 ## Install Python
 
-The Agent Mail wrappers and worktree helpers use Python. Ensure either `py`, `python`, or `python3` is on `PATH`.
+The Agent Mail wrappers and workflow helpers use Python. Ensure either `py`, `python`, or `python3` is on `PATH`.
 
 Verify:
 

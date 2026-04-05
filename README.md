@@ -1,6 +1,6 @@
 # Agent Workflow Template
 
-Reusable Beads workflow scaffold for Codex and Claude, standardized on local-only `bd` with Dolt in server mode plus native Beads worktrees.
+Reusable Beads workflow scaffold for Codex and Claude, standardized on local-only `bd` with Dolt in server mode plus single-checkout swarm execution.
 
 This template repo is intentionally self-contained:
 
@@ -16,7 +16,7 @@ Install once per machine:
 
 - `bd` 1.0.0+
 - `dolt`
-- Python (for Agent Mail and worktree helpers)
+- Python (for Agent Mail and workflow helpers)
 
 Initialize per repo:
 
@@ -46,16 +46,16 @@ Use one of:
 - `executor-loop` for sequential manual execution
 - `swarm-epic <epic-id>` for epic-scoped multi-agent execution
 
-Worktree-backed epic execution uses `start-epic-worktree`, which wraps Beads’ native `bd worktree create`.
+`swarm-epic` runs in the current checkout and uses branch `epic/<epic-id>` for the target epic.
 
 ## Local-Only Beads Model
 
 - Live Beads state is local to this clone under `.beads/`
-- Worktrees share the main checkout’s `.beads` through Beads redirect files
 - Beads task state is not shared through Git or Dolt remotes
 - Code still moves through normal feature branches and pull requests
+- Run one top-level epic executor session at a time in a clone
 
-Inside a worktree, `bd` should work directly as long as the worktree was created through `bd worktree create` or `start-epic-worktree`.
+`swarm-epic` still parallelizes ready descendant beads inside one epic, but it does not try to isolate multiple epics with worktrees anymore.
 
 ## Quick Start
 
@@ -107,7 +107,7 @@ The migration helper imports the current live `issues.jsonl` into a new local `b
 
 ## Editing Skills
 
-This template’s `skills/` directory is the source of truth for workflow skills. Target repos carry two copies:
+This template's `skills/` directory is the source of truth for workflow skills. Target repos carry two copies:
 
 - `.codex/skills/`
 - `.claude/skills/`

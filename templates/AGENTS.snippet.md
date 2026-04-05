@@ -7,14 +7,14 @@ Preferred entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use 
 
 The executor test skill lives at `.codex/skills/build-and-test/SKILL.md`; use it between implementation and final verification.
 
-Use `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh` to inspect `.beads/workflow/`, the shared control plane, and Beads backend state. Use `scripts/windows/agent-mail.ps1` or `scripts/posix/agent-mail.sh` for shared epic locks, reservations, and mailbox inspection. Use `start-epic-worktree` or native `bd worktree create` for epic worktrees; do not use raw `git worktree add`.
+Use `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh` to inspect `.beads/workflow/`, the shared control plane, and Beads backend state. Use `scripts/windows/agent-mail.ps1` or `scripts/posix/agent-mail.sh` for shared epic locks, reservations, and mailbox inspection.
 
 ## Issue Tracking With `bd`
 
 - Use `bd` for all issue tracking
 - Do not use markdown TODO files, TodoWrite, or alternate trackers
 - Live `.beads` state is local-only and should not be committed
-- Worktrees share the main checkout’s `.beads` through Beads redirect files
+- Run one top-level epic executor session at a time in a checkout
 
 ## Essential Commands
 
@@ -25,13 +25,13 @@ bd create --title="Summary" --description="Details" --type=task|bug|feature|epic
 bd update <id> --status=in_progress
 bd close <id> --reason="Completed"
 bd dep add <child-id> <parent-id>
-bd worktree create <name> --branch epic/<epic-id>
+git checkout -b epic/<epic-id>
 ```
 
 ## Notes
 
 - Epics must use `--type=epic`
 - Check `bd ready` before asking what to work on next
-- Different sessions may coordinate with Agent Mail across worktrees, but only the coordinator updates bead status during swarm execution
-- If a worktree cannot open the Beads database, inspect `bd where` and recreate the worktree with `bd worktree create` or run `bd bootstrap --yes` from the main checkout
+- `swarm-epic` may coordinate workers inside one epic, but only the coordinator updates bead status during swarm execution
+- If the current checkout cannot open the Beads database, inspect `bd where` and run `bd bootstrap --yes` before continuing
 <!-- END TEMPLATE BD WORKFLOW -->

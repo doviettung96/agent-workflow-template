@@ -12,4 +12,4 @@
    - `bd where`
    - `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh`
 5. Confirm repo-specific `build-and-test` is correct.
-6. For epic parallel work, use `start-epic-worktree` or `bd worktree create`.
+6. For epic swarm work, run one top-level epic executor session at a time in the checkout.

@@ -1,4 +1,4 @@
-﻿---
+---
 name: finishing-a-development-branch
 description: "Use after all work on a feature branch is complete and verified. Pushes the branch and creates a PR targeting main."
 ---
@@ -58,8 +58,8 @@ Branch: <branch-name>
 ## Hard Rules
 
 - Never force-push unless the user explicitly asks
-- Never delete the remote branch â€” let the PR merge process handle that
-- Never merge locally â€” the PR is the merge mechanism
+- Never delete the remote branch — let the PR merge process handle that
+- Never merge locally — the PR is the merge mechanism
 - If `gh` is not available, push the branch and report the branch name for manual PR creation
 
 ## Quick Reference
@@ -74,16 +74,15 @@ Branch: <branch-name>
 
 ## Beads Runtime Discipline
 
-- Before checking `git status`, confirm the worktree still resolves the Beads database with `bd where`.
+- Before checking `git status`, confirm the current checkout still resolves the Beads database with `bd where`.
 - Treat Beads as local runtime. Do not try to publish live `.beads` state through Git during normal branch completion.
-- If `bd where` fails, stop and repair the worktree or main checkout before pushing or creating a PR.
+- If `bd where` fails, stop and repair the checkout with `bd bootstrap --yes` before pushing or creating a PR.
 
 ## Integration
 
 **Called by:**
-- **`executor-loop-epic`** â€” after all beads in the epic are closed
+- **`executor-loop-epic`** — after all beads in the epic are closed
 - Any workflow that completes work on a feature branch
 
 **Pairs with:**
-- **`build-and-test`** â€” must pass before invoking this skill
-
+- **`build-and-test`** — must pass before invoking this skill

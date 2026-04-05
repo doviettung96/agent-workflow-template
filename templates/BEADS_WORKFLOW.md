@@ -4,12 +4,9 @@ This repo uses **`bd`** for task state and selected execution-quality skills for
 
 ## Local-Only Beads Model
 
-- The main checkout owns the live `.beads/` database.
-- Epic worktrees are created with `bd worktree create` via `start-epic-worktree`.
-- Worktrees share the main checkout’s `.beads` through Beads redirect files.
+- The current checkout owns the live `.beads/` database.
 - Live Beads state is local to this clone and is not shared through Git.
-
-Do not create epic worktrees with raw `git worktree add`. Use the helper so the Beads redirect is set up correctly.
+- Run one top-level epic executor session at a time in a clone to avoid shared-checkout Git conflicts.
 
 ## Workflow Skills
 
@@ -20,7 +17,6 @@ Codex and Claude Code can enter the workflow through repo-local skills installed
 - `executor-loop`
 - `executor-loop-epic`
 - `swarm-epic`
-- `start-epic-worktree`
 - `review-epic`
 
 When an executor skill stops on a blocker, continue in normal chat by telling the agent to resume or continue the blocked bead in the same session.
@@ -59,7 +55,7 @@ Use `swarm-epic <epic-id>` when one epic has multiple ready descendants that can
 Default composition:
 
 1. `swarm-epic`
-2. `start-epic-worktree` if not already in the correct epic worktree
+2. create or check out branch `epic/<epic-id>` in the current checkout
 3. coordinator assigns work and owns bead-state changes
 4. `execute-bead-worker` for worker execution
 5. final repo-local `build-and-test`
@@ -71,24 +67,24 @@ In swarm mode:
 - only the coordinator mutates Beads state
 - workers implement, verify, and report
 - Agent Mail owns epic locks, file reservations, and message threads
-- local `.beads/workflow/` stores worktree-local runtime and handoff state
+- local `.beads/workflow/` stores checkout-local runtime and handoff state
 
 ## Session Boundaries
 
 - Planner sessions do not write code.
 - Manual executor sessions do not re-plan the whole project.
 - Epic swarm sessions stay inside one epic.
-- Multiple executor sessions can run in parallel on different worktrees when file reservations permit it.
+- Do not run multiple top-level code-writing epic sessions in the same checkout at the same time.
 
 ## Branch and PR Workflow
 
-- Do code work on feature branches and epic worktrees.
+- Do code work on feature branches.
 - Open pull requests instead of merging locally.
 - Beads state itself is local-only; code moves through Git, not Beads exports.
-- `finishing-a-development-branch` handles push, PR creation, and worktree cleanup.
+- `finishing-a-development-branch` handles push and PR creation.
 
 ## Operational Notes
 
-- Run `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh` to inspect worktree runtime plus Agent Mail state.
-- If a worktree cannot find the Beads database, check `bd where` and `bd context`, then recreate the worktree with `start-epic-worktree` or run `bd bootstrap --yes` from the main checkout.
+- Run `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh` to inspect checkout runtime plus Agent Mail state.
+- If `bd where` or `bd context` fails in the current checkout, repair the repo with `bd bootstrap --yes` before continuing.
 - Use `bd ready` before asking what to work on next.

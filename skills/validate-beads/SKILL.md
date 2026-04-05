@@ -1,4 +1,4 @@
-﻿---
+---
 name: validate-beads
 description: "Validate a planned epic before autonomous execution. Use after beads-planner and before swarm-epic to check dependency quality, bead size, file scope, verification instructions, and parallel-safety notes."
 ---
@@ -41,7 +41,7 @@ Catch planning defects before workers start coding. This is a planner-side valid
 7. If the epic passes:
    - report that the epic is validated for swarm execution
    - identify the first ready descendants or likely first wave
-   - recommend `start-epic-worktree` followed by `swarm-epic`
+   - recommend `swarm-epic`
 
 ## Hard Rules
 
@@ -49,4 +49,3 @@ Catch planning defects before workers start coding. This is a planner-side valid
 - Do not implement code.
 - Do not approve a swarm run while any bead is missing `Files` or `Verify`.
 - When in doubt about parallel safety, fail closed and mark the work as sequential.
-

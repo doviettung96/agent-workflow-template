@@ -59,6 +59,7 @@ find "${template_root}/skills" -mindepth 1 -maxdepth 1 -type d | while read -r s
   cp -R "${src}" "${dst}"
   printf 'Copied Codex skill: %s\n' "${name}"
 done
+rm -rf "${repo_path}/.codex/skills/start-epic-worktree"
 
 mkdir -p "${repo_path}/.claude/skills"
 if [[ ! -d "${repo_path}/.claude/skills/build-and-test" ]]; then
@@ -75,21 +76,22 @@ find "${template_root}/skills" -mindepth 1 -maxdepth 1 -type d | while read -r s
   cp -R "${src}" "${dst}"
   printf 'Copied Claude skill: %s\n' "${name}"
 done
+rm -rf "${repo_path}/.claude/skills/start-epic-worktree"
 
 mkdir -p "${repo_path}/scripts/windows" "${repo_path}/scripts/posix" "${repo_path}/scripts/shared"
 cp "${template_root}/scripts/windows/workflow-status.ps1" "${repo_path}/scripts/windows/workflow-status.ps1"
 cp "${template_root}/scripts/windows/agent-mail.ps1" "${repo_path}/scripts/windows/agent-mail.ps1"
-cp "${template_root}/scripts/windows/start-epic-worktree.ps1" "${repo_path}/scripts/windows/start-epic-worktree.ps1"
 rm -f "${repo_path}/scripts/windows/shared-beads.ps1"
+rm -f "${repo_path}/scripts/windows/start-epic-worktree.ps1"
 cp "${template_root}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/workflow-status.sh"
 cp "${template_root}/scripts/posix/agent-mail.sh" "${repo_path}/scripts/posix/agent-mail.sh"
-cp "${template_root}/scripts/posix/start-epic-worktree.sh" "${repo_path}/scripts/posix/start-epic-worktree.sh"
 rm -f "${repo_path}/scripts/posix/shared-beads.sh"
-chmod +x "${repo_path}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/agent-mail.sh" "${repo_path}/scripts/posix/start-epic-worktree.sh"
+rm -f "${repo_path}/scripts/posix/start-epic-worktree.sh"
+chmod +x "${repo_path}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/agent-mail.sh"
 cp "${template_root}/scripts/shared/agent_mail.py" "${repo_path}/scripts/shared/agent_mail.py"
-cp "${template_root}/scripts/shared/start_epic_worktree.py" "${repo_path}/scripts/shared/start_epic_worktree.py"
 cp "${template_root}/scripts/shared/manage_instructions.py" "${repo_path}/scripts/shared/manage_instructions.py"
 rm -f "${repo_path}/scripts/shared/shared_beads.py"
+rm -f "${repo_path}/scripts/shared/start_epic_worktree.py"
 printf 'Copied script helpers\n'
 
 mkdir -p "${repo_path}/docs"
