@@ -35,6 +35,7 @@ Use this when the downstream repo is brand new or too empty to infer a runtime p
 
 - bootstrap the repo with the template script
 - install the general workflow docs and skills
+- create one standalone stage-2 bootstrap bead for specializing `build-and-test`
 - use `plan-beads` immediately to create the first plan and beads
 - rely on the generic stage-1 `build-and-test`, which executes the `## Verification` commands from each execution plan without guessing the stack
 
@@ -109,7 +110,7 @@ macOS/Linux:
 bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo myproj
 ```
 
-The bootstrap script initializes git if needed, initializes Beads locally with `bd`, installs Codex integration, then scaffolds the workflow docs, skills, and helper scripts into the repo.
+The bootstrap script initializes git if needed, initializes Beads locally with `bd`, installs Codex integration, scaffolds the workflow docs, skills, and helper scripts into the repo, and creates one standalone stage-2 follow-up bead for specializing `build-and-test`.
 
 ### 2. Plan the first work
 

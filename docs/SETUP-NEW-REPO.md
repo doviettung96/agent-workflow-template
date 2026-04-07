@@ -16,6 +16,7 @@ Use this guide when starting a downstream repo from scratch or when a repo is st
    - runs `bd init -p <prefix> --server --skip-agents --skip-hooks`
    - runs `bd setup codex`
    - scaffolds the shared workflow docs, skills, and helper scripts
+   - creates one standalone stage-2 bead for specializing `build-and-test`
 4. Verify the repo is ready:
    - `bd where`
    - `bd ready --json`
@@ -32,6 +33,7 @@ You do not need project-specific skills yet.
    - `beads-planner`
 2. Let the first planning pass define the runtime shape, likely files, and verification needs.
 3. Make sure early execution plans include a precise `## Verification` section with exact commands and expected evidence. The stage-1 `build-and-test` skill depends on that section and will not guess.
+4. Keep the bootstrap-created `Specialize build-and-test for this repo` bead independent. Do not make it a child of the first feature epic.
 
 ## Stage 2: Project-Specific Customization
 

@@ -11,12 +11,15 @@
    - `bd ready --json`
    - `bd where`
    - `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh`
-4. Use the general planner flow immediately, even in an empty repo:
+4. Confirm the standalone bootstrap bead exists:
+   - `Specialize build-and-test for this repo`
+5. Use the general planner flow immediately, even in an empty repo:
    - `plan-beads`
    - `brainstorming`
    - `planner-research` if needed
    - `beads-planner`
-5. Ensure the first execution plans include an exact `## Verification` section because the stage-1 `build-and-test` skill is generic and follows the plan literally.
+6. Keep the bootstrap-created build-and-test specialization bead independent; do not nest it under the first feature epic.
+7. Ensure the first execution plans include an exact `## Verification` section because the stage-1 `build-and-test` skill is generic and follows the plan literally.
 
 ## Stage 2: Project-Specific Specialization
 

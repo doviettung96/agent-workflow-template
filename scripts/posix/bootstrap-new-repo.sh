@@ -29,4 +29,5 @@ printf 'Prefix: %s\n' "${prefix}"
 )
 
 bash "${script_dir}/scaffold-repo-files.sh" "${repo_path}" "${prefix}"
+python "${script_dir}/../shared/ensure_stage1_beads.py" "${repo_path}"
 printf 'Bootstrap complete.\n'
