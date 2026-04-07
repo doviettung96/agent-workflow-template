@@ -1,4 +1,4 @@
-﻿---
+---
 name: review-epic
 description: "Run an epic-level review after swarm or sequential epic execution. Use after all intended child beads are complete to classify remaining issues as P1, P2, or P3 and decide whether the epic can close or needs follow-up beads."
 ---

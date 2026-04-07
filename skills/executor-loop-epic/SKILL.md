@@ -1,4 +1,4 @@
-﻿---
+---
 name: executor-loop-epic
 description: "Run repeated manual executor cycles scoped to a single epic: pick the next ready descendant bead under that epic, execute it, then continue until the epic has no ready descendants or a blocker requires user input. Use when the user wants sequential epic progress without swarm coordination."
 ---

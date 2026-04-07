@@ -1,4 +1,4 @@
-﻿---
+---
 name: beads-close
 description: "Use after implementation and verification are complete to close the bead, create follow-up beads, and commit the updated `.beads/` state. This is the final step of a manual executor session."
 ---

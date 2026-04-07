@@ -1,4 +1,4 @@
-﻿---
+---
 name: plan-beads
 description: "Run a planner-only Beads session: brainstorm, produce or confirm an execution plan, get user approval, then create beads and stop. Use when the user wants to turn a current problem or topic into Beads without implementing."
 ---

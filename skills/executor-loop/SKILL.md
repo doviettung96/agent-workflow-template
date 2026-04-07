@@ -1,4 +1,4 @@
-﻿---
+---
 name: executor-loop
 description: "Run repeated manual executor cycles bead-by-bead until the ready queue is exhausted or a blocker requires user input. Use when the user wants sequential autonomous progress without swarm coordination."
 ---

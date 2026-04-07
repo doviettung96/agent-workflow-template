@@ -1,4 +1,4 @@
-﻿---
+---
 name: beads-claim
 description: "Use at the start of a manual executor session to find and claim a ready bead. Do not invoke in planner sessions or inside swarm workers."
 ---

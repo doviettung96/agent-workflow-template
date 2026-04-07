@@ -1,4 +1,4 @@
-﻿---
+---
 name: beads-planner
 description: "Break a discussed or approved problem into Beads epics and tasks with clear dependencies and validation work. Use when the user wants to turn a problem statement, planning discussion, or approved execution plan into a Beads structure instead of ad-hoc TODOs."
 ---
