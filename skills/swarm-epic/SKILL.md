@@ -24,11 +24,10 @@ Drive an epic to completion while keeping the current checkout's local `bd`/`.be
 4. Ensure the epic has passed `validate-beads`. In the normal flow this should already be true because `plan-beads` ends with validation. If the epic has not been validated, stop and run that gate first.
 5. Ensure the current checkout is on branch `epic/<epic-id>`:
    - if already on `epic/<epic-id>`, continue
-   - otherwise inspect tracked dirtiness with `git diff --quiet` and `git diff --cached --quiet`
-   - if tracked or staged changes exist, stop and tell the user to commit, stash, or clean them before branch switching
-   - untracked-only local artifacts do not block branch switching by themselves
-   - if `git checkout -b epic/<epic-id>` or `git checkout epic/<epic-id>` fails because an untracked path would be overwritten, stop and tell the user exactly which paths must be moved, ignored, or cleaned
-   - if no tracked or staged changes block the switch, create or switch to branch `epic/<epic-id>`
+   - otherwise inspect local changes with `git status --short`
+   - local tracked, staged, or untracked changes do not block by themselves; if present, warn that the epic branch will inherit them if the checkout succeeds
+   - attempt to create or switch to branch `epic/<epic-id>`
+   - if `git checkout -b epic/<epic-id>` or `git checkout epic/<epic-id>` fails because a tracked or untracked path would be overwritten, stop and tell the user exactly which paths must be committed, stashed, moved, or cleaned
 6. Confirm the current checkout resolves the Beads database correctly:
    ```bash
    bd where
