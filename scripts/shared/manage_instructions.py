@@ -8,6 +8,7 @@ from pathlib import Path
 
 LEGACY_BLOCKS = [
     ("<!-- BEGIN BEADS INTEGRATION -->", "<!-- END BEADS INTEGRATION -->"),
+    ("<!-- BEGIN BEADS INTEGRATION v:", "<!-- END BEADS INTEGRATION -->"),
     ("<!-- br-agent-instructions-v", "<!-- end-br-agent-instructions -->"),
     ("<!-- bv-agent-instructions-v", "<!-- end-bv-agent-instructions -->"),
     ("<!-- BEGIN TEMPLATE BR WORKFLOW -->", "<!-- END TEMPLATE BR WORKFLOW -->"),
