@@ -34,19 +34,13 @@ py -3 --version
 
 ## Per-Repo Setup
 
-In each new repo:
-
-```powershell
-bd init -p yourprefix --server --non-interactive --role maintainer --skip-agents --skip-hooks
-bd setup codex
-bd setup claude --check
-```
-
-Then scaffold the workflow files:
-
 ```powershell
 pwsh -File .\scripts\windows\bootstrap-new-repo.ps1 -RepoPath D:\path\to\repo -Prefix yourprefix
 ```
+
+The bootstrap script initializes git if needed, runs `bd init -p yourprefix --server --skip-agents --skip-hooks`, installs Codex integration, and scaffolds the shared workflow files.
+
+For the full stage-1 then stage-2 adoption flow, see [SETUP-NEW-REPO.md](SETUP-NEW-REPO.md).
 
 ## Migrate an Existing `br` Repo
 

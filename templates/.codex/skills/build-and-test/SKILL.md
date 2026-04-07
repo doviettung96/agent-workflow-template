@@ -1,166 +1,132 @@
 ---
 name: build-and-test
-description: "Use after implementing code changes to build the PyInstaller bundle, launch the exe, and test via API endpoints. Only rebuild when runtime code changed."
+description: "Use after implementing changes to run the exact verification commands from the current execution plan. This stage-1 version is intentionally generic and should be specialized per repo once the runtime workflow is clear."
 ---
 
 # Build and Test
 
 **Workflow position:** Executor session, between implementation (step 3) and verification (step 6). See BEADS_WORKFLOW.md.
 
-Build, launch, and test only the components affected by the current changes.
+Validate only the components affected by the current changes.
 
-> **CUSTOMIZE THIS SKILL** for your project. The defaults below assume a
-> PyInstaller-bundled Python bot with a FastAPI server — the common pattern
-> for game automation projects. Adjust the spec file, exe name, port, and
-> endpoints to match your project.
+This scaffold is the **stage 1** validator for a brand-new repo. It does not assume a stack, runtime, package manager, build tool, or deployment shape.
 
-## Project Config
+Once the repo has a stable runtime workflow, replace this generic version with a repo-specific one that knows the normal build, serve, launch, and smoke-test path.
 
-<!-- Update these for your project -->
-| Setting | Value |
-|---|---|
-| Spec file | `launcher.spec` |
-| Output exe | `dist/BotName.exe` |
-| API port | `8787` |
-| Launch args | (none by default) |
+## Core Rule
+
+Run the **exact commands** from the current plan's `## Verification` section. Do not invent substitute commands because they "seem right."
 
 ## Steps
 
 ### 1. Find the test plan
 
-Read the `## Verification` section of the execution plan saved in `docs/plans/`. This tells you exactly what to build, deploy, and test. If no plan file exists, fall back to the smoke tests below.
+Read the `## Verification` section of the execution plan saved in `docs/plans/`.
+
+That section must tell you:
+
+- what to build
+- what to launch or deploy
+- what commands to run
+- what output or observed behavior counts as success
+
+If there is no plan file, or the plan has no usable `## Verification` section, stop and say the plan must be updated before `build-and-test` can run.
 
 ### 2. Detect what changed
 
 ```bash
 git diff --name-only HEAD
 ```
+
 If nothing staged, also check unstaged:
+
 ```bash
 git diff --name-only
 ```
 
-### 3. Decide if a rebuild is needed
+### 3. Decide whether validation is required
 
-A rebuild is needed when runtime Python code, the entry point, the spec file, or bundled assets changed. A rebuild is NOT needed when only documentation, tests, or non-runtime config changed.
+Use the change list plus the verification plan to decide what to run.
 
-<!-- Customize this table for your project's directory layout -->
 | Changed path | Action |
 |---|---|
-| `app/` | Rebuild — bot logic changed |
-| `launcher.py` | Rebuild — entry point changed |
-| `launcher.spec` | Rebuild — bundle config changed |
-| `deploy.py` | Rebuild — deploy logic changed |
-| `tools/` | Rebuild — runtime tools changed |
-| `docs/`, `*.md` | Skip — no rebuild needed |
+| Only docs, bead metadata, or notes changed | Skip runtime validation unless the plan explicitly requires it |
+| Tests changed without runtime behavior changes | Run the test commands from the plan |
+| App/runtime/build/deploy files changed | Run the full verification commands from the plan |
 
-### 4. Build the bundle
+### 4. Validate the verification contract before running anything
 
-```bash
-pyinstaller launcher.spec
-```
+Before executing commands, confirm the plan is specific enough.
 
-Output: `dist/BotName.exe`
+The `## Verification` section should include exact commands and expected evidence, such as:
 
-### 5. Clean state (REQUIRED before every launch)
+- working directory when it matters
+- env vars or prerequisites when required
+- build command
+- launch or serve command
+- smoke-test commands such as `curl`, `npm test`, `pytest`, or browser checks
+- URLs, ports, endpoints, files, or logs to inspect
+- success criteria written as observed output or behavior
 
-You MUST stop everything before launching. Do not skip any of these:
+If the plan says vague things like "run the app" or "make sure it works," stop and send the work back to `writing-plans` to tighten the verification section.
 
-```bash
-# 1. Stop the bot exe explicitly by name
-taskkill /F /IM BotName.exe 2>/dev/null || true
+### 5. Run the plan's verification commands in order
 
-# 2. Stop the game/app on all connected devices
-for serial in $(adb devices | grep -w device | awk '{print $1}'); do
-  adb -s "$serial" shell am force-stop <package>
-done
-```
+Use the commands exactly as written in the current plan.
 
-Wait a moment for ports to free up.
+Examples of acceptable stage-1 verification flows:
 
-### 6. Launch the exe
+- `npm run build`, `npm run preview`, then `curl http://127.0.0.1:4173/health`
+- `pytest tests/viewer/test_session.py -q`
+- `docker compose up -d`, then `curl http://localhost:3000/api/status`
+- start a local server and inspect the UI in a browser if the plan explicitly says to do that
 
-> **IMPORTANT:** You MUST have killed all previous instances (step 5) before launching. If you skip this, the new instance will fail to bind ports or behave unpredictably.
+When the plan requires manual observation, record what you actually saw. Do not replace it with a lighter automated check unless the plan explicitly allows that.
 
-```bash
-./dist/BotName.exe &
-```
+### 6. Capture evidence while running
 
-Wait for the API server to become available:
-```bash
-for i in $(seq 1 30); do
-  curl -s http://localhost:8787/ping && break
-  sleep 2
-done
-```
+For each verification command, note:
 
-**If the bot exits immediately (no devices found):** This is NOT a blocker. Do not stop and report "no devices." Instead:
+- the command you ran
+- exit code
+- relevant output
+- any observed UI behavior or logs the plan required
+- whether the result matched the stated success criteria
 
-1. Verify emulators/devices are running:
-   ```bash
-   adb devices
-   ```
-2. If devices are listed but bot still fails, run clean state again (step 5) — kill the bot exe, force-stop games on all devices — then relaunch.
-3. If no devices show up in `adb devices`, THEN report the issue and ask the user to start emulators.
+Do not summarize failed checks as "mostly passed." Report the failing step precisely.
 
-### 7. Smoke tests (always)
+### 7. Report results
 
-```bash
-curl -s http://localhost:8787/ping
-curl -s http://localhost:8787/status
-```
+State exactly what was validated and what evidence you saw.
 
-Both must return valid JSON responses.
+Minimum report contents:
 
-### 8. Live session test (when logic changed)
+- changed areas that triggered validation
+- verification commands executed
+- observed outputs and behavior
+- pass/fail status for each major check
+- blockers or plan gaps, if any
 
-If the bead changed runtime logic (bot behavior, automation flows, API handlers, deploy/injection), you MUST run a live session test. Do not settle for "API returns 200" — you must observe the actual behavior.
+Do NOT claim success without evidence.
 
-Skip this step only when changes are purely structural (refactoring with no behavior change, documentation, config that doesn't affect runtime).
+### 8. Stage 2 specialization trigger
 
-**Procedure:**
+If you notice the same build, launch, and smoke-test sequence repeating across beads, that is a signal to specialize this repo-local skill.
 
-1. **Kill the running game/app on the device** (if applicable):
-   ```bash
-   adb -s <serial> shell am force-stop <package>
-   ```
+Typical stage-2 specialization examples:
 
-2. **Stop the bot if running:**
-   ```bash
-   taskkill /F /IM BotName.exe 2>/dev/null || true
-   ```
-
-3. **Launch a fresh bot session:**
-   ```bash
-   ./dist/BotName.exe &
-   ```
-   Wait for the API server and device connection (poll `/ping` and `/devices`).
-
-4. **Trigger the automation flow being tested** via API — use whatever the verification plan specifies.
-
-5. **Watch the logs and poll status** to verify the behavior is correct. Keep polling for a reasonable duration (30-60s depending on the flow) to confirm the automation actually progresses, not just starts.
-
-6. **Check results against the verification plan.** The execution plan's `## Verification` section defines exactly what success looks like — match observed behavior against it.
-
-### 9. Report results
-
-State what was built, launched, and tested with **actual observed behavior** — log output, status responses, and whether the app performed the expected actions. Do NOT claim success without evidence.
-
-### 10. Cleanup
-
-After testing, stop the bot:
-```bash
-taskkill /F /IM BotName.exe 2>/dev/null || true
-```
+- web app: `npm run build`, `npm run preview`, HTTP smoke checks, browser inspection
+- CLI tool: package build plus command-line smoke tests
+- service: compose or process launch plus API health checks
+- device app: app launch plus live-device smoke tests
 
 ## Fix-and-Retry Loop
 
-If tests fail or behavior is wrong, do NOT proceed to final verification. Instead:
+If validation fails or behavior is wrong, do NOT proceed to final verification. Instead:
 
-1. Stop the running bot
-2. Fix the code (go back to implementation)
-3. Re-invoke `build-and-test`
-4. Repeat until tests pass
+1. Fix the code or the verification plan
+2. Re-run `build-and-test`
+3. Repeat until the checks pass
 
 ```
 implement → build-and-test → FAIL → fix code → build-and-test → PASS → verification
@@ -171,7 +137,7 @@ Only proceed to final verification when `build-and-test` passes.
 ## Skip Conditions
 
 Do NOT trigger this skill when:
-- Only documentation files changed (`*.md`, `docs/`)
-- Only config files changed that do not affect runtime
-- In a planner session
-- The user explicitly says no testing is needed
+
+- the user explicitly says no testing is needed
+- in a planner session
+- only planner artifacts changed and the current plan does not require validation

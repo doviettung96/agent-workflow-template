@@ -119,9 +119,6 @@ def main(argv: list[str]) -> int:
         prefix,
         "--server",
         "--from-jsonl",
-        "--non-interactive",
-        "--role",
-        "maintainer",
         "--skip-agents",
         "--skip-hooks",
     )

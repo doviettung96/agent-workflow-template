@@ -4,9 +4,9 @@ Reusable Beads workflow scaffold for Codex and Claude, standardized on local-onl
 
 This template repo is intentionally self-contained:
 
-- `skills/` contains the workflow skills scaffolded into each repo
+- `skills/` contains the shared workflow skills scaffolded into each repo
 - `templates/` contains repo-local files and snippets
-- `templates/.codex/skills/build-and-test/` contains the starter Codex testing skill
+- `templates/.codex/skills/build-and-test/` contains the generic stage-1 validator that downstream repos can later specialize
 - `scripts/windows/` and `scripts/posix/` provide setup, migration, and sync helpers
 - `docs/` contains install and troubleshooting notes
 
@@ -14,19 +14,55 @@ This template repo is intentionally self-contained:
 
 Install once per machine:
 
-- `bd` 1.0.0+
+- `bd`
 - `dolt`
 - Python (for Agent Mail and workflow helpers)
 
 Initialize per repo:
 
-- `bd init -p <prefix> --server --non-interactive --role maintainer --skip-agents --skip-hooks`
+- `bd init -p <prefix> --server --skip-agents --skip-hooks`
 - `bd setup codex`
-- `bd setup claude --check`
 - `BEADS_WORKFLOW.md`
 - `.codex/skills/`
 - `.claude/skills/`
 - `AGENTS.md` and `CLAUDE.md` managed snippets
+
+## Two-Stage Adoption
+
+### Stage 1: General workflow bootstrap
+
+Use this when the downstream repo is brand new or too empty to infer a runtime profile.
+
+- bootstrap the repo with the template script
+- install the general workflow docs and skills
+- use `plan-beads` immediately to create the first plan and beads
+- rely on the generic stage-1 `build-and-test`, which executes the `## Verification` commands from each execution plan without guessing the stack
+
+### Stage 2: Project-specific specialization
+
+Do this after the first real plan or bead set makes the repo's runtime shape obvious.
+
+- specialize repo-local `build-and-test`
+- add repo-specific setup or operational docs
+- keep the shared workflow skills synced from this template
+
+## General vs Project-Specific Downstream Files
+
+General downstream files:
+
+- `BEADS_WORKFLOW.md`
+- `.beads/PRIME.md`, `.beads/README.md`
+- managed workflow blocks in `AGENTS.md` and `CLAUDE.md`
+- `.codex/skills/` and `.claude/skills/` copied from `skills/`
+- helper scripts under `scripts/`
+- `docs/TROUBLESHOOTING.md`
+
+Project-specific downstream files:
+
+- the repo-local specialized `build-and-test`
+- any repo-context prose outside the managed workflow blocks
+- runtime-specific setup, deployment, or smoke-test docs
+- handoff files such as `LOCAL_WORKFLOW_SETUP.md`
 
 ## Recommended Workflow
 
@@ -73,9 +109,20 @@ macOS/Linux:
 bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo myproj
 ```
 
-The bootstrap script initializes Beads locally with `bd`, then scaffolds the workflow docs, skills, and helper scripts into the repo.
+The bootstrap script initializes git if needed, initializes Beads locally with `bd`, installs Codex integration, then scaffolds the workflow docs, skills, and helper scripts into the repo.
 
-### 2. Update workflow files in an existing repo
+### 2. Plan the first work
+
+Use the planner flow immediately, even if the repo is mostly empty:
+
+1. `plan-beads`
+2. `brainstorming`
+3. `planner-research` only when facts still matter
+4. `beads-planner`
+
+Make the first execution plans explicit about `## Verification`, because the stage-1 `build-and-test` skill follows that section literally.
+
+### 3. Update workflow files in an existing repo
 
 Windows:
 
@@ -89,7 +136,7 @@ macOS/Linux:
 bash ./scripts/posix/update-skills.sh /path/to/repo
 ```
 
-### 3. Migrate an existing `br` repo back to `bd`
+### 4. Migrate an existing `br` repo back to `bd`
 
 Windows:
 
@@ -112,18 +159,21 @@ This template's `skills/` directory is the source of truth for workflow skills. 
 - `.codex/skills/`
 - `.claude/skills/`
 
-When updating a skill:
+When updating a shared workflow skill:
 
 1. Edit `skills/<name>/` in this template repo
 2. Run `update-skills` against each target repo
 
-Do not hand-edit skill copies in downstream repos unless you intentionally want a repo-specific divergence.
+Do not hand-edit shared skill copies in downstream repos unless you intentionally want a repo-specific divergence.
+
+The intended repo-specific divergence is the local `build-and-test` skill. `update-skills` preserves an existing downstream `build-and-test` so stage-2 customization survives template syncs.
 
 ## Install Guides
 
 - Windows: [docs/INSTALL-WINDOWS.md](docs/INSTALL-WINDOWS.md)
 - macOS: [docs/INSTALL-MACOS.md](docs/INSTALL-MACOS.md)
 - Ubuntu/Linux: [docs/INSTALL-UBUNTU.md](docs/INSTALL-UBUNTU.md)
+- New repo walkthrough: [docs/SETUP-NEW-REPO.md](docs/SETUP-NEW-REPO.md)
 
 ## Template Contents
 
@@ -132,7 +182,7 @@ Do not hand-edit skill copies in downstream repos unless you intentionally want 
 - `skills/swarm-epic/`
   Epic-scoped multi-agent execution
 - `templates/.codex/skills/build-and-test/SKILL.md`
-  Starter Codex testing skill scaffolded into each target repo
+  Generic stage-1 validation skill scaffolded into each target repo
 - `templates/AGENTS.snippet.md`
   Managed snippet for `AGENTS.md`
 - `templates/CLAUDE.snippet.md`
@@ -144,7 +194,6 @@ Do not hand-edit skill copies in downstream repos unless you intentionally want 
 
 - `bd init` is per repo.
 - `bd setup codex` is per repo.
-- `bd setup claude --check` verifies project-local Claude integration.
 - The scaffolding scripts do not use Dolt remotes.
 - Live `.beads` runtime is local-only and should not be committed.
 

@@ -11,7 +11,7 @@ prefix="${2:-}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 template_root="$(cd "${script_dir}/../.." && pwd)"
 
-"${script_dir}/check-prereqs.sh"
+bash "${script_dir}/check-prereqs.sh"
 
 python_cmd=""
 if command -v python3 >/dev/null 2>&1; then
@@ -29,7 +29,7 @@ if [[ -n "${prefix}" ]]; then
 fi
 
 "${python_cmd}" "${template_root}/scripts/shared/migrate_br_to_bd.py" "${args[@]}"
-"${script_dir}/scaffold-repo-files.sh" "${repo_path}" "${prefix}"
+bash "${script_dir}/scaffold-repo-files.sh" "${repo_path}" "${prefix}"
 
 (cd "${repo_path}" && bd list --json >/dev/null)
 printf 'Migrated %s to bd/local Dolt\n' "${repo_path}"

@@ -49,13 +49,17 @@ Write-Host "Copied .beads/README.md"
 
 $workflowDestination = Join-Path $beadsDir "workflow"
 New-Item -ItemType Directory -Force -Path $workflowDestination | Out-Null
-Get-ChildItem -Path $workflowStateSource -File | ForEach-Object {
-    $destination = Join-Path $workflowDestination $_.Name
-    if (-not (Test-Path $destination)) {
-        Copy-Item -Force $_.FullName $destination
+if (Test-Path $workflowStateSource) {
+    Get-ChildItem -Path $workflowStateSource -File | ForEach-Object {
+        $destination = Join-Path $workflowDestination $_.Name
+        if (-not (Test-Path $destination)) {
+            Copy-Item -Force $_.FullName $destination
+        }
     }
+    Write-Host "Seeded missing .beads/workflow/*"
+} else {
+    Write-Host "No .beads/workflow seed files in template; skipped"
 }
-Write-Host "Seeded missing .beads/workflow/*"
 
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath ".codex\skills") | Out-Null
 if (-not (Test-Path (Join-Path $RepoPath ".codex\skills\build-and-test"))) {

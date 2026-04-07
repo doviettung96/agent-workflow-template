@@ -35,14 +35,18 @@ printf 'Copied .beads/.gitignore\n'
 printf 'Copied .beads/README.md\n'
 
 mkdir -p "${repo_path}/.beads/workflow"
-find "${template_root}/templates/.beads/workflow" -maxdepth 1 -type f | while read -r src; do
-  name="$(basename "${src}")"
-  dst="${repo_path}/.beads/workflow/${name}"
-  if [[ ! -f "${dst}" ]]; then
-    cp "${src}" "${dst}"
-  fi
-done
-printf 'Seeded missing .beads/workflow/*\n'
+if [[ -d "${template_root}/templates/.beads/workflow" ]]; then
+  find "${template_root}/templates/.beads/workflow" -maxdepth 1 -type f | while read -r src; do
+    name="$(basename "${src}")"
+    dst="${repo_path}/.beads/workflow/${name}"
+    if [[ ! -f "${dst}" ]]; then
+      cp "${src}" "${dst}"
+    fi
+  done
+  printf 'Seeded missing .beads/workflow/*\n'
+else
+  printf 'No .beads/workflow seed files in template; skipped\n'
+fi
 
 mkdir -p "${repo_path}/.codex/skills"
 if [[ ! -d "${repo_path}/.codex/skills/build-and-test" ]]; then

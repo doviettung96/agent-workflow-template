@@ -116,6 +116,16 @@ Include:
 - **How to deploy** - exact deploy commands
 - **What to test** - specific API calls, expected responses, or observable behaviors
 - **Success criteria** - what output or behavior means "it works"
+- **Working directory and prerequisites** - when commands must run from a specific directory, need env vars, require a device, container, browser, fixture data, or seeded state
+
+The verification section must be executable without guesswork. Assume the repo is still using the generic stage-1 `build-and-test` skill unless a repo-specific specialization already exists.
+
+That means:
+- write exact shell commands, not summaries
+- include URLs, ports, endpoints, paths, and process names when relevant
+- name the expected output, status code, DOM text, screenshot cue, or log line
+- say when manual browser inspection is required and what to look for
+- state whether a missing optional dependency such as a live device should fail the bead or downgrade the check to a skipped optional smoke test
 
 Example:
 ````markdown
@@ -134,6 +144,8 @@ Example:
 ````
 
 Without this section, `build-and-test` will not know what to verify. Make it specific to the bead.
+
+If you notice the same verification sequence repeating across multiple beads, that is a signal to specialize the repo-local `build-and-test` skill as stage 2 work.
 
 ## Remember
 
@@ -167,5 +179,4 @@ After saving the plan:
 
 **When proceeding:** Use Codex subagents when they help, with code review (`requesting-code-review`) after each major task.
 
-**After implementation is complete:** Invoke `build-and-test` (read `.codex/skills/build-and-test/SKILL.md` and follow it). The skill itself decides whether a rebuild and live test are needed based on what changed. If `build-and-test` fails, fix the implementation and re-run it before moving to verification. Do NOT skip this step.
-
+**After implementation is complete:** Invoke `build-and-test` (read `.codex/skills/build-and-test/SKILL.md` and follow it). The skill executes the verification contract from the plan and may be generic or repo-specific depending on the repo's maturity. If `build-and-test` fails, fix the implementation or tighten the plan and re-run it before moving to verification. Do NOT skip this step.
