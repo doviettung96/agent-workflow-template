@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apply Stage 1"
+  short_description: "Bootstrap or refresh a downstream repo"
+  default_prompt: "Use $apply-stage1-downstream to apply this template's stage-1 workflow to one downstream repo and ensure the standalone stage-2 build-and-test bead exists."
