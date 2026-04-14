@@ -24,6 +24,7 @@ Catch planning defects before workers start coding. This is a planner-side valid
    - dependencies are explicit and coherent
    - no two child beads describe the same work
    - there is a meaningful final integration or `build-and-test` bead when runtime behavior changed
+   - if verification depends on SSH execution or a non-default target platform, the dependency graph includes a runtime-target setup bead before affected implementation beads
    - every swarm-ready bead includes:
      - `Files:`
      - `Verify:`

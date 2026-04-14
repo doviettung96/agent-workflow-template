@@ -1,0 +1,3 @@
+display_name: Target Runtime Exec
+short_description: Run repo commands through the selected local or SSH runtime
+default_prompt: Route build, test, run, or deploy commands through scripts/shared/target_runtime.py instead of assuming the local machine.

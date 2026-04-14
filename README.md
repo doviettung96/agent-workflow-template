@@ -1,12 +1,13 @@
 # Agent Workflow Template
 
-Reusable Beads workflow scaffold for Codex and Claude, standardized on local-only `bd` with Dolt in server mode plus single-checkout swarm execution.
+Reusable Beads workflow scaffold for Codex and Claude, standardized on local-only `bd` with Dolt in server mode plus single-checkout swarm execution, with optional SSH-backed runtime execution for downstream repos.
 
 This template repo is intentionally self-contained:
 
 - `skills/` contains the shared workflow skills scaffolded into each repo
 - `templates/` contains repo-local files and snippets
 - `templates/.codex/skills/build-and-test/` contains the generic stage-1 validator that downstream repos can later specialize
+- `scripts/shared/target_runtime.py` routes project execution through the selected local or SSH runtime target
 - `scripts/windows/` and `scripts/posix/` provide setup, migration, and sync helpers
 - `docs/` contains install and troubleshooting notes
 
@@ -35,7 +36,8 @@ Use this when the downstream repo is brand new or too empty to infer a runtime p
 
 - bootstrap the repo with the template script
 - install the general workflow docs and skills
-- create one standalone stage-2 bootstrap bead for specializing `build-and-test`
+- seed `.beads/workflow/runtime-target.json` with local execution as the default
+- create standalone stage-2 bootstrap beads for configuring the target runtime and specializing `build-and-test`
 - use `plan-beads` immediately to create the first plan and beads
 - rely on the generic stage-1 `build-and-test`, which executes the `## Verification` commands from each execution plan without guessing the stack
 
@@ -43,6 +45,7 @@ Use this when the downstream repo is brand new or too empty to infer a runtime p
 
 Do this after the first real plan or bead set makes the repo's runtime shape obvious.
 
+- optionally configure a non-local target runtime for SSH execution
 - specialize repo-local `build-and-test`
 - add repo-specific setup or operational docs
 - keep the shared workflow skills synced from this template
@@ -53,6 +56,7 @@ General downstream files:
 
 - `BEADS_WORKFLOW.md`
 - `.beads/PRIME.md`, `.beads/README.md`
+- `.beads/workflow/runtime-target.json` with local defaults
 - managed workflow blocks in `AGENTS.md` and `CLAUDE.md`
 - `.codex/skills/` and `.claude/skills/` copied from `skills/`
 - helper scripts under `scripts/`
@@ -61,6 +65,7 @@ General downstream files:
 Project-specific downstream files:
 
 - the repo-local specialized `build-and-test`
+- any repo-owned wrapper scripts for platform-specific build or verification commands
 - any repo-context prose outside the managed workflow blocks
 - runtime-specific setup, deployment, or smoke-test docs
 - handoff files such as `LOCAL_WORKFLOW_SETUP.md`
@@ -110,7 +115,7 @@ macOS/Linux:
 bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo myproj
 ```
 
-The bootstrap script initializes git if needed, initializes Beads locally with `bd`, installs Codex integration, scaffolds the workflow docs, skills, and helper scripts into the repo, and creates one standalone stage-2 follow-up bead for specializing `build-and-test`.
+The bootstrap script initializes git if needed, initializes Beads locally with `bd`, installs Codex integration, scaffolds the workflow docs, skills, and helper scripts into the repo, seeds the local runtime-target config, and creates standalone stage-2 follow-up beads for configuring the target runtime and specializing `build-and-test`.
 
 ### 2. Plan the first work
 
@@ -122,6 +127,8 @@ Use the planner flow immediately, even if the repo is mostly empty:
 4. `beads-planner`
 
 Make the first execution plans explicit about `## Verification`, because the stage-1 `build-and-test` skill follows that section literally.
+
+If verification may run through SSH or across mixed Windows/POSIX environments, prefer repo-owned wrapper commands in `## Verification` instead of brittle ad hoc shell pipelines.
 
 ### 3. Update workflow files in an existing repo
 
@@ -167,7 +174,7 @@ When updating a shared workflow skill:
 
 Do not hand-edit shared skill copies in downstream repos unless you intentionally want a repo-specific divergence.
 
-The intended repo-specific divergence is the local `build-and-test` skill. `update-skills` preserves an existing downstream `build-and-test` so stage-2 customization survives template syncs.
+The intended repo-specific divergences are the local `build-and-test` skill, repo-owned runtime wrappers, and the checkout-local runtime-target config. `update-skills` preserves an existing downstream `build-and-test`, and the scaffold seeds missing workflow files without overwriting an existing runtime-target config.
 
 ## Install Guides
 
@@ -184,6 +191,8 @@ The intended repo-specific divergence is the local `build-and-test` skill. `upda
   Epic-scoped multi-agent execution
 - `templates/.codex/skills/build-and-test/SKILL.md`
   Generic stage-1 validation skill scaffolded into each target repo
+- `skills/target-runtime-exec/`
+  Shared skill for routing build/test/run/deploy commands through the selected target runtime
 - `templates/AGENTS.snippet.md`
   Managed snippet for `AGENTS.md`
 - `templates/CLAUDE.snippet.md`

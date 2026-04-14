@@ -13,9 +13,13 @@ This scaffold is the **stage 1** validator for a brand-new repo. It does not ass
 
 Once the repo has a stable runtime workflow, replace this generic version with a repo-specific one that knows the normal build, serve, launch, and smoke-test path.
 
+Project-execution commands may run locally or through an SSH-backed target runtime depending on `.beads/workflow/runtime-target.json`. Keep repo exploration local, but route runtime-dependent verification commands through `scripts/shared/target_runtime.py`.
+
 ## Core Rule
 
 Run the **exact commands** from the current plan's `## Verification` section. Do not invent substitute commands because they "seem right."
+
+When the repo uses wrapper scripts for platform differences, use those wrapper commands exactly as written in the plan.
 
 ## Steps
 
@@ -74,11 +78,19 @@ If the plan says vague things like "run the app" or "make sure it works," stop a
 
 Use the commands exactly as written in the current plan.
 
+Run runtime-dependent commands through:
+
+```bash
+python scripts/shared/target_runtime.py run -- <exact command>
+```
+
+If `.beads/workflow/runtime-target.json` is missing or still set to `local`, the helper keeps execution local. If the repo configured `ssh`, the helper syncs the repo and runs the command on the selected SSH host instead.
+
 Examples of acceptable stage-1 verification flows:
 
-- `npm run build`, `npm run preview`, then `curl http://127.0.0.1:4173/health`
-- `pytest tests/viewer/test_session.py -q`
-- `docker compose up -d`, then `curl http://localhost:3000/api/status`
+- `python scripts/shared/target_runtime.py run -- npm run build`, `python scripts/shared/target_runtime.py run -- npm run preview`, then `python scripts/shared/target_runtime.py run -- curl http://127.0.0.1:4173/health`
+- `python scripts/shared/target_runtime.py run -- pytest tests/viewer/test_session.py -q`
+- `python scripts/shared/target_runtime.py run -- docker compose up -d`, then `python scripts/shared/target_runtime.py run -- curl http://localhost:3000/api/status`
 - start a local server and inspect the UI in a browser if the plan explicitly says to do that
 
 When the plan requires manual observation, record what you actually saw. Do not replace it with a lighter automated check unless the plan explicitly allows that.
@@ -119,6 +131,7 @@ Typical stage-2 specialization examples:
 - CLI tool: package build plus command-line smoke tests
 - service: compose or process launch plus API health checks
 - device app: app launch plus live-device smoke tests
+- mixed local/remote runtime: repo-owned wrapper scripts plus target-runtime-aware verification commands
 
 ## Fix-and-Retry Loop
 

@@ -25,8 +25,10 @@ Turn planning output into a Beads structure that another agent or engineer can e
    - review
    - migration
    - docs
+   - target-runtime setup when verification must run on a non-local machine
 6. If the epic includes runtime logic changes, make the last bead an end-to-end `build-and-test` bead that depends on all implementation beads.
-7. For any bead that may run under `swarm-epic`, encode this execution contract directly in the description or notes:
+7. If the epic's verification depends on SSH execution or platform-specific wrapper scripts, add or depend on a standalone runtime-target setup bead before the affected implementation beads.
+8. For any bead that may run under `swarm-epic`, encode this execution contract directly in the description or notes:
    - `Files:` exact file paths or directory scope the worker may touch
    - `Verify:` exact commands or checks required before success can be reported
    - `Risk:` `low`, `medium`, or `high`

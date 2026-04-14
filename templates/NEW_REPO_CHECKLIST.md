@@ -12,18 +12,21 @@
    - `bd where`
    - `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh`
 4. Confirm the standalone bootstrap bead exists:
+   - `Configure target runtime for this repo`
    - `Specialize build-and-test for this repo`
 5. Use the general planner flow immediately, even in an empty repo:
    - `plan-beads`
    - `brainstorming`
    - `planner-research` if needed
    - `beads-planner`
-6. Keep the bootstrap-created build-and-test specialization bead independent; do not nest it under the first feature epic.
+6. Keep the bootstrap-created runtime-target and build-and-test beads independent; do not nest them under the first feature epic.
 7. Ensure the first execution plans include an exact `## Verification` section because the stage-1 `build-and-test` skill is generic and follows the plan literally.
+8. If the first runtime-changing feature must verify against a remote machine, finish `Configure target runtime for this repo` first.
 
 ## Stage 2: Project-Specific Specialization
 
-1. After the first plan and beads make the real runtime shape clear, customize the repo-local `build-and-test` skill.
-2. Add repo-specific setup docs only when there is stable runtime, build, serve, deploy, or smoke-test behavior worth documenting.
-3. Keep the general workflow skills synced from this template; only the repo-local specializations should diverge.
-4. For epic swarm work, run one top-level epic executor session at a time in the checkout.
+1. After the first plan and beads make the real runtime shape clear, optionally configure the target runtime for the active checkout.
+2. Customize the repo-local `build-and-test` skill once the repeated verification flow is clear.
+3. Add repo-specific setup docs only when there is stable runtime, build, serve, deploy, or smoke-test behavior worth documenting.
+4. Keep the general workflow skills synced from this template; only the repo-local specializations should diverge.
+5. For epic swarm work, run one top-level epic executor session at a time in the checkout.

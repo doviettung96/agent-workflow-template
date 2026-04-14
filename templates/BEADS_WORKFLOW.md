@@ -86,5 +86,6 @@ In swarm mode:
 ## Operational Notes
 
 - Run `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh` to inspect checkout runtime plus Agent Mail state.
+- Keep repo exploration local. Route runtime-dependent project commands through `scripts/shared/target_runtime.py` when the checkout config selects SSH execution.
 - If `bd where` or `bd context` fails in the current checkout, repair the repo with `bd bootstrap --yes` before continuing.
 - Use `bd ready` before asking what to work on next.

@@ -16,7 +16,8 @@ Use this guide when starting a downstream repo from scratch or when a repo is st
    - runs `bd init -p <prefix> --server --skip-agents --skip-hooks`
    - runs `bd setup codex`
    - scaffolds the shared workflow docs, skills, and helper scripts
-   - creates one standalone stage-2 bead for specializing `build-and-test`
+   - seeds `.beads/workflow/runtime-target.json` with local execution as the default
+   - creates standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`
 4. Verify the repo is ready:
    - `bd where`
    - `bd ready --json`
@@ -33,7 +34,8 @@ You do not need project-specific skills yet.
    - `beads-planner`
 2. Let the first planning pass define the runtime shape, likely files, and verification needs.
 3. Make sure early execution plans include a precise `## Verification` section with exact commands and expected evidence. The stage-1 `build-and-test` skill depends on that section and will not guess.
-4. Keep the bootstrap-created `Specialize build-and-test for this repo` bead independent. Do not make it a child of the first feature epic.
+4. Keep the bootstrap-created `Configure target runtime for this repo` and `Specialize build-and-test for this repo` beads independent. Do not make them children of the first feature epic.
+5. If a repo's first real verification must run on a non-local machine, complete `Configure target runtime for this repo` before those feature beads execute.
 
 ## Stage 2: Project-Specific Customization
 
@@ -41,6 +43,8 @@ Customize the repo only after the real workflow becomes obvious from the first p
 
 Typical stage-2 changes:
 
+- optionally customize `.beads/workflow/runtime-target.json` in active checkouts with `python scripts/shared/target_runtime.py configure ...`
+- add repo-owned wrapper commands for build, run, and verification when local Windows and remote POSIX/Windows commands differ
 - specialize `.codex/skills/build-and-test/SKILL.md`
 - mirror the same specialization to `.claude/skills/build-and-test/SKILL.md`
 - add runtime-specific setup or operational notes
@@ -56,4 +60,5 @@ Examples:
 
 - edit shared workflow skills in this template repo, then run `update-skills` for downstream repos
 - keep repo-specific `build-and-test` customizations local to the downstream repo
+- keep actual SSH host aliases checkout-local in `.beads/workflow/runtime-target.json`
 - if template changes should not overwrite a downstream specialization, rely on the existing scaffold behavior that preserves `build-and-test`

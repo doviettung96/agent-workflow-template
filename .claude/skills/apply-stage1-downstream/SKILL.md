@@ -1,13 +1,13 @@
 ---
 name: apply-stage1-downstream
-description: "Apply this template repo's stage-1 workflow scaffold to one downstream repository. Use when the user wants to initialize a downstream repo from this template, refresh its shared skills/docs from this template, or ensure the standalone stage-2 build-and-test specialization bead exists."
+description: "Apply this template repo's stage-1 workflow scaffold to one downstream repository. Use when the user wants to initialize a downstream repo from this template, refresh its shared skills/docs from this template, or ensure the standalone stage-2 runtime-target and build-and-test follow-up beads exist."
 ---
 
 # Apply Stage 1 Downstream
 
 ## Overview
 
-Run this skill from the template repo to bootstrap or refresh one downstream repo with the shared Beads workflow scaffold, while leaving a standalone stage-2 bead for specializing `build-and-test`.
+Run this skill from the template repo to bootstrap or refresh one downstream repo with the shared Beads workflow scaffold, while leaving standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`.
 
 This skill is template-private. It belongs only in this repo's local agent skill folders and must not be added to the top-level `skills/` tree that gets copied downstream.
 
@@ -74,7 +74,7 @@ Use this when `bd where` succeeds.
 
 1. Run the template's platform-appropriate update script against the downstream repo.
 2. Run `scripts/shared/ensure_stage1_beads.py <repo>` from the template repo afterward.
-3. Rely on the scaffold behavior that preserves an existing downstream `build-and-test` specialization.
+3. Rely on the scaffold behavior that preserves an existing downstream `build-and-test` specialization and does not overwrite an existing checkout-local `runtime-target.json`.
 
 Platform commands:
 
@@ -121,7 +121,7 @@ The bootstrap script already:
 - runs `bd init`
 - runs `bd setup codex`
 - scaffolds shared docs, skills, and scripts
-- creates the standalone stage-2 bead for specializing `build-and-test`
+- creates the standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`
 
 ## Post-Run Verification
 
@@ -136,10 +136,16 @@ bd list --json
 Check for exactly one bead titled:
 
 ```text
+Configure target runtime for this repo
+```
+
+And exactly one bead titled:
+
+```text
 Specialize build-and-test for this repo
 ```
 
-If the bead is missing, report it as a failure of the stage-1 flow. If duplicates exist, report that clearly instead of creating another one.
+If either bead is missing, report it as a failure of the stage-1 flow. If duplicates exist, report that clearly instead of creating another one.
 
 ## Reporting
 
@@ -148,7 +154,7 @@ Report all of the following:
 - whether the skill chose bootstrap or update
 - the downstream repo path
 - the prefix used, if bootstrap ran
-- whether the stage-2 bead was created or already existed
+- whether each stage-2 bead was created or already existed
 - whether verification passed
 
 If the scaffold scripts update downstream instruction files in a way that looks malformed or duplicated, report the affected file and the issue instead of silently inventing extra cleanup.

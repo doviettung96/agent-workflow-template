@@ -34,6 +34,7 @@ $posixStatusScript = Join-Path $TemplateRoot "scripts\posix\workflow-status.sh"
 $posixAgentMailScript = Join-Path $TemplateRoot "scripts\posix\agent-mail.sh"
 $sharedAgentMailScript = Join-Path $TemplateRoot "scripts\shared\agent_mail.py"
 $sharedManageInstructionsScript = Join-Path $TemplateRoot "scripts\shared\manage_instructions.py"
+$sharedTargetRuntimeScript = Join-Path $TemplateRoot "scripts\shared\target_runtime.py"
 
 Copy-Item -Force $workflowSource (Join-Path $RepoPath "BEADS_WORKFLOW.md")
 Write-Host "Copied BEADS_WORKFLOW.md"
@@ -110,6 +111,7 @@ Write-Host "Copied scripts/posix/*"
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath "scripts\shared") | Out-Null
 Copy-Item -Force $sharedAgentMailScript (Join-Path $RepoPath "scripts\shared\agent_mail.py")
 Copy-Item -Force $sharedManageInstructionsScript (Join-Path $RepoPath "scripts\shared\manage_instructions.py")
+Copy-Item -Force $sharedTargetRuntimeScript (Join-Path $RepoPath "scripts\shared\target_runtime.py")
 Remove-Item -Force (Join-Path $RepoPath "scripts\shared\shared_beads.py") -ErrorAction SilentlyContinue
 Remove-Item -Force (Join-Path $RepoPath "scripts\shared\start_epic_worktree.py") -ErrorAction SilentlyContinue
 Write-Host "Copied scripts/shared/*"

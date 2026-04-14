@@ -8,6 +8,7 @@ state_path="${workflow_root}/state.json"
 handoff_path="${workflow_root}/HANDOFF.json"
 summary_path="${workflow_root}/STATE.md"
 agent_mail_script="${repo_root}/scripts/posix/agent-mail.sh"
+target_runtime_script="${repo_root}/scripts/shared/target_runtime.py"
 
 printf 'Repo: %s\n' "${repo_root}"
 
@@ -111,6 +112,35 @@ else
   else
     printf 'Handoff: none\n'
   fi
+fi
+
+if [[ -n "${python_cmd}" && -f "${target_runtime_script}" ]]; then
+  target_runtime_json="$("${python_cmd}" "${target_runtime_script}" status --json 2>/dev/null || true)"
+else
+  target_runtime_json=""
+fi
+
+if [[ -z "${target_runtime_json}" ]]; then
+  printf 'Target runtime: local (default)\n'
+elif [[ -n "${python_cmd}" ]]; then
+  TARGET_RUNTIME_JSON="${target_runtime_json}" "${python_cmd}" - <<'PY'
+import json
+import os
+
+raw = os.environ.get("TARGET_RUNTIME_JSON", "")
+try:
+    data = json.loads(raw)
+except json.JSONDecodeError:
+    print("Target runtime: local (default)")
+    raise SystemExit(0)
+
+print(f"Target runtime: {data.get('mode') or 'local'}")
+if data.get("mode") == "ssh":
+    print(f"Target host: {data.get('ssh_host') or 'unknown'}")
+    print(f"Target platform: {data.get('remote_platform') or 'unknown'}")
+    print(f"Target workdir: {data.get('remote_workdir') or 'unknown'}")
+    print(f"Target sync: {data.get('sync_strategy') or 'unknown'}")
+PY
 fi
 
 if [[ -f "${summary_path}" ]]; then

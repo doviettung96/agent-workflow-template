@@ -5,6 +5,8 @@ Live `.beads` state is local-only and should not be committed. Use one top-level
 
 Preferred workflow entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use `planner-research` only inside planner sessions, and keep `writing-plans` executor-only.
 
+Keep repo exploration local. If `.beads/workflow/runtime-target.json` selects SSH, route build, test, run, deploy, migration, or other project-execution commands through `scripts/shared/target_runtime.py` or the repo-local `target-runtime-exec` skill instead of assuming the local machine.
+
 Useful commands:
 
 ```bash

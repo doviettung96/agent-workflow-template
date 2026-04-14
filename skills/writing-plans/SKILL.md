@@ -122,6 +122,7 @@ The verification section must be executable without guesswork. Assume the repo i
 
 That means:
 - write exact shell commands, not summaries
+- prefer repo-owned wrapper commands when platform differences matter, such as local Windows with remote POSIX or Windows SSH execution
 - include URLs, ports, endpoints, paths, and process names when relevant
 - name the expected output, status code, DOM text, screenshot cue, or log line
 - say when manual browser inspection is required and what to look for
@@ -144,6 +145,8 @@ Example:
 ````
 
 Without this section, `build-and-test` will not know what to verify. Make it specific to the bead.
+
+If the repo uses an SSH-backed runtime target, keep the verification commands stable across backends by pointing at repo-owned wrapper scripts instead of embedding brittle OS-specific shell logic in the plan.
 
 If you notice the same verification sequence repeating across multiple beads, that is a signal to specialize the repo-local `build-and-test` skill as stage 2 work.
 
