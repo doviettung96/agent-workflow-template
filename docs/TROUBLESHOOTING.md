@@ -91,7 +91,7 @@ Fix:
    Or, for SSH:
 
    ```bash
-   python scripts/shared/target_runtime.py configure --mode ssh --ssh-host <alias> --remote-platform posix|windows --remote-workdir <path>
+   python scripts/shared/target_runtime.py configure --mode ssh --ssh-host <alias> --remote-platform posix|windows --remote-workdir <path> [--remote-python /path/to/python]
    ```
 
 ## SSH target cannot sync or execute

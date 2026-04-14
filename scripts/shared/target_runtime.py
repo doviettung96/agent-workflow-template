@@ -25,6 +25,7 @@ DEFAULT_CONFIG = {
     "remote_platform": None,
     "remote_workdir": None,
     "sync_strategy": None,
+    "remote_python": None,
 }
 EXCLUDE_DIRS = {
     ".git",
@@ -58,6 +59,7 @@ def parse_args() -> argparse.Namespace:
     configure_parser.add_argument("--remote-platform", choices=("posix", "windows"))
     configure_parser.add_argument("--remote-workdir")
     configure_parser.add_argument("--sync-strategy", choices=("rsync", "archive"))
+    configure_parser.add_argument("--remote-python")
     configure_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
 
     run_parser = subparsers.add_parser("run", help="Run one project command through the selected runtime")
@@ -94,12 +96,14 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
 
     remote_platform = config.get("remote_platform")
     sync_strategy = config.get("sync_strategy")
+    remote_python = (config.get("remote_python") or "").strip() or None
     resolved = dict(config)
     resolved["mode"] = mode
 
     if mode == "local":
         resolved["remote_platform"] = remote_platform
         resolved["sync_strategy"] = sync_strategy or "local"
+        resolved["remote_python"] = remote_python
         return resolved
 
     ssh_host = (config.get("ssh_host") or "").strip()
@@ -119,6 +123,7 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
     resolved["remote_platform"] = remote_platform
     resolved["remote_workdir"] = remote_workdir
     resolved["sync_strategy"] = sync_strategy
+    resolved["remote_python"] = remote_python
     return resolved
 
 
@@ -145,6 +150,8 @@ def print_status(config: dict[str, Any], *, as_json: bool) -> int:
         print(f"Remote platform: {config['remote_platform']}")
         print(f"Remote workdir: {config['remote_workdir']}")
         print(f"Sync strategy: {config['sync_strategy']}")
+        if config.get("remote_python"):
+            print(f"Remote python: {config['remote_python']}")
     else:
         print("Remote target: local default")
     return 0
@@ -159,7 +166,7 @@ def configure_runtime(args: argparse.Namespace) -> int:
     existing = load_raw_config()
     updated = dict(existing)
 
-    for key in ("mode", "ssh_host", "remote_platform", "remote_workdir", "sync_strategy"):
+    for key in ("mode", "ssh_host", "remote_platform", "remote_workdir", "sync_strategy", "remote_python"):
         value = getattr(args, key.replace("-", "_"), None)
         if value is not None:
             updated[key] = value
@@ -172,6 +179,7 @@ def configure_runtime(args: argparse.Namespace) -> int:
         "remote_platform": validated.get("remote_platform"),
         "remote_workdir": validated.get("remote_workdir"),
         "sync_strategy": validated.get("sync_strategy"),
+        "remote_python": validated.get("remote_python"),
     }
     write_config(persisted)
     validated["config_path"] = str(CONFIG_PATH)
@@ -281,6 +289,17 @@ def posix_shell_path(value: str) -> str:
     return shlex.quote(value)
 
 
+def remote_python_shell_lines(config: dict[str, Any], *, error_message: str) -> list[str]:
+    lines = ["REMOTE_PYTHON=''"]
+    preferred = (config.get("remote_python") or "").strip()
+    if preferred:
+        lines.append(f'if [ -x {shlex.quote(preferred)} ]; then REMOTE_PYTHON={shlex.quote(preferred)}; fi')
+    lines.append('if [ -z "$REMOTE_PYTHON" ] && command -v python >/dev/null 2>&1; then REMOTE_PYTHON="$(command -v python)"; fi')
+    lines.append('if [ -z "$REMOTE_PYTHON" ] && command -v python3 >/dev/null 2>&1; then REMOTE_PYTHON="$(command -v python3)"; fi')
+    lines.append(f'if [ -z "$REMOTE_PYTHON" ]; then echo {shlex.quote(error_message)} >&2; exit 1; fi')
+    return lines
+
+
 def sync_with_archive(config: dict[str, Any]) -> None:
     check_command("ssh")
     scp = check_command("scp")
@@ -312,11 +331,9 @@ def sync_with_archive(config: dict[str, Any]) -> None:
         else:
             quoted_workdir = posix_shell_path(remote_workdir)
             remote_command = (
-                "PYTHON_BIN=''\n"
-                "if command -v python3 >/dev/null 2>&1; then PYTHON_BIN=python3; "
-                "elif command -v python >/dev/null 2>&1; then PYTHON_BIN=python; "
-                "else echo 'python or python3 is required for archive sync' >&2; exit 1; fi\n"
-                "\"${PYTHON_BIN}\" - <<'PY'\n"
+                "\n".join(remote_python_shell_lines(config, error_message="python is required for archive sync"))
+                + "\n"
+                + "\"${REMOTE_PYTHON}\" - <<'PY'\n"
                 "import pathlib\n"
                 "import shutil\n"
                 "import zipfile\n"
@@ -375,6 +392,21 @@ def run_remote(config: dict[str, Any], command: str) -> int:
     return result.returncode
 
 
+def build_command_text(config: dict[str, Any], command_args: list[str]) -> str:
+    if (
+        config["mode"] == "ssh"
+        and config["remote_platform"] == "posix"
+        and command_args
+        and command_args[0] in {"python", "python3"}
+    ):
+        resolver_lines = remote_python_shell_lines(config, error_message="python is required on the remote target")
+        tail = " ".join(shlex.quote(arg) for arg in command_args[1:])
+        exec_command = '"$REMOTE_PYTHON"' if not tail else f'"$REMOTE_PYTHON" {tail}'
+        return "\n".join(resolver_lines + [exec_command])
+
+    return " ".join(command_args)
+
+
 def run_command(args: argparse.Namespace) -> int:
     command_args = list(args.command_args)
     if command_args and command_args[0] == "--":
@@ -382,8 +414,8 @@ def run_command(args: argparse.Namespace) -> int:
     if not command_args:
         raise ConfigError("No command provided. Use: target_runtime.py run -- <command>")
 
-    command = " ".join(command_args)
     config = get_resolved_config()
+    command = build_command_text(config, command_args)
     if config["mode"] == "local":
         return run_local(command)
     return run_remote(config, command)

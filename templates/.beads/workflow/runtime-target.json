@@ -4,5 +4,6 @@
   "ssh_host": null,
   "remote_platform": null,
   "remote_workdir": null,
-  "sync_strategy": null
+  "sync_strategy": null,
+  "remote_python": null
 }

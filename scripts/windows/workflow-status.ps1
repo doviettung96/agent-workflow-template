@@ -153,6 +153,9 @@ if ($targetRuntime -eq $null) {
         Write-Host ("Target platform: {0}" -f (Get-ValueOrDefault -Value $targetRuntime.remote_platform -Default "unknown"))
         Write-Host ("Target workdir: {0}" -f (Get-ValueOrDefault -Value $targetRuntime.remote_workdir -Default "unknown"))
         Write-Host ("Target sync: {0}" -f (Get-ValueOrDefault -Value $targetRuntime.sync_strategy -Default "unknown"))
+        if ($targetRuntime.remote_python) {
+            Write-Host ("Target python: {0}" -f $targetRuntime.remote_python)
+        }
     }
 }
 

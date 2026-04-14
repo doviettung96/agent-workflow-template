@@ -28,6 +28,21 @@ Create the optional repo-specific stage-2 runtime setup as a standalone bead:
 - add repo-specific remote bootstrap steps for Docker, Conda, or other environment setup when needed
 - document stable runtime setup outside the managed blocks in `AGENTS.md` or `CLAUDE.md`
 
+## Decision Gate
+- before implementation, ask the user which runtime mode this checkout should use: `local` or `ssh`
+- if the user selects `ssh`, ask for:
+  - SSH host alias
+  - remote platform (`posix` or `windows`)
+  - remote workdir
+  - preferred sync strategy if it matters
+  - preferred remote Python path if Python-based commands should use a non-default interpreter on that host
+- inspect checked-in docs, scripts, plans, and deployment notes for stable evidence that can help validate or fill in the user's answer, but do not skip the explicit runtime decision prompt
+- do not close this bead until one of these is true:
+  - the user explicitly confirmed that this checkout should stay on `local`
+  - the active checkout was configured with a concrete SSH target
+- do not treat "local mode remains the default" as sufficient completion without explicit user confirmation
+- do not commit machine-specific SSH values under `.beads/`; configure the active checkout locally and document the exact command needed to re-apply the configuration
+
 ## Notes
 - keep this bead independent; do not nest it under the first feature epic
 - if remote execution is required, make runtime-dependent feature beads depend on this bead

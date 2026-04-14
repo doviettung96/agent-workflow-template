@@ -66,3 +66,6 @@ python scripts/shared/target_runtime.py run -- docker compose up --build --detac
 - Do not silently bypass the helper for runtime-dependent commands.
 - Do not silently fall back to local execution if SSH mode fails.
 - If the configured target is invalid, stop and report the exact config or connectivity problem.
+- If the surrounding task is `Configure target runtime for this repo`, ask the user to choose `local` or `ssh` before treating the current config as the answer.
+- If the user chooses `ssh`, collect or confirm `ssh_host`, `remote_platform`, and `remote_workdir` before proceeding.
+- If Python-based commands should run under a specific remote interpreter, collect or confirm `remote_python` too.

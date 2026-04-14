@@ -140,6 +140,8 @@ if data.get("mode") == "ssh":
     print(f"Target platform: {data.get('remote_platform') or 'unknown'}")
     print(f"Target workdir: {data.get('remote_workdir') or 'unknown'}")
     print(f"Target sync: {data.get('sync_strategy') or 'unknown'}")
+    if data.get("remote_python"):
+        print(f"Target python: {data.get('remote_python')}")
 PY
 fi
 

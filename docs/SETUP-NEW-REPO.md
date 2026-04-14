@@ -50,6 +50,16 @@ Typical stage-2 changes:
 - add runtime-specific setup or operational notes
 - add repo-specific guidance outside the managed blocks in `AGENTS.md` or `CLAUDE.md`
 
+When executing `Configure target runtime for this repo`:
+
+- ask the user up front whether this checkout should use `local` or `ssh`
+- if the user chooses `ssh`, collect the concrete `ssh_host`, `remote_platform`, `remote_workdir`, and any relevant sync preference before closing the bead
+- collect `remote_python` too when Python-based commands should use a specific interpreter on the remote host (for example a project Miniconda env)
+- inspect the repo for stable evidence about the intended target environment first
+- use repo evidence to validate or complete the configuration, but not to skip the explicit runtime choice prompt
+- do not treat "leave the checked-in default as local" as sufficient completion unless the user explicitly confirms that local execution is the intended steady state for the checkout
+- keep machine-specific SSH values checkout-local, but still configure the active checkout when the user wants a real remote target now
+
 Examples:
 
 - web app: `npm run build`, `npm run preview`, HTTP smoke checks, browser inspection
