@@ -3,7 +3,7 @@
 
 Use `BEADS_WORKFLOW.md` for the current planner, manual executor, and swarm executor flow. All workflow skills are repo-local: Codex skills live under `.codex/skills/`, Claude skills under `.claude/skills/`.
 
-Preferred entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use `planner-research` only inside a planner session when `brainstorming` still leaves material factual uncertainty. Use `executor-loop` or `executor-loop-epic` for sequential autonomy when swarm coordination is not needed.
+Preferred entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use `planner-research` only inside a planner session when `brainstorming` still leaves material factual uncertainty. Use `plan-debate` before `beads-planner` when the user asks for extra scrutiny or the plan is risky. Treat `executor-loop` and `executor-loop-epic` as compatibility paths, not the default for long epic execution.
 
 The executor test skill lives at `.codex/skills/build-and-test/SKILL.md`; use it between implementation and final verification.
 
@@ -35,5 +35,6 @@ git checkout -b epic/<epic-id>
 - Epics must use `--type=epic`
 - Check `bd ready` before asking what to work on next
 - `swarm-epic` may coordinate workers inside one epic, but only the coordinator updates bead status during swarm execution
+- Swarm-ready beads must be fresh-session-safe: a fresh worker should be able to execute from the bead contract, persisted inputs, and local code inspection without replaying prior chat
 - If the current checkout cannot open the Beads database, inspect `bd where` and run `bd bootstrap --yes` before continuing
 <!-- END TEMPLATE BD WORKFLOW -->

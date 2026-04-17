@@ -7,6 +7,8 @@ description: "Run exactly one full executor cycle for one bead: claim, write a l
 
 Run exactly one full executor cycle for one bead.
 
+This is the preferred manual path for work that should start from a fresh context per bead.
+
 ## Steps
 
 1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.

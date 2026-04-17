@@ -1,6 +1,6 @@
 ---
 name: validate-beads
-description: "Validate a planned epic before autonomous execution. Use after beads-planner and before swarm-epic to check dependency quality, bead size, file scope, verification instructions, and parallel-safety notes."
+description: "Validate a planned epic before autonomous execution. Use after beads-planner and before swarm-epic to check dependency quality, bead size, fresh-session-safe bead contracts, verification instructions, and parallel-safety notes."
 ---
 
 # Validate Beads
@@ -26,14 +26,18 @@ Catch planning defects before workers start coding. This is a planner-side valid
    - there is a meaningful final integration or `build-and-test` bead when runtime behavior changed
    - if verification depends on SSH execution or a non-default target platform, the dependency graph includes a runtime-target setup bead before affected implementation beads
    - every swarm-ready bead includes:
+     - `Read:`
+     - `Inputs:`
      - `Files:`
      - `Verify:`
      - `Risk:`
      - `Parallel:`
      - `Escalate:`
+   - every swarm-ready bead is fresh-session-safe: a worker can execute it from the bead contract plus local inspection without replaying prior chat context
+   - `Inputs:` references persisted state only, not conversational memory
    - beads marked as parallel do not obviously overlap the same file scope
 5. Classify findings:
-   - blocking: missing execution contract, duplicate work, broken dependency shape, oversized bead
+   - blocking: missing execution contract, duplicate work, broken dependency shape, oversized bead, or chat-context-dependent bead
    - non-blocking: wording cleanup, minor note improvements
 6. If blocking findings exist:
    - do not start `swarm-epic`
@@ -48,5 +52,6 @@ Catch planning defects before workers start coding. This is a planner-side valid
 
 - Do not claim beads.
 - Do not implement code.
-- Do not approve a swarm run while any bead is missing `Files` or `Verify`.
+- Do not approve a swarm run while any bead is missing `Read:`, `Inputs:`, `Files:`, or `Verify:`.
+- Fail closed if a bead would require a worker to infer missing product intent from earlier conversation history.
 - When in doubt about parallel safety, fail closed and mark the work as sequential.

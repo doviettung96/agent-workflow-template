@@ -31,11 +31,14 @@ You do not need project-specific skills yet.
    - `plan-beads`
    - `brainstorming`
    - `planner-research` only if facts still matter
+   - `plan-debate` if needed
    - `beads-planner`
-2. Let the first planning pass define the runtime shape, likely files, and verification needs.
-3. Make sure early execution plans include a precise `## Verification` section with exact commands and expected evidence. The stage-1 `build-and-test` skill depends on that section and will not guess.
-4. Keep the bootstrap-created `Configure target runtime for this repo` and `Specialize build-and-test for this repo` beads independent. Do not make them children of the first feature epic.
-5. If a repo's first real verification must run on a non-local machine, complete `Configure target runtime for this repo` before those feature beads execute.
+   - `validate-beads` when the epic is intended for `swarm-epic`
+2. Let the first planning pass define the runtime shape, likely files, verification needs, and the persisted inputs later beads should rely on.
+3. For swarm-targeted beads, make sure the bead contract includes `Read:`, `Inputs:`, `Files:`, and `Verify:` so a fresh worker can execute without replaying planner chat.
+4. Make sure early execution plans include a precise `## Verification` section with exact commands and expected evidence. The stage-1 `build-and-test` skill depends on that section and will not guess.
+5. Keep the bootstrap-created `Configure target runtime for this repo` and `Specialize build-and-test for this repo` beads independent. Do not make them children of the first feature epic.
+6. If a repo's first real verification must run on a non-local machine, complete `Configure target runtime for this repo` before those feature beads execute.
 
 ## Stage 2: Project-Specific Customization
 
@@ -44,6 +47,7 @@ Customize the repo only after the real workflow becomes obvious from the first p
 Typical stage-2 changes:
 
 - optionally customize `.beads/workflow/runtime-target.json` in active checkouts with `python scripts/shared/target_runtime.py configure ...`
+- optionally customize `scripts/shared/run_plan_critic.py` backend defaults only if the repo needs a non-standard debate gate policy
 - add repo-owned wrapper commands for build, run, and verification when local Windows and remote POSIX/Windows commands differ
 - specialize `.codex/skills/build-and-test/SKILL.md`
 - mirror the same specialization to `.claude/skills/build-and-test/SKILL.md`

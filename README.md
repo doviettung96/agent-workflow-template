@@ -7,6 +7,7 @@ This template repo is intentionally self-contained:
 - `skills/` contains the shared workflow skills scaffolded into each repo
 - `templates/` contains repo-local files and snippets
 - `templates/.codex/skills/build-and-test/` contains the generic stage-1 validator that downstream repos can later specialize
+- `templates/.codex/skills/plan-critic/` and `templates/.claude/skills/plan-critic/` contain provider-specific debate critics
 - `scripts/shared/target_runtime.py` routes project execution through the selected local or SSH runtime target
 - `scripts/windows/` and `scripts/posix/` provide setup, migration, and sync helpers
 - `docs/` contains install and troubleshooting notes
@@ -58,7 +59,7 @@ General downstream files:
 - `.beads/PRIME.md`, `.beads/README.md`
 - `.beads/workflow/runtime-target.json` with local defaults
 - managed workflow blocks in `AGENTS.md` and `CLAUDE.md`
-- `.codex/skills/` and `.claude/skills/` copied from `skills/`
+- `.codex/skills/` and `.claude/skills/` copied from `skills/` plus any provider-specific template skills
 - helper scripts under `scripts/`
 - `docs/TROUBLESHOOTING.md`
 
@@ -77,15 +78,16 @@ Project-specific downstream files:
 1. `plan-beads`
 2. `brainstorming`
 3. `planner-research` when facts still need verification
-4. `beads-planner`
-5. `validate-beads`
+4. `plan-debate` when the user asks for extra scrutiny or the plan is risky
+5. `beads-planner`
+6. `validate-beads`
 
 ### Executor Session
 
 Use one of:
 
-- `executor-once` for one manual bead
-- `executor-loop` for sequential manual execution
+- `executor-once` for one manual bead or a fresh-session manual bead-by-bead rhythm
+- `executor-loop` for sequential manual execution when a long-lived session is still acceptable
 - `swarm-epic <epic-id>` for epic-scoped multi-agent execution
 
 `swarm-epic` runs in the current checkout and uses branch `epic/<epic-id>` for the target epic.
@@ -98,6 +100,8 @@ Use one of:
 - Run one top-level epic executor session at a time in a clone
 
 `swarm-epic` still parallelizes ready descendant beads inside one epic, but it does not try to isolate multiple epics with worktrees anymore.
+
+Swarm-ready does not mean dependency-free. It means each bead is fresh-session-safe: a new worker can execute it from the bead contract, persisted inputs, and local code inspection without replaying the full epic chat.
 
 ## Quick Start
 
@@ -124,9 +128,13 @@ Use the planner flow immediately, even if the repo is mostly empty:
 1. `plan-beads`
 2. `brainstorming`
 3. `planner-research` only when facts still matter
-4. `beads-planner`
+4. `plan-debate` if needed
+5. `beads-planner`
+6. `validate-beads` when the resulting epic is meant for `swarm-epic`
 
 Make the first execution plans explicit about `## Verification`, because the stage-1 `build-and-test` skill follows that section literally.
+
+Make the first swarm-targeted beads explicit about `Read:` and `Inputs:` as well, so a fresh worker can execute without replaying planner chat.
 
 If verification may run through SSH or across mixed Windows/POSIX environments, prefer repo-owned wrapper commands in `## Verification` instead of brittle ad hoc shell pipelines.
 
@@ -162,7 +170,12 @@ The migration helper imports the current live `issues.jsonl` into a new local `b
 
 ## Editing Skills
 
-This template's `skills/` directory is the source of truth for workflow skills. Target repos carry two copies:
+This template has two skill sources:
+
+- `skills/` for shared workflow skills copied to both providers
+- `templates/.codex/skills/` and `templates/.claude/skills/` for provider-specific skills
+
+Target repos carry two provider copies:
 
 - `.codex/skills/`
 - `.claude/skills/`
@@ -170,6 +183,11 @@ This template's `skills/` directory is the source of truth for workflow skills. 
 When updating a shared workflow skill:
 
 1. Edit `skills/<name>/` in this template repo
+2. Run `update-skills` against each target repo
+
+When updating a provider-specific skill:
+
+1. Edit `templates/.codex/skills/<name>/` or `templates/.claude/skills/<name>/`
 2. Run `update-skills` against each target repo
 
 Do not hand-edit shared skill copies in downstream repos unless you intentionally want a repo-specific divergence.
@@ -191,6 +209,8 @@ The intended repo-specific divergences are the local `build-and-test` skill, rep
   Epic-scoped multi-agent execution
 - `templates/.codex/skills/build-and-test/SKILL.md`
   Generic stage-1 validation skill scaffolded into each target repo
+- `templates/.codex/skills/plan-critic/` and `templates/.claude/skills/plan-critic/`
+  Provider-specific plan critics used by the planner debate gate
 - `skills/target-runtime-exec/`
   Shared skill for routing build/test/run/deploy commands through the selected target runtime
 - `templates/AGENTS.snippet.md`

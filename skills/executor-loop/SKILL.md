@@ -7,7 +7,7 @@ description: "Run repeated manual executor cycles bead-by-bead until the ready q
 
 Run repeated manual executor cycles bead-by-bead until the queue is exhausted or a blocker requires user input.
 
-For epic-scoped multi-agent work with coordinator-owned bead state, prefer `swarm-epic`.
+Compatibility path only. For epic-scoped work, prefer `swarm-epic` or repeated fresh `executor-once` sessions instead of one long-running loop that accumulates context.
 
 ## Steps
 
@@ -42,4 +42,5 @@ For epic-scoped multi-agent work with coordinator-owned bead state, prefer `swar
 - Do not hold multiple claimed beads at once.
 - Never continue past a blocker without user input.
 - This is a sequential path. Do not market it as true multi-agent swarming.
+- If the loop grows long enough that session context becomes unreliable, stop and resume the next bead in a fresh `executor-once` session instead of pushing through.
 

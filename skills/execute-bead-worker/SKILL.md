@@ -1,6 +1,6 @@
 ---
 name: execute-bead-worker
-description: "Execute one assigned bead inside a swarm coordinated by swarm-epic. Use only when a coordinator has assigned the bead, file scope, and verification contract; the worker implements, verifies, and reports without mutating bead state."
+description: "Execute one assigned bead inside a swarm coordinated by swarm-epic. Use only when a coordinator has assigned a fresh-session-safe bead contract, file scope, and verification contract; the worker implements, verifies, and reports without mutating bead state."
 ---
 
 # Execute Bead Worker
@@ -16,12 +16,15 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
 1. Confirm the assignment from the coordinator:
    - epic id
    - bead id
+   - `Read:` targets
+   - `Inputs:` persisted prerequisites
    - `Files:` scope
    - `Verify:` commands or checks
    - reservation or conflict instructions
-2. Read the bead details and inspect the relevant code.
-3. If the bead is underspecified or missing `Files` or `Verify`, stop and return it to the coordinator instead of guessing.
-4. Register the worker and inspect its inbox:
+2. Read the bead details and inspect the required `Read:` targets plus the relevant code.
+3. If the bead is underspecified or missing `Read:`, `Inputs:`, `Files:`, or `Verify:`, stop and return it to the coordinator instead of guessing.
+4. Treat this worker as a fresh context. Do not assume access to prior epic discussion beyond the persisted bead contract, local repo state, and Agent Mail messages.
+5. Register the worker and inspect its inbox:
    - Windows:
      ```powershell
      .\scripts\windows\agent-mail.ps1 --repo . register --name worker/<bead-id> --role worker --epic-id <epic-id> --bead-id <bead-id>
@@ -32,7 +35,7 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
      ./scripts/posix/agent-mail.sh --repo . register --name worker/<bead-id> --role worker --epic-id <epic-id> --bead-id <bead-id>
      ./scripts/posix/agent-mail.sh --repo . inbox --recipient worker/<bead-id>
      ```
-5. Reserve the declared file scope before editing through the shared control plane:
+6. Reserve the declared file scope before editing through the shared control plane:
    - Windows:
      ```powershell
      .\scripts\windows\agent-mail.ps1 --repo . reserve --owner worker/<bead-id> --epic-id <epic-id> --bead-id <bead-id> --path <path1> --path <path2>
@@ -42,13 +45,13 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
      ./scripts/posix/agent-mail.sh --repo . reserve --owner worker/<bead-id> --epic-id <epic-id> --bead-id <bead-id> --path <path1> --path <path2>
      ```
    If reservation fails, stop and report the conflict to the coordinator.
-6. Update `.beads/workflow/HANDOFF.json` for this worker context:
+7. Update `.beads/workflow/HANDOFF.json` for this worker context:
    - `role`
    - `epic_id`
    - `bead_id`
    - `summary`
    - `next_action`
-7. Post a `started` message to `bead/<bead-id>` so the coordinator and other sessions can see who owns the bead.
+8. Post a `started` message to `bead/<bead-id>` so the coordinator and other sessions can see who owns the bead.
    - Windows:
      ```powershell
      .\scripts\windows\agent-mail.ps1 --repo . post --thread bead/<bead-id> --sender worker/<bead-id> --type started --body '{"status":"started"}' --epic-id <epic-id> --bead-id <bead-id>
@@ -57,19 +60,21 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
      ```bash
      ./scripts/posix/agent-mail.sh --repo . post --thread bead/<bead-id> --sender worker/<bead-id> --type started --body '{"status":"started"}' --epic-id <epic-id> --bead-id <bead-id>
      ```
-8. Implement only within the assigned scope.
-9. Run the assigned verification commands and any required repo-local `build-and-test` checks for the touched surface area.
-10. Report back to the coordinator with:
+9. Implement only within the assigned scope and only after confirming the required `Inputs:` are present in persisted form.
+10. Run the assigned verification commands and any required repo-local `build-and-test` checks for the touched surface area.
+11. Report back to the coordinator with:
    - changed files
+   - `Inputs:` consumed
    - verification commands run
    - key output or exit status
    - any new risks or follow-up work
+   - suggested closeout note covering what changed, where it was persisted, and what downstream beads can now rely on
    - confirmation that reservations were released
-11. Release reservations and post either a `completed` or `blocked` message to `bead/<bead-id>`.
+12. Release reservations and post either a `completed` or `blocked` message to `bead/<bead-id>`.
    - release syntax:
      - Windows: `.\scripts\windows\agent-mail.ps1 --repo . release-reservations --owner worker/<bead-id> --bead-id <bead-id>`
      - POSIX: `./scripts/posix/agent-mail.sh --repo . release-reservations --owner worker/<bead-id> --bead-id <bead-id>`
-12. If blocked or context-limited:
+13. If blocked or context-limited:
    - update `HANDOFF.json`
    - release reservations if possible
    - report the blocker clearly to the coordinator
@@ -81,3 +86,4 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
 - Do not silently skip verification.
 - Do not keep reservations after you stop working.
 - Do not assume another session can see local `.beads/workflow/`; shared coordination only happens through Agent Mail.
+- Do not continue if the bead still depends on prior chat memory instead of persisted inputs.

@@ -18,10 +18,13 @@
    - `plan-beads`
    - `brainstorming`
    - `planner-research` if needed
+   - `plan-debate` if needed
    - `beads-planner`
-6. Keep the bootstrap-created runtime-target and build-and-test beads independent; do not nest them under the first feature epic.
-7. Ensure the first execution plans include an exact `## Verification` section because the stage-1 `build-and-test` skill is generic and follows the plan literally.
-8. If the first runtime-changing feature must verify against a remote machine, finish `Configure target runtime for this repo` first.
+   - `validate-beads` if the epic is intended for `swarm-epic`
+6. Ensure early swarm-targeted beads include `Read:`, `Inputs:`, `Files:`, and `Verify:` so a fresh worker can execute them without replaying planner chat.
+7. Keep the bootstrap-created runtime-target and build-and-test beads independent; do not nest them under the first feature epic.
+8. Ensure the first execution plans include an exact `## Verification` section because the stage-1 `build-and-test` skill is generic and follows the plan literally.
+9. If the first runtime-changing feature must verify against a remote machine, finish `Configure target runtime for this repo` first.
 
 ## Stage 2: Project-Specific Specialization
 
@@ -30,3 +33,4 @@
 3. Add repo-specific setup docs only when there is stable runtime, build, serve, deploy, or smoke-test behavior worth documenting.
 4. Keep the general workflow skills synced from this template; only the repo-local specializations should diverge.
 5. For epic swarm work, run one top-level epic executor session at a time in the checkout.
+6. Prefer `executor-once` for manual bead-by-bead work; treat long-running loop executors as compatibility paths.

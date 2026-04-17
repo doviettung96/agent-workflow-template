@@ -7,7 +7,7 @@ description: "Run repeated manual executor cycles scoped to a single epic: pick 
 
 Run repeated manual executor cycles bead-by-bead, but only within one epic.
 
-For coordinator-plus-worker execution with reservations, runtime state, and handoff files, prefer `swarm-epic`.
+Compatibility path only. For coordinator-plus-worker execution with reservations, runtime state, and handoff files, prefer `swarm-epic`. For manual execution, prefer fresh `executor-once` sessions per bead over long-lived epic loops.
 
 ## Steps
 
@@ -72,4 +72,5 @@ For coordinator-plus-worker execution with reservations, runtime state, and hand
 - If the supplied epic id is not actually an epic, stop and ask the user whether to scope to that parent bead anyway or choose a different epic.
 - Never merge locally; the PR is the merge mechanism.
 - This is a sequential compatibility path, not the primary swarm workflow.
+- If the session accumulates too much context, stop after the current bead and restart the next bead in a fresh session.
 

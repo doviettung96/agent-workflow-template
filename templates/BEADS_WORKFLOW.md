@@ -13,13 +13,14 @@ This repo uses **`bd`** for task state and selected execution-quality skills for
 Codex and Claude Code can enter the workflow through repo-local skills installed under `.codex/skills/` and `.claude/skills/`:
 
 - `plan-beads`
+- `plan-debate`
 - `executor-once`
 - `executor-loop`
 - `executor-loop-epic`
 - `swarm-epic`
 - `review-epic`
 
-When an executor skill stops on a blocker, continue in normal chat by telling the agent to resume or continue the blocked bead in the same session.
+When an executor skill stops on a blocker, continue in normal chat by telling the agent to resume the blocked bead. For long epics, prefer a fresh session per bead over one continuously growing executor thread.
 
 ## Planner Session
 
@@ -27,11 +28,14 @@ Turns a fuzzy idea into structured, claimable beads. No code is written.
 
 1. `brainstorming` - clarify scope, options, and design direction
 2. `planner-research` - only if material factual uncertainty remains
-3. `beads-planner` - translate the design into Beads epics, tasks, and dependencies
-4. `validate-beads` - confirm the epic is swarm-ready when parallel execution is intended
+3. `plan-debate` - optional adversarial review when the user asks for extra scrutiny or the plan is risky
+4. `beads-planner` - translate the design into Beads epics, tasks, and dependencies
+5. `validate-beads` - confirm the epic is swarm-ready and fresh-session-safe when parallel execution is intended
 
 Entry: a feature idea, bug report, or project change.
 Exit: beads created with dependencies, ready for `bd ready` or `swarm-epic`.
+
+Swarm-ready does not mean dependency-free. It means each bead carries enough persisted context that a fresh worker can execute it without replaying the prior epic chat.
 
 ## Manual Executor Session
 
@@ -47,6 +51,8 @@ Claims one bead and delivers it.
 
 Entry: a ready bead from `bd ready`.
 Exit: bead closed, code committed, follow-up beads created if needed.
+
+For manual work on longer epics, prefer repeated fresh `executor-once` sessions bead-by-bead. Treat `executor-loop` and `executor-loop-epic` as compatibility paths when a long-lived session is still acceptable.
 
 ## Epic Swarm Session
 
@@ -66,6 +72,7 @@ In swarm mode:
 
 - only the coordinator mutates Beads state
 - workers implement, verify, and report
+- workers are fresh per bead and rely on the bead contract plus local inspection, not the full coordinator chat history
 - Agent Mail owns epic locks, file reservations, and message threads
 - local `.beads/workflow/` stores checkout-local runtime and handoff state
 

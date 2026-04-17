@@ -26,16 +26,20 @@ Do not invoke this skill:
 
 ## Steps
 
-1. Close the bead:
+1. Record a closeout note before closing the bead so later work can rely on persisted state instead of session memory:
+   ```bash
+   bd note <id> "Outcome: <what changed>\nPersisted: <committed files, generated artifacts, or bead notes>\nDownstream: <what later beads can now rely on>"
+   ```
+2. Close the bead:
    ```bash
    bd close <id> --reason "Completed: <brief summary of what was done>"
    ```
-2. Create follow-up beads if new work was discovered during implementation:
+3. Create follow-up beads if new work was discovered during implementation:
    ```bash
    bd create "Follow-up: ..." --description "Discovered during <id>: ..." --type task
    bd dep add <new-id> <other-id>
    ```
-3. Commit code changes:
+4. Commit code changes:
    ```bash
    git add <changed files>
    git commit -m "<type>: <description>"
@@ -51,4 +55,5 @@ Do not invoke this skill:
 - Work happens on feature branches. Merging to `main` is done via PR, not local merge.
 - Live `.beads` state is local runtime. Do not treat it as something to publish through Git during normal closeout.
 - `swarm-epic` owns bead status transitions during swarm runs. Workers never call `beads-close`.
+- Keep the closeout note concise but concrete. It should tell a fresh downstream worker what changed, where the result lives, and what is now safe to assume.
 

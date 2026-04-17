@@ -11,6 +11,8 @@ Coordinate epic-scoped execution across one or more workers.
 
 Drive an epic to completion while keeping the current checkout's local `bd`/`.beads` store as the single source of truth.
 
+The coordinator should remain thin. Workers are fresh per bead and should rely on the bead contract plus local code inspection, not the full epic session history.
+
 ## Steps
 
 1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.
@@ -55,19 +57,23 @@ Drive an epic to completion while keeping the current checkout's local `bd`/`.be
      ./scripts/posix/agent-mail.sh --repo . acquire-epic --epic-id <epic-id> --owner coordinator/<epic-id>
      ```
 10. Choose execution mode:
-   - preferred: coordinator plus workers with Agent Mail reservations
+   - preferred: coordinator plus fresh workers with Agent Mail reservations
    - fallback: sequential epic execution in the current session when Agent Mail or worker spawning is unavailable
 11. Coordinator rules:
    - the coordinator is the only writer for `bd update` and `bd close`
    - move only assigned ready leaf beads to `in_progress`; do not mark the epic itself `in_progress` just because child work has started
    - each worker owns at most one bead at a time
    - do not assign a bead until its file scope is reserved or confirmed conflict-free in the shared control plane
+   - do not rely on prior epic chat as worker context; assignment must include the persisted bead contract
    - update `.beads/workflow/state.json` and `.beads/workflow/STATE.md` after every assignment, completion, blocker, and reservation change
 12. For each ready bead:
    - inspect the bead contract
+   - confirm the bead is fresh-session-safe and includes `Read:`, `Inputs:`, `Files:`, `Verify:`, `Risk:`, `Parallel:`, and `Escalate:`
    - reserve the declared file scope with Agent Mail before work starts
-   - assign the bead to `execute-bead-worker`
+   - assign the bead to `execute-bead-worker` as a fresh worker context
+   - pass the full persisted contract in the assignment payload instead of telling the worker to infer missing context from the coordinator session
    - require the worker to report changed files, verification evidence, and released reservations
+   - require the worker to report which persisted inputs were consumed and any closeout note needed for downstream beads
    - independently review the report before closing the bead
 13. For each assignment, post a thread message so other sessions can inspect coordinator intent:
    - thread naming: `epic/<epic-id>` for coordinator broadcasts, `bead/<bead-id>` for bead-specific traffic
@@ -78,6 +84,7 @@ Drive an epic to completion while keeping the current checkout's local `bd`/`.be
 14. When Agent Mail is unavailable:
    - record the degraded mode in `state.json`
    - execute one descendant bead at a time within the same checkout and epic
+   - preserve the same fresh-worker mental model: treat each bead as a fresh executor unit and do not rely on accumulated chat memory if the bead contract is incomplete
    - keep the same coordinator-owned status updates and runtime files
 15. When a worker blocks:
    - decide whether to reassign, tighten the bead, create a follow-up bead, or stop for user input
@@ -107,5 +114,6 @@ Drive an epic to completion while keeping the current checkout's local `bd`/`.be
 - Do not assign beads that failed validation.
 - Prefer sequential fallback over unreliable pseudo-parallel execution.
 - The coordinator should not implement code directly unless the run has explicitly fallen back to sequential mode.
+- Do not assign a bead that still depends on conversational memory instead of persisted `Inputs:`.
 - If `acquire-epic` fails because another coordinator owns the lock, stop and inspect `workflow-status` instead of forcing progress.
 - Treat branch setup and epic review as part of the default `swarm-epic` composition, not optional operator memory.
