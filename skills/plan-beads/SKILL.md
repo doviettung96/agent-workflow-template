@@ -17,10 +17,11 @@ Run a planner-only Beads session.
 6. If `brainstorming` leaves material factual uncertainty that affects architecture, feasibility, integration points, or swarm bead quality, use `planner-research` before finalizing the plan.
 7. Produce or confirm an execution plan using the discussion and any planner research findings.
 8. If there are unresolved questions or blockers, ask the user before proceeding. Otherwise, auto-approve and continue.
-9. Use `beads-planner` to create or update the beads from the approved plan.
-10. If the plan is intended for epic-scoped autonomous execution, immediately run `validate-beads` in the same planner session.
-11. If validation fails, tighten the beads, dependencies, or execution contract, then re-run `validate-beads` before ending the session.
-12. Stop after the beads are created and either validated for swarm execution or explicitly marked as manual-only.
+9. If the user asked for critique or the plan is risky because it is cross-cutting, migration-heavy, integration-heavy, or intended for autonomous swarm execution, run `plan-debate` before Beads creation.
+10. Use `beads-planner` to create or update the beads from the approved plan.
+11. If the plan is intended for epic-scoped autonomous execution, immediately run `validate-beads` in the same planner session.
+12. If validation fails, tighten the beads, dependencies, or execution contract, then re-run `validate-beads` before ending the session.
+13. Stop after the beads are created and either validated for swarm execution or explicitly marked as manual-only.
 
 ## Hard Rules
 
@@ -30,10 +31,12 @@ Run a planner-only Beads session.
 - Do not create a parallel planning tracker or second source of truth outside the approved plan/spec plus Beads.
 - Do not invoke `beads-claim`, `writing-plans`, repo-local `build-and-test`, `swarm-epic`, or `beads-close`.
 - Keep Beads as the source of truth for task state.
+- If `plan-debate` is triggered, do not let `beads-planner` run until the critic pass is approved or explicitly skipped by the user.
 
 ## Final Output
 
 - Summarize the approved plan briefly.
+- Say whether `plan-debate` ran or was skipped.
 - List the created or updated beads and important dependencies.
 - Say whether the epic passed `validate-beads` or why it is manual-only.
 - End by telling the user that executor work should start in a separate session.

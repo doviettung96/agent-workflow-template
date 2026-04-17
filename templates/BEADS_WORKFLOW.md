@@ -73,6 +73,7 @@ In swarm mode:
 - only the coordinator mutates Beads state
 - workers implement, verify, and report
 - workers are fresh per bead and rely on the bead contract plus local inspection, not the full coordinator chat history
+- blocked workers classify the blocker so the coordinator can decide whether to reply to the same worker or replace it with a fresh one
 - Agent Mail owns epic locks, file reservations, and message threads
 - local `.beads/workflow/` stores checkout-local runtime and handoff state
 

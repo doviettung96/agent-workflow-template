@@ -78,6 +78,12 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
    - update `HANDOFF.json`
    - release reservations if possible
    - report the blocker clearly to the coordinator
+   - classify the blocker as exactly one of:
+     - `clarify` - small missing fact or instruction; the current worker context is still useful
+     - `env` - environment, runtime, credential, or reservation problem; the current worker context is still useful once the environment is fixed
+     - `contract` - the bead contract is incomplete, wrong, or missing required persisted inputs; the coordinator should tighten the bead before retry
+     - `scope` - the bead needs splitting, replanning, or a changed file boundary; the coordinator should not keep this worker running as-is
+   - include `Context reusable: yes` for `clarify` or `env`, and `Context reusable: no` for `contract` or `scope`
 
 ## Hard Rules
 
@@ -87,3 +93,4 @@ Deliver one bead safely inside the boundaries set by `swarm-epic`.
 - Do not keep reservations after you stop working.
 - Do not assume another session can see local `.beads/workflow/`; shared coordination only happens through Agent Mail.
 - Do not continue if the bead still depends on prior chat memory instead of persisted inputs.
+- If blocked, prefer a crisp blocker report over speculative fixes. The coordinator decides whether this worker should continue or be replaced.

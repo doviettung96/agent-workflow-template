@@ -72,7 +72,7 @@ The coordinator should remain thin. Workers are fresh per bead and should rely o
    - reserve the declared file scope with Agent Mail before work starts
    - assign the bead to `execute-bead-worker` as a fresh worker context
    - pass the full persisted contract in the assignment payload instead of telling the worker to infer missing context from the coordinator session
-   - require the worker to report changed files, verification evidence, and released reservations
+   - require the worker to report changed files, verification evidence, released reservations, and blocker classification when blocked
    - require the worker to report which persisted inputs were consumed and any closeout note needed for downstream beads
    - independently review the report before closing the bead
 13. For each assignment, post a thread message so other sessions can inspect coordinator intent:
@@ -87,6 +87,9 @@ The coordinator should remain thin. Workers are fresh per bead and should rely o
    - preserve the same fresh-worker mental model: treat each bead as a fresh executor unit and do not rely on accumulated chat memory if the bead contract is incomplete
    - keep the same coordinator-owned status updates and runtime files
 15. When a worker blocks:
+   - read the worker's blocker classification
+   - if the blocker is `clarify` or `env`, prefer replying to the same worker after clarifying the instruction or fixing the environment
+   - if the blocker is `contract` or `scope`, prefer tightening the bead, splitting work, creating a follow-up bead, or spawning a fresh worker instead of continuing the same worker session
    - decide whether to reassign, tighten the bead, create a follow-up bead, or stop for user input
    - record the blocker in both `state.json` and `STATE.md`
 16. When the epic has no ready descendants left:
@@ -115,5 +118,6 @@ The coordinator should remain thin. Workers are fresh per bead and should rely o
 - Prefer sequential fallback over unreliable pseudo-parallel execution.
 - The coordinator should not implement code directly unless the run has explicitly fallen back to sequential mode.
 - Do not assign a bead that still depends on conversational memory instead of persisted `Inputs:`.
+- Treat blocked workers as reusable only when the blocker is local and clarifiable. If the bead contract or scope is wrong, fix the bead and prefer a fresh worker.
 - If `acquire-epic` fails because another coordinator owns the lock, stop and inspect `workflow-status` instead of forcing progress.
 - Treat branch setup and epic review as part of the default `swarm-epic` composition, not optional operator memory.

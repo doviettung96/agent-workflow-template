@@ -76,6 +76,14 @@ Get-ChildItem $skillsSource -Directory | ForEach-Object {
     Copy-Item -Recurse -Force $_.FullName $destination
     Write-Host "Copied Codex skill: $($_.Name)"
 }
+Get-ChildItem (Join-Path $TemplateRoot "templates\.codex\skills") -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.Name -ne "build-and-test") {
+        $destination = Join-Path $RepoPath ".codex\skills\$($_.Name)"
+        Remove-Item -Recurse -Force $destination -ErrorAction SilentlyContinue
+        Copy-Item -Recurse -Force $_.FullName $destination
+        Write-Host "Copied Codex provider skill: $($_.Name)"
+    }
+}
 Remove-Item -Recurse -Force (Join-Path $RepoPath ".codex\skills\start-epic-worktree") -ErrorAction SilentlyContinue
 
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath ".claude\skills") | Out-Null
@@ -91,6 +99,14 @@ Get-ChildItem $skillsSource -Directory | ForEach-Object {
     Remove-Item -Recurse -Force $destination -ErrorAction SilentlyContinue
     Copy-Item -Recurse -Force $_.FullName $destination
     Write-Host "Copied Claude skill: $($_.Name)"
+}
+Get-ChildItem (Join-Path $TemplateRoot "templates\.claude\skills") -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.Name -ne "build-and-test") {
+        $destination = Join-Path $RepoPath ".claude\skills\$($_.Name)"
+        Remove-Item -Recurse -Force $destination -ErrorAction SilentlyContinue
+        Copy-Item -Recurse -Force $_.FullName $destination
+        Write-Host "Copied Claude provider skill: $($_.Name)"
+    }
 }
 Remove-Item -Recurse -Force (Join-Path $RepoPath ".claude\skills\start-epic-worktree") -ErrorAction SilentlyContinue
 
@@ -111,6 +127,7 @@ Write-Host "Copied scripts/posix/*"
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath "scripts\shared") | Out-Null
 Copy-Item -Force $sharedAgentMailScript (Join-Path $RepoPath "scripts\shared\agent_mail.py")
 Copy-Item -Force $sharedManageInstructionsScript (Join-Path $RepoPath "scripts\shared\manage_instructions.py")
+Copy-Item -Force (Join-Path $TemplateRoot "scripts\shared\run_plan_critic.py") (Join-Path $RepoPath "scripts\shared\run_plan_critic.py")
 Copy-Item -Force $sharedTargetRuntimeScript (Join-Path $RepoPath "scripts\shared\target_runtime.py")
 Remove-Item -Force (Join-Path $RepoPath "scripts\shared\shared_beads.py") -ErrorAction SilentlyContinue
 Remove-Item -Force (Join-Path $RepoPath "scripts\shared\start_epic_worktree.py") -ErrorAction SilentlyContinue

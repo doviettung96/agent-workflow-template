@@ -103,6 +103,8 @@ Use one of:
 
 Swarm-ready does not mean dependency-free. It means each bead is fresh-session-safe: a new worker can execute it from the bead contract, persisted inputs, and local code inspection without replaying the full epic chat.
 
+When a worker blocks, the worker should classify the blocker. Local clarifications or environment issues can stay on the same worker; contract or scope problems should be fixed by the coordinator and usually retried with a fresh worker.
+
 ## Quick Start
 
 ### 1. Bootstrap a repo
