@@ -92,6 +92,18 @@ Populating `.harness/actions.yaml` is inherently collaborative. The agent owns t
 - If `harness trigger` returns `ok` but the user reports no in-game effect, this is a real signal — usually wrong coord space (client vs screen), wrong PostMessage vs SendInput choice, or the window capture is of the wrong HWND. Diagnose before adding more actions.
 - The agent MUST NOT add a custom backend that bypasses the game UI (HTTP RPC, TCP command, direct function call via injected DLL). If tempted, stop and flag this as a design question — it defeats the purpose of the harness.
 
+## Lifecycle — actions are disposable
+
+The harness exists to bootstrap RE verification, not to be a permanent automation surface. When the project eventually discovers a cleaner path for a given action — a direct function call via an RPC the agent can reach safely, a native API exposed by the game's own script layer, or a memory-write pattern that's been verified — the pseudo-input catalog entry for that action should be marked superseded or removed.
+
+Signals that an entry should be retired:
+
+- the same in-game effect is now triggerable from production-side code without going through the UI
+- the action was catalogued only to test a hook, and the hook is now fully understood and covered by project-side tests
+- the action's hotkey/button has changed in a game update and the project has moved to a more stable trigger
+
+Do not retain pseudo-input entries "just in case." They are transitional scaffolding; keeping dead entries makes the catalog harder to trust. Prefer removing an obsolete entry over leaving it with a "deprecated" note.
+
 ## Hard rules
 
 - The harness must not reimplement hooking. Observers read what existing hooks already emit.
