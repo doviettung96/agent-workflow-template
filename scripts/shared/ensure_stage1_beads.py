@@ -10,6 +10,37 @@ import sys
 from pathlib import Path
 
 
+GAME_RE_BEAD = {
+    "title": "Populate action catalog for this repo",
+    "description": """Stage-1 bootstrap (profile=game-re) installed the game-action-harness skill and scripts/shared/harness.py.
+
+Create the repo-specific stage-2 catalog as a standalone bead:
+
+## Goal
+- wire up the harness for this repo so the agent can trigger in-game actions itself during verification
+- catalog at least the actions the agent will want to exercise when validating hooked functions (autopath, autoattack, UI state transitions, etc.)
+- keep the catalog fresh-session safe so any worker can execute actions from the bead contract alone
+
+## Requirements
+- create `.harness/actions.yaml` (see skills/game-action-harness/templates/actions.yaml.example)
+- populate target.platform, target.device (android) or target.window (pc), and target.observe_log
+- define at least 3 actions with both invoke and observe specs, chosen to cover the features most exercised during RE work
+- run `python scripts/shared/harness.py probe` — all bridges must report ok
+- for each catalogued action, run `python scripts/shared/harness.py trigger <name> --json` and confirm status=ok with observe.matched=true (or clearly document why an action has no observer yet)
+- if the repo uses memory-based observations, also create `.harness/symbols.yaml` (see templates/symbols.yaml.example)
+
+## Decision Gate
+- before implementation, confirm with the user which actions are highest priority to catalog first
+- if the project's existing hooks do not yet emit an event for an action, either add that log line to the hook script or mark the action as invoke-only (no observer) with a note
+
+## Notes
+- keep this bead independent; do not nest it under the first feature epic
+- depend on the runtime-target bead if SSH execution applies
+- .harness/actions.yaml is treated the same as runtime-target.json: never overwritten by `update-skills`
+""",
+}
+
+
 BEADS = [
     {
         "title": "Configure target runtime for this repo",
@@ -83,12 +114,29 @@ def run(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _resolve_profile(repo: Path, cli_profile: str | None) -> str:
+    if cli_profile:
+        return cli_profile
+    profile_file = repo / ".beads" / "workflow" / "profile.json"
+    if profile_file.is_file():
+        try:
+            with profile_file.open("r", encoding="utf-8") as fh:
+                return json.load(fh).get("profile", "generic") or "generic"
+        except Exception:
+            pass
+    return "generic"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Ensure stage-1 bootstrap follow-up beads exist")
     parser.add_argument("repo", nargs="?", default=".", help="Repo root")
+    parser.add_argument("--profile", choices=["generic", "game-re"], default=None,
+                        help="Downstream profile. Defaults to .beads/workflow/profile.json then 'generic'.")
     args = parser.parse_args()
 
     repo = Path(args.repo).resolve()
+    profile = _resolve_profile(repo, args.profile)
+
     list_result = run(repo, "bd", "list", "--json")
     if list_result.returncode != 0:
         sys.stderr.write(list_result.stderr)
@@ -106,8 +154,12 @@ def main() -> int:
         if isinstance(issue, dict) and issue.get("title")
     }
 
+    beads_to_ensure = list(BEADS)
+    if profile == "game-re":
+        beads_to_ensure.append(GAME_RE_BEAD)
+
     created_any = False
-    for bead in BEADS:
+    for bead in beads_to_ensure:
         title = bead["title"]
         if title in existing_titles:
             print(f"Stage-1 follow-up bead already exists: {existing_titles[title]}")
@@ -136,7 +188,7 @@ def main() -> int:
         sys.stdout.write(create_result.stdout)
 
     if not created_any:
-        print("All stage-1 follow-up beads already exist.")
+        print(f"All stage-1 follow-up beads already exist (profile={profile}).")
     return 0
 
 

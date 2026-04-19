@@ -42,8 +42,11 @@ Required:
 Optional:
 
 - Beads prefix for bootstrap
+- Profile: `generic` (default) or `game-re`. The `game-re` profile additionally installs the `game-action-harness` skill + `scripts/shared/harness.py` and creates a stage-2 "Populate action catalog" follow-up bead. Non-RE repos should stay on `generic`.
 
 If the target repo needs bootstrap and the user did not provide a prefix, inspect the downstream folder name, propose that as the default prefix, and ask for confirmation before proceeding.
+
+If the user has not mentioned a profile, ask once whether this repo is a game reverse-engineering project. If yes, use `game-re`; otherwise use `generic`. Do not silently default to `game-re` for downstream repos that are clearly not game-RE targets.
 
 ## Decision Flow
 
@@ -76,21 +79,21 @@ Use this when `bd where` succeeds.
 2. Run `scripts/shared/ensure_stage1_beads.py <repo>` from the template repo afterward.
 3. Rely on the scaffold behavior that preserves an existing downstream `build-and-test` specialization and does not overwrite an existing checkout-local `runtime-target.json`.
 
-Platform commands:
+Platform commands (pass `-Profile game-re` / `game-re` to opt this existing repo into the harness; omit to preserve whatever profile is already persisted in `.beads/workflow/profile.json`, defaulting to `generic`):
 
 Windows:
 
 ```powershell
-& .\scripts\windows\update-skills.ps1 -RepoPath "<downstream-repo>"
-python .\scripts\shared\ensure_stage1_beads.py "<downstream-repo>"
+& .\scripts\windows\update-skills.ps1 -RepoPath "<downstream-repo>" [-Profile game-re]
 ```
 
 macOS/Linux:
 
 ```bash
-bash ./scripts/posix/update-skills.sh "<downstream-repo>"
-python ./scripts/shared/ensure_stage1_beads.py "<downstream-repo>"
+bash ./scripts/posix/update-skills.sh "<downstream-repo>" [game-re]
 ```
+
+`update-skills` already re-runs `ensure_stage1_beads.py` internally, so do not invoke it separately.
 
 ## Bootstrap Flow
 
@@ -98,21 +101,22 @@ Use this when `bd where` fails.
 
 1. Determine the Beads prefix.
 2. If the prefix was omitted, propose the downstream folder name as the default and ask before continuing.
-3. Run the template's platform-appropriate bootstrap script.
-4. Do not add extra downstream customizations beyond stage 1.
+3. Determine the profile (`generic` vs `game-re`). If the user did not specify, ask once; default to `generic` if they confirm this is not a game-RE project.
+4. Run the template's platform-appropriate bootstrap script.
+5. Do not add extra downstream customizations beyond stage 1.
 
 Platform commands:
 
 Windows:
 
 ```powershell
-& .\scripts\windows\bootstrap-new-repo.ps1 -RepoPath "<downstream-repo>" -Prefix "<prefix>"
+& .\scripts\windows\bootstrap-new-repo.ps1 -RepoPath "<downstream-repo>" -Prefix "<prefix>" [-Profile game-re]
 ```
 
 macOS/Linux:
 
 ```bash
-bash ./scripts/posix/bootstrap-new-repo.sh "<downstream-repo>" "<prefix>"
+bash ./scripts/posix/bootstrap-new-repo.sh "<downstream-repo>" "<prefix>" [game-re]
 ```
 
 The bootstrap script already:
@@ -145,7 +149,13 @@ And exactly one bead titled:
 Specialize build-and-test for this repo
 ```
 
-If either bead is missing, report it as a failure of the stage-1 flow. If duplicates exist, report that clearly instead of creating another one.
+When `profile=game-re`, additionally check for exactly one bead titled:
+
+```text
+Populate action catalog for this repo
+```
+
+If any expected bead is missing, report it as a failure of the stage-1 flow. If duplicates exist, report that clearly instead of creating another one.
 
 ## Reporting
 

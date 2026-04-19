@@ -1,0 +1,33 @@
+# .harness/symbols.yaml — optional symbol → address map for the `memory` observer
+#
+# Copy into your downstream repo as .harness/symbols.yaml if you use memory-based
+# observations. Not required when every action observes via hook_log / logcat / packet.
+
+version: 1
+
+# Resolver strategies:
+#   static      — address = int(offset, 0); offset is an absolute VA
+#   module_base — address = GetModuleBase(module) + int(offset, 0)
+#   frida       — defer to an already-attached Frida RPC export `resolve(sym) -> number`
+resolver: module_base
+
+# Required when resolver=module_base. On PC this is typically the exe name;
+# on android it is the .so name (e.g. "libUE4.so").
+module: "game.exe"
+
+symbols:
+  g_InventoryOpen:
+    offset: "0x00432100"
+    type: bool
+  g_PlayerPos.x:
+    offset: "0x00448240"
+    type: f32
+  g_PlayerPos.y:
+    offset: "0x00448244"
+    type: f32
+  g_CombatState:
+    offset: "0x00450018"
+    type: u32
+  g_UIState:
+    offset: "0x00450040"
+    type: u32

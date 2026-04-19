@@ -2,14 +2,44 @@
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-  printf 'usage: %s <repo-path> [prefix]\n' "$0" >&2
+  printf 'usage: %s <repo-path> [prefix] [profile]\n' "$0" >&2
   exit 1
 fi
 
 repo_path="$1"
 prefix="${2:-}"
+profile="${3:-}"
+case "${profile}" in
+  ""|generic|game-re) ;;
+  *) printf 'invalid profile: %s (expected generic | game-re)\n' "${profile}" >&2; exit 1 ;;
+esac
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 template_root="$(cd "${script_dir}/../.." && pwd)"
+
+# Resolve effective profile: CLI arg > persisted profile.json > "generic" default.
+profile_file="${repo_path}/.beads/workflow/profile.json"
+effective_profile="${profile}"
+if [[ -z "${effective_profile}" && -f "${profile_file}" ]]; then
+  effective_profile="$(python - "${profile_file}" <<'PY' 2>/dev/null || true
+import json, sys
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as fh:
+        print(json.load(fh).get("profile", ""))
+except Exception:
+    pass
+PY
+)"
+fi
+effective_profile="${effective_profile:-generic}"
+profile_gated_skills=(game-action-harness)
+
+skill_is_profile_gated() {
+  local name="$1"
+  for s in "${profile_gated_skills[@]}"; do
+    if [[ "${s}" == "${name}" ]]; then return 0; fi
+  done
+  return 1
+}
 
 python_cmd=""
 if command -v python3 >/dev/null 2>&1; then
@@ -58,6 +88,10 @@ fi
 
 find "${template_root}/skills" -mindepth 1 -maxdepth 1 -type d | while read -r src; do
   name="$(basename "${src}")"
+  if skill_is_profile_gated "${name}" && [[ "${effective_profile}" != "game-re" ]]; then
+    printf 'Skipped Codex skill (profile=%s): %s\n' "${effective_profile}" "${name}"
+    continue
+  fi
   dst="${repo_path}/.codex/skills/${name}"
   rm -rf "${dst}"
   cp -R "${src}" "${dst}"
@@ -87,6 +121,10 @@ fi
 
 find "${template_root}/skills" -mindepth 1 -maxdepth 1 -type d | while read -r src; do
   name="$(basename "${src}")"
+  if skill_is_profile_gated "${name}" && [[ "${effective_profile}" != "game-re" ]]; then
+    printf 'Skipped Claude skill (profile=%s): %s\n' "${effective_profile}" "${name}"
+    continue
+  fi
   dst="${repo_path}/.claude/skills/${name}"
   rm -rf "${dst}"
   cp -R "${src}" "${dst}"
@@ -123,6 +161,26 @@ cp "${template_root}/scripts/shared/target_runtime.py" "${repo_path}/scripts/sha
 rm -f "${repo_path}/scripts/shared/shared_beads.py"
 rm -f "${repo_path}/scripts/shared/start_epic_worktree.py"
 printf 'Copied script helpers\n'
+
+# Profile-gated: harness runtime installs only for game-re repos.
+if [[ "${effective_profile}" == "game-re" ]]; then
+  cp "${template_root}/scripts/shared/harness.py" "${repo_path}/scripts/shared/harness.py"
+  mkdir -p "${repo_path}/scripts/shared/harness_backends"
+  find "${template_root}/scripts/shared/harness_backends" -maxdepth 1 -type f | while read -r src; do
+    cp "${src}" "${repo_path}/scripts/shared/harness_backends/$(basename "${src}")"
+  done
+  printf 'Copied scripts/shared/harness.py and harness_backends/ (profile=game-re)\n'
+fi
+
+# Persist the effective profile so subsequent runs without --profile stay consistent.
+mkdir -p "${repo_path}/.beads/workflow"
+python - "${profile_file}" "${effective_profile}" <<'PY'
+import json, sys
+path, profile = sys.argv[1], sys.argv[2]
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump({"version": 1, "profile": profile}, fh)
+PY
+printf 'Persisted profile=%s to .beads/workflow/profile.json\n' "${effective_profile}"
 
 mkdir -p "${repo_path}/docs"
 cp "${template_root}/docs/TROUBLESHOOTING.md" "${repo_path}/docs/TROUBLESHOOTING.md"

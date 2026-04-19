@@ -1,0 +1,61 @@
+# .harness/actions.yaml — starter catalog
+#
+# Copy into your downstream repo as .harness/actions.yaml and specialize.
+# See skills/game-action-harness/reference.md for the full schema.
+#
+# Never commit machine-specific serials, window handles, or pids to the template.
+
+target:
+  # ----- pick one platform block and delete the other -----
+
+  # Android example (LDPlayer or real device):
+  platform: android
+  device: emulator-5554
+  observe_log: .harness/events.log
+  # adb_path: "C:/ldplayer/adb.exe"      # uncomment to pin the binary
+
+  # PC example — delete the android block above first:
+  # platform: pc
+  # window: "Game Window Title"
+  # observe_log: .harness/events.log
+
+actions:
+  # Android: pure raw input, observed via the existing hook log.
+  open_inventory:
+    invoke: { kind: adb_tap, coords: [850, 450] }
+    observe:
+      kind: hook_log
+      tag: "[INV_OPEN]"
+      timeout_ms: 2000
+
+  # Android: key event observed via logcat tag emitted by the project's own hooks.
+  skill_1:
+    invoke: { kind: adb_keyevent, code: KEYCODE_1 }
+    observe:
+      kind: logcat
+      tag: "SkillMgr"
+      pattern: "cast id=1"
+      timeout_ms: 1500
+
+  # Android: sequence of invokes, one final observer.
+  move_a_bit:
+    invoke:
+      - { kind: adb_swipe, from: [500, 600], to: [700, 400], duration_ms: 150 }
+    observe:
+      kind: memory
+      sym: g_PlayerPos.x
+      type: f32
+      timeout_ms: 1500
+
+  # Android: fire-and-forget — no observer, returns ok immediately after tap.
+  dismiss_popup:
+    invoke: { kind: adb_tap, coords: [640, 200] }
+
+  # PC counterparts (enable by switching target.platform to pc):
+  # pc_skill_1:
+  #   invoke: { kind: sendinput_key, key: "1" }
+  #   observe: { kind: hook_log, tag: "[SKILL]", timeout_ms: 1500 }
+  #
+  # pc_click_button:
+  #   invoke: { kind: postmessage_click, coords: [100, 200] }
+  #   observe: { kind: memory, sym: g_UIState, type: u32, expect: 3, timeout_ms: 1500 }

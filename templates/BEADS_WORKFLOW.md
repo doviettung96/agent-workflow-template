@@ -97,3 +97,7 @@ In swarm mode:
 - Keep repo exploration local. Route runtime-dependent project commands through `scripts/shared/target_runtime.py` when the checkout config selects SSH execution.
 - If `bd where` or `bd context` fails in the current checkout, repair the repo with `bd bootstrap --yes` before continuing.
 - Use `bd ready` before asking what to work on next.
+
+## Game-RE Profile (optional)
+
+Repos bootstrapped with `-Profile game-re` (`--profile game-re` on posix) additionally install the `game-action-harness` skill and `scripts/shared/harness.py`. That combination lets executor and debugging sessions trigger in-game actions (tap, click, key, swipe) and observe the effect through the project's existing hook logs / memory / packet capture — no OpenCV or OCR. When a plan's `## Verification` would otherwise require a human click, rewrite it as `python scripts/shared/harness.py trigger <action> --json` and keep the executor autonomous. Catalog lives at `.harness/actions.yaml`; see the stage-2 follow-up bead "Populate action catalog for this repo" and `skills/game-action-harness/reference.md`.
