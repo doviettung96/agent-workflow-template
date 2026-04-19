@@ -60,6 +60,38 @@ Every command exits non-zero on failure and emits structured JSON when `--json` 
    - `status=timeout` on invoke → the input call itself stalled; diagnose adb/SendInput, do not retry blindly.
 5. Record the returned `evidence` line in the bead notes or plan's verification section so the trigger is reproducible.
 
+## Pairing protocol (for stage-2 catalog work)
+
+Populating `.harness/actions.yaml` is inherently collaborative. The agent owns the mechanics (YAML, wiring, verification). The **user** owns the game-specific facts that exist nowhere in the codebase: which hotkey casts skill 1, which screen coordinate opens the inventory, what the "accept quest" icon looks like as a cropped PNG. The agent must ask for those — and only those.
+
+**Before asking the user anything, the agent first reads the project**:
+
+- existing plan docs under `docs/plans/` or similar that list priority actions
+- the project's own hook scripts / DLL source / Frida agents to see what functions are already hooked (those are the best candidates to catalog first)
+- `.harness/actions.yaml.*.bak` if present (previously-attempted catalogs are informative even when superseded)
+- the current `target.observe_log` setting, so the agent doesn't re-ask for log path the project already configured
+
+**Then, per action, follow this turn order:**
+
+1. **Agent proposes the next action to catalog** — one at a time, not batched. Names the candidate and *why* (hooked function exists, high test value, etc.).
+2. **Agent asks the user for what only the user knows**:
+   - *"Is this action fired by a hotkey, a fixed-position button, or an icon that can move? If a hotkey, which key? If a fixed button, which client-area coords in the game window? If moving / conditional, can you save a cropped reference PNG to `.harness/assets/<name>.png`?"*
+   - Do not guess. Ask every time.
+3. **Agent drafts the catalog entry** in YAML using sensible defaults:
+   - PC default: `postmessage_click` (no focus stealing; works with background windows). Only use `sendinput_click` if PostMessage doesn't work for this game.
+   - `locate` default: `threshold: 0.85`, `retry_timeout_ms: 3000` when the icon is conditional (appears after a click), `retry_timeout_ms: 0` when the icon should already be on screen.
+   - Chain a `{ kind: wait, duration_ms: 300-500 }` between click and follow-up `locate` if the UI has animation.
+4. **Agent runs** `python scripts/shared/harness.py trigger <name> --json` and reports the result verbatim.
+5. **User confirms** the in-game effect happened (character moved, skill fired, dialog opened). If not, agent iterates on coords / threshold / timing / invoke kind — but does not invent new invoke kinds.
+6. **Agent commits** the catalog entry (and any referenced PNG under `.harness/assets/`) once the action is reproducibly working. Then proposes the next action.
+
+**Hard rules for pairing:**
+
+- The agent MUST NOT guess coords, hotkeys, or icon file paths. If the information is not in the repo, ask.
+- The agent SHOULD propose defaults (button, foreground flag, threshold, wait duration) and let the user correct, rather than asking "what threshold do you want?" as a blank question.
+- If `harness trigger` returns `ok` but the user reports no in-game effect, this is a real signal — usually wrong coord space (client vs screen), wrong PostMessage vs SendInput choice, or the window capture is of the wrong HWND. Diagnose before adding more actions.
+- The agent MUST NOT add a custom backend that bypasses the game UI (HTTP RPC, TCP command, direct function call via injected DLL). If tempted, stop and flag this as a design question — it defeats the purpose of the harness.
+
 ## Hard rules
 
 - The harness must not reimplement hooking. Observers read what existing hooks already emit.

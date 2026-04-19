@@ -14,33 +14,55 @@ GAME_RE_BEAD = {
     "title": "Populate action catalog for this repo",
     "description": """Stage-1 bootstrap (profile=game-re) installed the game-action-harness skill and scripts/shared/harness.py.
 
-Create the repo-specific stage-2 catalog as a standalone bead:
+Create the repo-specific stage-2 catalog as a standalone bead.
+
+## Scope — WRITE side only
+
+This bead captures *the human's* knowledge: which in-game button to click, which hotkey to press, which screen coordinate to target. That is the only information the agent cannot derive from the codebase. Everything on the READ side (memory layout, packet format, hook-log output, symbol addresses) is already solved by the project's own instrumentation and lives wherever that project keeps it.
+
+Therefore:
+
+- **DO** catalog actions as pseudo-human input: click/tap, key/keyevent, swipe, locate-then-click, wait.
+- **DO NOT** route actions through an RPC/HTTP/TCP bridge to a launcher or wrapper process that already knows how to perform the action. That tests the bridge, not the hooked game code. The purpose of firing input through the game UI is to force the real user code path through the hook so the hook actually executes.
+- **DO** leave observers unset unless the project already emits a natural event for the action. Observers are project-owned; they belong in whatever existing log/memory/packet sink the project has. The harness tails; it does not produce.
 
 ## Goal
-- wire up the harness for this repo so the agent can trigger in-game actions itself during verification
+
+- wire up the harness for this repo so the agent can trigger in-game actions itself during RE verification
 - catalog the actions the agent will want to exercise when testing hooked functions (autopath, autoattack, skill use, UI button clicks, NPC talk, etc.)
 - keep the catalog fresh-session safe so any worker can execute actions from the bead contract alone
 
-## Scope — actions (invoke) only
-This bead covers the **invoke** side: how the agent clicks, taps, presses keys, or locates and clicks UI elements. Observation is out of scope for this bead — each project already has its own way to read state (memory hooks, packet capture, logcat, custom log tags). When an action would benefit from an observer, wire it in whatever way fits the project's existing instrumentation; otherwise leave observe unset and the harness returns ok on successful invoke.
-
 ## Requirements
+
 - create `.harness/actions.yaml` (see skills/game-action-harness/templates/actions.yaml.example)
 - populate target.platform, target.device (android) or target.window (pc); target.observe_log only if the project already writes a unified hook log
-- define at least 3 actions. Each action's `invoke` must be one of: a single step or a chain of steps drawn from {click/tap, key/keyevent, swipe, locate+click, wait}. Prefer fixed coords / hotkeys where possible; use `locate` + `template_match` for icons that move or only appear conditionally
-- put any reference images under `.harness/assets/` (or similar) and reference them by path in the locate step
+- define at least 3 actions. Each action's `invoke` must be one of: a single step or a chain of steps drawn from {adb_tap / adb_swipe / adb_keyevent / adb_text, sendinput_click / sendinput_key / postmessage_click, locate, wait}. Prefer fixed coords / hotkeys where possible; use `locate` + `template_match` for icons that move or only appear conditionally
+- put any reference images under `.harness/assets/` and reference them by relative path in the locate step
 - run `python scripts/shared/harness.py probe` — all bridges must report ok before catalog entries are considered working
 - for each catalogued action, run `python scripts/shared/harness.py trigger <name> --json` and confirm status=ok. Invoke-only (no observer) counts as success
-- observers remain OPTIONAL. Add them only when the project has a natural, already-emitted event to consume
+- do NOT add a custom backend that skips the game UI (HTTP RPC, TCP command to a launcher, etc.). If you believe you need one, stop and flag this as a design question — it is almost always the wrong answer for an RE verification harness
 
 ## Decision Gate
+
 - before implementation, confirm with the user which actions are highest priority to catalog first
-- if an action fires unreliably (locate below threshold, window capture empty, DPI mismatch), diagnose before expanding the catalog
+- confirm that the project's existing READ-side instrumentation (DLL logs, memory reads, packet captures) is working and will be used for verification. If the read side is not solved yet, this bead is blocked on that first
+
+## How to work this bead — pair with the user
+
+Catalog work is collaborative by nature: the agent owns YAML + wiring + running the harness; the user owns the game-specific knowledge (hotkeys, button coords, icon PNGs). Before asking the user anything, the agent first reads the project's own plan docs, hook scripts, and any superseded `.harness/actions.yaml.*.bak` files. Then for each new action, it proposes the candidate with a reason, asks the user only for what only-the-user knows, drafts the entry with sensible defaults, runs `harness trigger`, and iterates with the user until the in-game effect is confirmed.
+
+The full turn-by-turn pairing protocol lives in the skill doc — follow it:
+
+- `.codex/skills/game-action-harness/SKILL.md` → section "Pairing protocol"
+- `.claude/skills/game-action-harness/SKILL.md` → same section
+
+Do NOT guess coords, hotkeys, or icon paths. Ask.
 
 ## Notes
+
 - keep this bead independent; do not nest it under the first feature epic
 - depend on the runtime-target bead if SSH execution applies
-- .harness/actions.yaml and .harness/assets/ are treated the same as runtime-target.json: never overwritten by `update-skills`
+- `.harness/actions.yaml` and `.harness/assets/` are treated the same as `runtime-target.json`: never overwritten by `update-skills`
 """,
 }
 
