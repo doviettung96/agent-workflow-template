@@ -59,3 +59,18 @@ actions:
   # pc_click_button:
   #   invoke: { kind: postmessage_click, coords: [100, 200] }
   #   observe: { kind: memory, sym: g_UIState, type: u32, expect: 3, timeout_ms: 1500 }
+  #
+  # ----- locate + click pattern (template matching against the captured window) -----
+  # Requires: pip install opencv-python numpy
+  # Put reference images under .harness/assets/
+  #
+  # talk_to_vendor:
+  #   invoke:
+  #     - { kind: locate, method: template_match, template: .harness/assets/vendor_npc.png,
+  #         output: npc, threshold: 0.85, retry_timeout_ms: 3000 }
+  #     - { kind: postmessage_click, coords: $npc }
+  #     - { kind: wait, duration_ms: 500 }
+  #     - { kind: locate, method: template_match, template: .harness/assets/dialog_accept.png,
+  #         output: btn, threshold: 0.9 }
+  #     - { kind: postmessage_click, coords: $btn }
+  #   # observe is optional — add one only if the project emits a matching event

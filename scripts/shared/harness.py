@@ -28,7 +28,7 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-from harness_backends import adb_input, sendinput, log_tail, memory_reader  # noqa: E402
+from harness_backends import adb_input, sendinput, log_tail, memory_reader, template_match  # noqa: E402
 
 
 CATALOG_PATH = Path(".harness/actions.yaml")
@@ -61,24 +61,42 @@ def _load_symbols(repo: Path) -> dict[str, Any] | None:
         return yaml.safe_load(fh) or {}
 
 
-def _dispatch_invoke(target: dict, spec: dict) -> dict[str, Any]:
+def _dispatch_invoke(target: dict, spec: dict) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Run one invoke step. Returns (result, outputs).
+
+    `outputs` is a dict of variables this step produced (e.g. locate → {"pos": [x, y]}),
+    to be merged into the scope for subsequent chained steps. None for pure-action steps.
+    """
     kind = spec.get("kind")
     start = time.monotonic()
+    outputs: dict[str, Any] | None = None
     try:
         if kind in {"adb_tap", "adb_swipe", "adb_keyevent", "adb_text"}:
             adb_input.invoke(target, spec)
         elif kind in {"sendinput_click", "sendinput_key", "postmessage_click"}:
             sendinput.invoke(target, spec)
+        elif kind == "locate":
+            outputs = template_match.locate(target, spec)
+        elif kind == "wait":
+            duration_ms = int(spec.get("duration_ms", 0))
+            if duration_ms < 0:
+                raise ValueError("wait.duration_ms must be >= 0")
+            time.sleep(duration_ms / 1000.0)
         else:
             raise ValueError(f"Unknown invoke kind: {kind!r}")
         elapsed_ms = int((time.monotonic() - start) * 1000)
-        return {"bridge": kind, "elapsed_ms": elapsed_ms, "error": None}
+        return {"bridge": kind, "elapsed_ms": elapsed_ms, "error": None}, outputs
     except adb_input.BridgeDownError as exc:
-        return {"bridge": kind, "elapsed_ms": 0, "error": f"bridge_down: {exc}"}
+        return {"bridge": kind, "elapsed_ms": 0, "error": f"bridge_down: {exc}"}, None
     except sendinput.BridgeDownError as exc:
-        return {"bridge": kind, "elapsed_ms": 0, "error": f"bridge_down: {exc}"}
+        return {"bridge": kind, "elapsed_ms": 0, "error": f"bridge_down: {exc}"}, None
+    except template_match.BridgeDownError as exc:
+        return {"bridge": kind, "elapsed_ms": 0, "error": f"bridge_down: {exc}"}, None
+    except template_match.LocateFailure as exc:
+        return {"bridge": kind, "elapsed_ms": int((time.monotonic() - start) * 1000),
+                "error": f"locate_failed: {exc}"}, None
     except Exception as exc:
-        return {"bridge": kind, "elapsed_ms": 0, "error": f"{type(exc).__name__}: {exc}"}
+        return {"bridge": kind, "elapsed_ms": 0, "error": f"{type(exc).__name__}: {exc}"}, None
 
 
 def _dispatch_observe(target: dict, spec: dict | None, symbols: dict | None, started_mono: float) -> dict[str, Any] | None:
@@ -99,17 +117,22 @@ def _dispatch_observe(target: dict, spec: dict | None, symbols: dict | None, sta
         return {"bridge": kind, "matched": False, "elapsed_ms": 0, "evidence": None, "error": f"{type(exc).__name__}: {exc}"}
 
 
-def _apply_args(spec: dict, cli_args: dict[str, str]) -> dict:
-    """Shallow-substitute scalar fields in an invoke/observe spec from --arg k=v pairs."""
-    if not cli_args:
+def _substitute(spec: dict, scope: dict[str, Any]) -> dict:
+    """Shallow-substitute $var references in a spec from the current variable scope.
+
+    Scope is seeded by CLI --arg pairs and grows as chained invoke steps emit outputs
+    (e.g. a `locate` step writes {"pos": [x, y]} which a later `click` can reference
+    as `coords: $pos`).
+    """
+    if not scope:
         return spec
-    result = {}
+    result: dict[str, Any] = {}
     for key, val in spec.items():
-        if isinstance(val, str) and val.startswith("$") and val[1:] in cli_args:
-            result[key] = cli_args[val[1:]]
+        if isinstance(val, str) and val.startswith("$") and val[1:] in scope:
+            result[key] = scope[val[1:]]
         elif isinstance(val, list):
             result[key] = [
-                cli_args[item[1:]] if isinstance(item, str) and item.startswith("$") and item[1:] in cli_args else item
+                scope[item[1:]] if isinstance(item, str) and item.startswith("$") and item[1:] in scope else item
                 for item in val
             ]
         else:
@@ -186,27 +209,45 @@ def cmd_trigger(repo: Path, action_name: str, cli_args: dict[str, str], as_json:
         print(json.dumps(out, indent=2) if as_json else f"action {action_name} has no invoke spec")
         return 3
 
-    invoke_result = None
+    scope: dict[str, Any] = dict(cli_args)
+    step_results: list[dict] = []
+    invoke_result: dict | None = None
     for spec in invoke_specs:
-        invoke_result = _dispatch_invoke(target, _apply_args(spec, cli_args))
+        resolved = _substitute(spec, scope)
+        invoke_result, outputs = _dispatch_invoke(target, resolved)
+        step_results.append(invoke_result)
+        if outputs:
+            scope.update(outputs)
         if invoke_result["error"]:
             break
 
     if invoke_result and invoke_result["error"]:
-        status = "bridge_down" if invoke_result["error"].startswith("bridge_down") else "timeout"
+        err = invoke_result["error"]
+        if err.startswith("bridge_down"):
+            status = "bridge_down"
+        elif err.startswith("locate_failed"):
+            status = "locate_failed"
+        else:
+            status = "timeout"
+        summary = dict(invoke_result)
+        if len(step_results) > 1:
+            summary["steps"] = step_results
         out = {"action": action_name, "status": status, "started_at": started_at,
-               "invoke": invoke_result, "observe": None}
-        print(json.dumps(out, indent=2) if as_json else f"[{status}] {invoke_result['error']}")
+               "invoke": summary, "observe": None}
+        print(json.dumps(out, indent=2) if as_json else f"[{status}] {err}")
         return 4
 
     observe_spec = entry.get("observe")
     symbols = _load_symbols(repo)
     if isinstance(observe_spec, dict):
-        observe_spec = _apply_args(observe_spec, cli_args)
+        observe_spec = _substitute(observe_spec, scope)
     observe_result = _dispatch_observe(target, observe_spec, symbols, started_mono)
 
+    summary = dict(invoke_result) if invoke_result else {}
+    if len(step_results) > 1:
+        summary["steps"] = step_results
     out = {"action": action_name, "status": "ok", "started_at": started_at,
-           "invoke": invoke_result, "observe": observe_result}
+           "invoke": summary, "observe": observe_result}
     if as_json:
         print(json.dumps(out, indent=2))
     else:

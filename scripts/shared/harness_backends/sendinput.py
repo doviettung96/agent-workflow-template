@@ -43,6 +43,10 @@ if _IS_WINDOWS:
     _user32.MapVirtualKeyW.restype = wt.UINT
     _user32.VkKeyScanW.argtypes = [wt.WCHAR]
     _user32.VkKeyScanW.restype = ctypes.c_short
+    _user32.ClientToScreen.argtypes = [wt.HWND, ctypes.POINTER(wt.POINT)]
+    _user32.ClientToScreen.restype = wt.BOOL
+    _user32.GetSystemMetrics.argtypes = [ctypes.c_int]
+    _user32.GetSystemMetrics.restype = ctypes.c_int
 
     INPUT_MOUSE = 0
     INPUT_KEYBOARD = 1
@@ -175,24 +179,27 @@ def invoke(target: dict, spec: dict) -> None:
     kind = spec.get("kind")
 
     if kind == "sendinput_click":
-        x, y = spec["coords"]
+        cx, cy = int(spec["coords"][0]), int(spec["coords"][1])
         button = str(spec.get("button", "left")).lower()
         foreground = bool(spec.get("foreground", True))
+        # Coords are client-space (same as postmessage_click and locate output).
+        # Convert to absolute screen coords for SendInput.
+        hwnd = _resolve_hwnd(target)
         if foreground:
-            hwnd = _resolve_hwnd(target)
             _user32.SetForegroundWindow(hwnd)
+        pt = wt.POINT(cx, cy)
+        if not _user32.ClientToScreen(hwnd, ctypes.byref(pt)):
+            raise RuntimeError(f"ClientToScreen failed, GetLastError={ctypes.get_last_error()}")
         down, up = {
             "left": (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP),
             "right": (MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP),
             "middle": (MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP),
         }[button]
-        # SendInput with MOUSEEVENTF_ABSOLUTE expects 0..65535 on primary monitor
+        # SendInput with MOUSEEVENTF_ABSOLUTE expects 0..65535 on the primary monitor.
         screen_w = _user32.GetSystemMetrics(0)
         screen_h = _user32.GetSystemMetrics(1)
-        _user32.GetSystemMetrics.argtypes = [ctypes.c_int]
-        _user32.GetSystemMetrics.restype = ctypes.c_int
-        ax = int((int(x) / max(screen_w, 1)) * 65535)
-        ay = int((int(y) / max(screen_h, 1)) * 65535)
+        ax = int((pt.x / max(screen_w, 1)) * 65535)
+        ay = int((pt.y / max(screen_h, 1)) * 65535)
         _send_mouse(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE, ax, ay)
         _send_mouse(down)
         _send_mouse(up)

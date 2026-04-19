@@ -7,9 +7,9 @@ description: "Trigger in-game actions as pseudo-human input and observe the effe
 
 ## Purpose
 
-Close the "I need a human to click this button" gap during RE work. The harness translates a high-level action name (e.g., `open_inventory`, `skill_1`) into a concrete platform call and reports whether the effect was observed through existing hooks. It is wiring, not instrumentation — the project's own Frida/TCP/capture tooling emits the events; the harness only triggers and tails.
+Close the "I need a human to click this button" gap during RE work. The harness translates a high-level action name (e.g., `open_inventory`, `skill_1`) into a concrete platform call (raw input, or `locate`-then-click for UI icons) and, optionally, reports whether the effect was observed through the project's existing hooks. It is wiring, not instrumentation — the project's own Frida/TCP/capture tooling emits the events; the harness only triggers, optionally locates, and optionally tails.
 
-Explicitly NOT vision-based: no OpenCV, no OCR.
+**Scope of vision**: vision (OpenCV template matching) is allowed **inside the harness for the `locate` step only** — it's the shortest path for the user to say "click this icon" without measuring coords. It is NOT allowed in the final production bot; production automation still reads state from memory/network, never pixels.
 
 ## When to use
 
@@ -21,7 +21,7 @@ Explicitly NOT vision-based: no OpenCV, no OCR.
 ## When NOT to use
 
 - The project was bootstrapped without `profile=game-re`. The harness files will not be present and the skill is not applicable.
-- You need pixel-based detection (OCR, template matching). Out of scope; build that separately.
+- You need OCR-based text extraction (dialog boxes, quest text). v1 only supports template matching; OCR is deferred.
 - The action to trigger is not in the catalog. Add it to `.harness/actions.yaml` first, then run the harness.
 
 ## Inputs
@@ -62,9 +62,11 @@ Every command exits non-zero on failure and emits structured JSON when `--json` 
 
 ## Hard rules
 
-- The harness must not reimplement hooking. Observation reads what existing hooks already emit; if an action has no observer defined, the catalog entry is incomplete.
-- Never add a vision/OCR backend here. That belongs in a separate skill if it ever becomes wanted.
-- Never overwrite a downstream `.harness/actions.yaml` during `update-skills`. Treat it the same as `runtime-target.json` and `build-and-test`.
+- The harness must not reimplement hooking. Observers read what existing hooks already emit.
+- Observers are optional. An action with no `observe` block is valid — `trigger` returns `status=ok` after a successful invoke. Only add observers where the project already emits something useful.
+- No OCR in v1. Template matching is allowed for `locate` steps. Do not add OCR/NLP backends without an explicit design round.
+- No vision in the final production bot. The harness is a test tool; production automation still reads state from memory/network, not pixels.
+- Never overwrite a downstream `.harness/actions.yaml` or `.harness/assets/` during `update-skills`. Treat them the same as `runtime-target.json` and `build-and-test`.
 - Never commit machine-specific device serials, window handles, or process IDs to the template. `.harness/actions.yaml` ships as an example; concrete values live in the downstream checkout only.
 - Do not auto-trigger actions in a loop without an upper bound. The harness is a test tool, not an automation engine.
 

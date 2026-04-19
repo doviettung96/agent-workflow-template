@@ -18,25 +18,29 @@ Create the repo-specific stage-2 catalog as a standalone bead:
 
 ## Goal
 - wire up the harness for this repo so the agent can trigger in-game actions itself during verification
-- catalog at least the actions the agent will want to exercise when validating hooked functions (autopath, autoattack, UI state transitions, etc.)
+- catalog the actions the agent will want to exercise when testing hooked functions (autopath, autoattack, skill use, UI button clicks, NPC talk, etc.)
 - keep the catalog fresh-session safe so any worker can execute actions from the bead contract alone
+
+## Scope — actions (invoke) only
+This bead covers the **invoke** side: how the agent clicks, taps, presses keys, or locates and clicks UI elements. Observation is out of scope for this bead — each project already has its own way to read state (memory hooks, packet capture, logcat, custom log tags). When an action would benefit from an observer, wire it in whatever way fits the project's existing instrumentation; otherwise leave observe unset and the harness returns ok on successful invoke.
 
 ## Requirements
 - create `.harness/actions.yaml` (see skills/game-action-harness/templates/actions.yaml.example)
-- populate target.platform, target.device (android) or target.window (pc), and target.observe_log
-- define at least 3 actions with both invoke and observe specs, chosen to cover the features most exercised during RE work
-- run `python scripts/shared/harness.py probe` — all bridges must report ok
-- for each catalogued action, run `python scripts/shared/harness.py trigger <name> --json` and confirm status=ok with observe.matched=true (or clearly document why an action has no observer yet)
-- if the repo uses memory-based observations, also create `.harness/symbols.yaml` (see templates/symbols.yaml.example)
+- populate target.platform, target.device (android) or target.window (pc); target.observe_log only if the project already writes a unified hook log
+- define at least 3 actions. Each action's `invoke` must be one of: a single step or a chain of steps drawn from {click/tap, key/keyevent, swipe, locate+click, wait}. Prefer fixed coords / hotkeys where possible; use `locate` + `template_match` for icons that move or only appear conditionally
+- put any reference images under `.harness/assets/` (or similar) and reference them by path in the locate step
+- run `python scripts/shared/harness.py probe` — all bridges must report ok before catalog entries are considered working
+- for each catalogued action, run `python scripts/shared/harness.py trigger <name> --json` and confirm status=ok. Invoke-only (no observer) counts as success
+- observers remain OPTIONAL. Add them only when the project has a natural, already-emitted event to consume
 
 ## Decision Gate
 - before implementation, confirm with the user which actions are highest priority to catalog first
-- if the project's existing hooks do not yet emit an event for an action, either add that log line to the hook script or mark the action as invoke-only (no observer) with a note
+- if an action fires unreliably (locate below threshold, window capture empty, DPI mismatch), diagnose before expanding the catalog
 
 ## Notes
 - keep this bead independent; do not nest it under the first feature epic
 - depend on the runtime-target bead if SSH execution applies
-- .harness/actions.yaml is treated the same as runtime-target.json: never overwritten by `update-skills`
+- .harness/actions.yaml and .harness/assets/ are treated the same as runtime-target.json: never overwritten by `update-skills`
 """,
 }
 
