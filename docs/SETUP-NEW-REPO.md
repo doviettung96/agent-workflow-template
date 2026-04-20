@@ -32,6 +32,7 @@ You do not need project-specific skills yet.
    - `brainstorming`
    - `planner-research` only if facts still matter
    - `plan-debate` if needed
+   - confirm the settled plan for Beads creation
    - `beads-planner`
    - `validate-beads` when the epic is intended for `swarm-epic`
 2. Let the first planning pass define the runtime shape, likely files, verification needs, and the persisted inputs later beads should rely on.

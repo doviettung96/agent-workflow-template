@@ -1,6 +1,6 @@
 ---
 name: beads-planner
-description: "Break a discussed or approved problem into Beads epics and tasks with clear dependencies and validation work. Use when the user wants to turn a problem statement, planning discussion, or approved execution plan into a Beads structure instead of ad-hoc TODOs."
+description: "Break a discussed or settled problem into Beads epics and tasks with clear dependencies and validation work. Use when the user wants to turn a problem statement, planning discussion, or settled execution plan into a Beads structure instead of ad-hoc TODOs."
 ---
 
 # Beads Planner
@@ -11,9 +11,9 @@ Turn planning output into a Beads structure that another agent or engineer can e
 
 ## Use This Workflow
 
-1. Confirm whether the conversation already produced an approved execution plan or whether `plan-beads` supplied a clear topic that still needs planning.
+1. Confirm whether the conversation already produced a settled execution plan or whether `plan-beads` supplied a clear topic that still needs planning.
 2. If no plan exists, create a lightweight execution plan first.
-3. Translate the approved plan into Beads:
+3. Translate the settled plan into Beads:
    - one `epic` for the main outcome; use `--type epic` so `bd` recognizes it as an epic and `bd ready --parent` works correctly
    - small executable `task` beads for implementation work
    - `bug` beads for concrete broken behavior
@@ -39,7 +39,7 @@ Turn planning output into a Beads structure that another agent or engineer can e
 
 ## Planning Rules
 
-- Use the approved plan directly if the session already produced one. Do not re-plan from scratch.
+- Use the settled plan directly if the session already produced one. Do not re-plan from scratch.
 - Keep beads executable by one focused session whenever possible.
 - Prefer a few clear beads over a large brainstorm list.
 - Keep Beads as the source of truth for task state. Do not create parallel markdown task lists.

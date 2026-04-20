@@ -79,8 +79,9 @@ Project-specific downstream files:
 2. `brainstorming`
 3. `planner-research` when facts still need verification
 4. `plan-debate` when the user asks for extra scrutiny or the plan is risky
-5. `beads-planner`
-6. `validate-beads`
+5. brief the settled recommendation and get confirmation to create Beads
+6. `beads-planner`
+7. `validate-beads`
 
 ### Executor Session
 
@@ -131,8 +132,9 @@ Use the planner flow immediately, even if the repo is mostly empty:
 2. `brainstorming`
 3. `planner-research` only when facts still matter
 4. `plan-debate` if needed
-5. `beads-planner`
-6. `validate-beads` when the resulting epic is meant for `swarm-epic`
+5. confirm the settled plan for Beads creation
+6. `beads-planner`
+7. `validate-beads` when the resulting epic is meant for `swarm-epic`
 
 Make the first execution plans explicit about `## Verification`, because the stage-1 `build-and-test` skill follows that section literally.
 

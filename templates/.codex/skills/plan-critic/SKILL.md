@@ -35,7 +35,7 @@ Return only structured findings with:
 - `status`: `approved` or `blocking`
 - `blocking_findings`: issues that must be resolved before Beads creation
 - `advisory_findings`: useful but non-blocking concerns
-- `required_questions`: questions the planner must answer before the plan can be trusted
+- `required_questions`: only the smallest set of questions that must be answered before the plan can be trusted; prefer questions the planner can settle with a defensible recommendation rather than forcing a user decision
 - optional `strengths`: short notes on what is already solid
 
 Keep findings concrete and implementation-relevant.

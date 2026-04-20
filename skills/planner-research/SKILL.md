@@ -7,7 +7,7 @@ description: "Planner-only research step for resolving factual unknowns after br
 
 Resolve factual unknowns that still matter after `brainstorming` and before `beads-planner`.
 
-This skill is intentionally narrow. It exists to improve the quality of the approved design and the resulting Beads. It does not create a second planning system.
+This skill is intentionally narrow. It exists to improve the quality of the settled design and the resulting Beads. It does not create a second planning system.
 
 ## When To Use This
 
@@ -43,7 +43,7 @@ Typical flow:
    - assumptions that still remain assumptions
    - open questions that could not be resolved
    - how the plan or bead contract should change
-5. Fold those findings back into the approved design/spec and any bead notes or descriptions.
+5. Fold those findings back into the settled design/spec and any bead notes or descriptions.
 
 ## Output Shape
 

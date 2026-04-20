@@ -5,19 +5,19 @@ description: "You MUST use this before any creative work - creating features, bu
 
 # Brainstorming Ideas Into Designs
 
-Help turn ideas into an approved Beads-ready design through natural collaborative dialogue.
+Help turn ideas into a settled Beads-ready design through natural collaborative dialogue.
 
 In this template, `brainstorming` is the primary discuss stage. Use it to lock intent, separate decisions from assumptions, and identify any factual unknowns early enough that `planner-research` can resolve them before Beads are created.
 
-Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design, resolve normal uncertainty, and hand back a settled recommendation for the single bead-creation confirmation in `plan-beads`.
 
 <HARD-GATE>
-This is a planner skill. Do NOT invoke any implementation skill, write any code, scaffold any project, claim a bead, or take any implementation action. The goal is an approved design that can flow into `planner-research` or `beads-planner`, not executor planning.
+This is a planner skill. Do NOT invoke any implementation skill, write any code, scaffold any project, claim a bead, or take any implementation action. The goal is a settled design that can flow into `planner-research` or `beads-planner`, not executor planning.
 </HARD-GATE>
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
 
-Every project goes through this process. A todo list, a single-function utility, a config change - all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+Every project goes through this process. A todo list, a single-function utility, a config change - all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST still present it and settle the important decisions.
 
 ## Checklist
 
@@ -29,8 +29,8 @@ You MUST create a task for each of these items and complete them in order:
 4. **Propose 2-3 approaches** - with trade-offs and your recommendation
 5. **State what is already decided vs still unknown** - explicitly separate locked decisions, assumptions, and factual unknowns
 6. **Use `planner-research` if needed** - only when unresolved factual unknowns would weaken the design or produce poor Beads
-7. **Present the approved design** - in sections scaled to complexity, including swarm-relevant constraints when parallel execution may matter
-8. **Stop at planner handoff** - hand the approved design back to `plan-beads`, `planner-research`, or `beads-planner`
+7. **Present the settled design** - in sections scaled to complexity, including swarm-relevant constraints when parallel execution may matter
+8. **Stop at planner handoff** - hand the settled design back to `plan-beads`, `planner-research`, or `beads-planner`
 
 ## Process Flow
 
@@ -45,7 +45,7 @@ digraph brainstorming {
     "Need planner research?" [shape=diamond];
     "Invoke planner-research" [shape=box];
     "Present design sections" [shape=box];
-    "User approves design?" [shape=diamond];
+    "Design settled enough?" [shape=diamond];
     "Hand back to plan-beads/beads-planner" [shape=doublecircle];
 
     "Explore project context" -> "Visual questions ahead?";
@@ -58,9 +58,9 @@ digraph brainstorming {
     "Need planner research?" -> "Invoke planner-research" [label="yes"];
     "Need planner research?" -> "Present design sections" [label="no"];
     "Invoke planner-research" -> "Present design sections";
-    "Present design sections" -> "User approves design?";
-    "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Hand back to plan-beads/beads-planner" [label="yes"];
+    "Present design sections" -> "Design settled enough?";
+    "Design settled enough?" -> "Present design sections" [label="no, revise"];
+    "Design settled enough?" -> "Hand back to plan-beads/beads-planner" [label="yes"];
 }
 ```
 
@@ -94,14 +94,14 @@ digraph brainstorming {
 - Use `planner-research` only for factual unknowns that materially affect the design or bead decomposition.
 - Good triggers: unknown integration points, unclear library or platform behavior, uncertain repo conventions, external API constraints, or open feasibility questions.
 - Do not use `planner-research` just to avoid asking the user preference questions.
-- After research, fold findings into the approved design and later bead descriptions or notes. Do not create a separate planning tracker or second source of truth.
+- After research, fold findings into the settled design and later bead descriptions or notes. Do not create a separate planning tracker or second source of truth.
 
 **Presenting the design:**
 
 - Once you believe you understand what you're building, present the design.
 - The design should leave the next planner skill enough structure to create high-quality Beads without replaying the full conversation.
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced.
-- Ask after each section whether it looks right so far.
+- Ask for correction only when something appears wrong, ambiguous, or preference-sensitive enough that the planner should not choose on the user's behalf.
 - Cover: architecture, components, data flow, error handling, testing, and swarm-relevant constraints when the work may be parallelized.
 - Be ready to go back and clarify if something does not make sense.
 
@@ -120,9 +120,9 @@ digraph brainstorming {
 
 ## Planner Handoff
 
-After the design is approved:
+After the design is settled:
 
-1. State the approved design briefly.
+1. State the settled design briefly.
 2. List:
    - goals and success criteria
    - locked decisions
@@ -144,7 +144,7 @@ Do not:
 - **Multiple choice preferred** - Easier to answer than open-ended when possible.
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs.
 - **Explore alternatives** - Always propose 2-3 approaches before settling.
-- **Incremental validation** - Present design, get approval before moving on.
+- **Incremental validation** - Present design, tighten weak spots, and reserve the explicit confirmation gate for bead creation in `plan-beads`.
 - **Be flexible** - Go back and clarify when something does not make sense.
 
 ## Visual Companion
