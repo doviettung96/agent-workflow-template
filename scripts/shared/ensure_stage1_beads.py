@@ -163,7 +163,11 @@ def main() -> int:
     repo = Path(args.repo).resolve()
     profile = _resolve_profile(repo, args.profile)
 
-    list_result = run(repo, "bd", "list", "--json")
+    # Include closed beads AND override the default --limit=50 so a completed
+    # stage-1 bead does not get re-created as a duplicate on every update-skills
+    # run. Without --limit=0 any repo with >50 issues silently loses older beads
+    # from the existing-title set.
+    list_result = run(repo, "bd", "list", "--all", "--limit", "0", "--json")
     if list_result.returncode != 0:
         sys.stderr.write(list_result.stderr)
         return list_result.returncode
