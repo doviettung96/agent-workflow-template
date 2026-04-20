@@ -155,6 +155,7 @@ You MUST complete each phase before proceeding to the next.
    - Make the SMALLEST possible change to test hypothesis
    - One variable at a time
    - Don't fix multiple things at once
+   - **Harness-first for in-game reproduction:** if the repo has `.harness/actions.yaml`, reproduce the hypothesis condition yourself with `python scripts/shared/harness.py trigger <action> --json`. Do NOT ask the user to "play the game until X happens" — that couples your debugging loop to the user's availability and loses evidence between iterations. If no catalogued action reproduces the condition, either add one (scope permitting) or narrow the hypothesis to something you CAN test without live repro.
 
 3. **Verify Before Continuing**
    - Did it work? Yes → Phase 4

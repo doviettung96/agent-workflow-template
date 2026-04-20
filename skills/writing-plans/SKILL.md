@@ -146,6 +146,17 @@ Example:
 
 Without this section, `build-and-test` will not know what to verify. Make it specific to the bead.
 
+### Harness-first rule for in-game actions
+
+If the repo has `.harness/actions.yaml` (profile=game-re), the plan's `## Verification` MUST express in-game actions as `python scripts/shared/harness.py trigger <action> --json` calls. **You are the one running verification, not the user.** Writing "user runs the game and clicks X" when a catalogued action covers the same trigger is a defect.
+
+Run `python scripts/shared/harness.py list` before writing the verification section to see what is already catalogued. If the action you need is not catalogued:
+
+- if cataloguing it is in scope (small, no new game-specific knowledge needed beyond what the bead already assumes), include a step to add it to `.harness/actions.yaml`
+- otherwise, create a follow-up bead to catalogue it and mark the current bead as soft-blocked on that follow-up
+
+Only ask the user to perform a manual in-game step when the harness genuinely cannot reach the scenario (e.g., the game process is not running and only the user can launch it). Even then, state it once and capture the action for future use.
+
 If the repo uses an SSH-backed runtime target, keep the verification commands stable across backends by pointing at repo-owned wrapper scripts instead of embedding brittle OS-specific shell logic in the plan.
 
 If you notice the same verification sequence repeating across multiple beads, that is a signal to specialize the repo-local `build-and-test` skill as stage 2 work.

@@ -136,6 +136,23 @@ From 24 failure memories:
 - Before commit, PR creation, or handoff, confirm the current checkout can still resolve the Beads database with `bd where`.
 - If the checkout cannot resolve Beads, repair it with `bd bootstrap --yes`.
 
+## Harness-First Rule for In-Game Actions
+
+If the repo has `.harness/actions.yaml` (profile=game-re), **do NOT ask the user to "run a live session and click X" as verification**. You are the verification agent, not the user.
+
+```
+BEFORE saying "please run the game and confirm":
+
+1. Check: does `.harness/actions.yaml` exist?
+2. Run: `python scripts/shared/harness.py list` — is the scenario catalogued?
+3. If yes: run `python scripts/shared/harness.py trigger <action> --json` yourself
+4. If no and the effort to catalogue is small: catalogue it, then trigger it
+5. Only ask the user when the harness literally cannot reach the scenario
+   (game process not running, bridge_down the user must resolve, etc.)
+```
+
+"Please run the live session" is the same rationalization pattern as "should pass" or "I'm confident" — it defers verification instead of performing it. If the harness is installed, run it.
+
 ## The Bottom Line
 
 **No shortcuts for verification.**

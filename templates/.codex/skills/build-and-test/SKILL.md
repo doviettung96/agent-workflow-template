@@ -95,6 +95,8 @@ Examples of acceptable stage-1 verification flows:
 
 When the plan requires manual observation, record what you actually saw. Do not replace it with a lighter automated check unless the plan explicitly allows that.
 
+**Harness-aware runs:** If the plan's verification calls for in-game actions and the repo has `.harness/actions.yaml` (profile=game-re), run those actions via `python scripts/shared/harness.py trigger <action> --json` yourself. Do NOT substitute "ask the user to click X" for a catalogued trigger. If the plan writes "user does X" but an action exists for X, that is a plan defect — return to `writing-plans` before executing. If the plan calls for an action that is not yet catalogued, either catalogue it (small scope) or flag to the user that the plan should either be tightened or a follow-up bead created.
+
 ### 6. Capture evidence while running
 
 For each verification command, note:
