@@ -8,6 +8,7 @@ This template repo is intentionally self-contained:
 - `templates/` contains repo-local files and snippets
 - `templates/.codex/skills/build-and-test/` contains the generic stage-1 validator that downstream repos can later specialize
 - `scripts/shared/target_runtime.py` routes project execution through the selected local or SSH runtime target
+- `scripts/shared/sync_workflow_backup.py` mirrors downstream workflow files into the separate backup repo
 - `scripts/windows/` and `scripts/posix/` provide setup, migration, and sync helpers
 - `docs/` contains install and troubleshooting notes
 
@@ -27,6 +28,7 @@ Initialize per repo:
 - `.codex/skills/`
 - `.claude/skills/`
 - `AGENTS.md` and `CLAUDE.md` managed snippets
+- managed `.gitignore` block for local-only workflow assets
 
 ## Two-Stage Adoption
 
@@ -50,7 +52,48 @@ Do this after the first real plan or bead set makes the repo's runtime shape obv
 - add repo-specific setup or operational docs
 - keep the shared workflow skills synced from this template
 
+## Workflow Backup Mirror
+
+Downstream repos keep the workflow scaffold on disk, but stop publishing it through the downstream project remote.
+
+- downstream Git ignores the scaffolded workflow surface
+- `agentic-workflows/<project>/` becomes the remote history for those workflow files
+- `finishing-a-development-branch` runs workflow-backup sync before branch push / PR creation
+- the default backup repo is a sibling checkout `../agentic-workflows`; override with `AGENTIC_WORKFLOWS_REPO`
+
+Sync manually when needed:
+
+Windows:
+
+```powershell
+pwsh -File .\scripts\windows\sync-workflow-backup.ps1
+```
+
+macOS/Linux:
+
+```bash
+bash ./scripts/posix/sync-workflow-backup.sh
+```
+
+Migrate an older downstream repo that still tracks workflow files:
+
+Windows:
+
+```powershell
+pwsh -File .\scripts\windows\migrate-downstream-to-workflow-backup.ps1 -RepoPath D:\path\to\repo
+```
+
+macOS/Linux:
+
+```bash
+bash ./scripts/posix/migrate-downstream-to-workflow-backup.sh /path/to/repo
+```
+
+The migration helper refreshes the scaffold, syncs the current workflow surface to the backup repo, and removes tracked workflow files from the downstream Git index while leaving them on disk.
+
 ## General vs Project-Specific Downstream Files
+
+All of the files below remain local in the downstream checkout. Their remote copy lives in the backup mirror, not the downstream project remote.
 
 General downstream files:
 
@@ -121,6 +164,7 @@ bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo myproj
 ```
 
 The bootstrap script initializes git if needed, initializes Beads locally with `bd`, installs Codex integration, scaffolds the workflow docs, skills, and helper scripts into the repo, seeds the local runtime-target config, and creates standalone stage-2 follow-up beads for configuring the target runtime and specializing `build-and-test`.
+It also installs the managed root `.gitignore` block and the downstream `sync-workflow-backup` helper.
 
 ### 2. Plan the first work
 
@@ -153,7 +197,25 @@ macOS/Linux:
 bash ./scripts/posix/update-skills.sh /path/to/repo
 ```
 
-### 4. Migrate an existing `br` repo back to `bd`
+`update-skills` refreshes the shared workflow surface, keeps repo-local `build-and-test`, refreshes the managed root `.gitignore` workflow block, and updates the backup-sync helper scripts.
+
+### 4. Migrate an existing downstream repo to the backup mirror model
+
+Windows:
+
+```powershell
+pwsh -File .\scripts\windows\migrate-downstream-to-workflow-backup.ps1 -RepoPath D:\path\to\repo
+```
+
+macOS/Linux:
+
+```bash
+bash ./scripts/posix/migrate-downstream-to-workflow-backup.sh /path/to/repo
+```
+
+This is the one-time cleanup for older repos that still track `AGENTS.md`, `CLAUDE.md`, `BEADS_WORKFLOW.md`, `docs/plans/`, repo-local skills, and scaffolded helper scripts in the downstream project remote.
+
+### 5. Migrate an existing `br` repo back to `bd`
 
 Windows:
 
@@ -185,15 +247,17 @@ When updating a shared workflow skill:
 
 1. Edit `skills/<name>/` in this template repo
 2. Run `update-skills` against each target repo
+3. Run `sync-workflow-backup` in the downstream repo before pushing a PR there
 
 When updating a provider-specific skill:
 
 1. Edit `templates/.codex/skills/<name>/` or `templates/.claude/skills/<name>/`
 2. Run `update-skills` against each target repo
+3. Run `sync-workflow-backup` in the downstream repo before pushing a PR there
 
 Do not hand-edit shared skill copies in downstream repos unless you intentionally want a repo-specific divergence.
 
-The intended repo-specific divergences are the local `build-and-test` skill, repo-owned runtime wrappers, and the checkout-local runtime-target config. `update-skills` preserves an existing downstream `build-and-test`, and the scaffold seeds missing workflow files without overwriting an existing runtime-target config.
+The intended repo-specific divergences are the local `build-and-test` skill, repo-owned runtime wrappers, and the checkout-local runtime-target config. `update-skills` preserves an existing downstream `build-and-test`, refreshes the local-only workflow ignore block, and seeds missing workflow files without overwriting an existing runtime-target config.
 
 ## Install Guides
 
@@ -218,6 +282,10 @@ The intended repo-specific divergences are the local `build-and-test` skill, rep
   Managed snippet for `CLAUDE.md`
 - `templates/NEW_REPO_CHECKLIST.md`
   Human checklist for setting up a new project
+- `scripts/shared/workflow_backup.py`
+  Shared manifest and `.gitignore` management for the workflow backup mirror
+- `scripts/shared/sync_workflow_backup.py`
+  Syncs the downstream workflow surface into `agentic-workflows/<project>/`
 
 ## Notes
 
@@ -225,6 +293,7 @@ The intended repo-specific divergences are the local `build-and-test` skill, rep
 - `bd setup codex` is per repo.
 - The scaffolding scripts do not use Dolt remotes.
 - Live `.beads` runtime is local-only and should not be committed.
+- Scaffolded workflow files are local-only in downstream Git and should be mirrored through the backup repo before PRs.
 
 ## Attribution
 

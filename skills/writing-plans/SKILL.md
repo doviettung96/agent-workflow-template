@@ -20,6 +20,7 @@ This is an **executor skill**. It should only be invoked in a session where a be
 </HARD-GATE>
 
 **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
+- In downstream repos using the workflow backup mirror, `docs/plans/` stays local-only in the project repo and is mirrored later by `sync-workflow-backup`
 - (User preferences for plan location override this default)
 
 ## Scope Check

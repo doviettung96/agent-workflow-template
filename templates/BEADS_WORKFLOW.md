@@ -88,11 +88,13 @@ In swarm mode:
 - Do code work on feature branches.
 - Open pull requests instead of merging locally.
 - Beads state itself is local-only; code moves through Git, not Beads exports.
-- `finishing-a-development-branch` handles push and PR creation.
+- Workflow scaffold files stay local-only in downstream Git and are mirrored to the backup repo with `scripts/posix/sync-workflow-backup.sh` or `scripts/windows/sync-workflow-backup.ps1`.
+- `finishing-a-development-branch` handles workflow-backup sync, branch push, and PR creation.
 
 ## Operational Notes
 
 - Run `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh` to inspect checkout runtime plus Agent Mail state.
+- Run `scripts/windows/sync-workflow-backup.ps1` or `scripts/posix/sync-workflow-backup.sh` before a PR when you need to sync workflow docs, skills, or helper scripts outside the normal branch-finish flow.
 - Keep repo exploration local. Route runtime-dependent project commands through `scripts/shared/target_runtime.py` when the checkout config selects SSH execution.
 - If `bd where` or `bd context` fails in the current checkout, repair the repo with `bd bootstrap --yes` before continuing.
 - Use `bd ready` before asking what to work on next.

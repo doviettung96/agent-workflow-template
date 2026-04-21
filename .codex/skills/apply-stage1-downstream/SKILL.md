@@ -9,6 +9,8 @@ description: "Apply this template repo's stage-1 workflow scaffold to one downst
 
 Run this skill from the template repo to bootstrap or refresh one downstream repo with the shared Beads workflow scaffold, while leaving standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`.
 
+Stage-1 now treats scaffolded workflow docs, skills, and helper scripts as local-only in the downstream repo's Git history. They stay on disk in the checkout and sync to the separate backup repo through `sync-workflow-backup` / `finishing-a-development-branch`.
+
 This skill is template-private. It belongs only in this repo's local agent skill folders and must not be added to the top-level `skills/` tree that gets copied downstream.
 
 ## Hard Gates
@@ -78,6 +80,7 @@ Use this when `bd where` succeeds.
 1. Run the template's platform-appropriate update script against the downstream repo.
 2. Run `scripts/shared/ensure_stage1_beads.py <repo>` from the template repo afterward.
 3. Rely on the scaffold behavior that preserves an existing downstream `build-and-test` specialization and does not overwrite an existing checkout-local `runtime-target.json`.
+4. Existing repos that still track workflow scaffold files in their Git history need the one-time `migrate-downstream-to-workflow-backup` helper after this refresh.
 
 Platform commands (pass `-Profile game-re` / `game-re` to opt this existing repo into the harness; omit to preserve whatever profile is already persisted in `.beads/workflow/profile.json`, defaulting to `generic`):
 
@@ -164,6 +167,7 @@ Report all of the following:
 - whether the skill chose bootstrap or update
 - the downstream repo path
 - the prefix used, if bootstrap ran
+- that the managed downstream `.gitignore` workflow block and backup-sync helper were refreshed
 - whether each stage-2 bead was created or already existed
 - whether verification passed
 

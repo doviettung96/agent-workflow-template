@@ -16,6 +16,7 @@ Use this guide when starting a downstream repo from scratch or when a repo is st
    - runs `bd init -p <prefix> --server --skip-agents --skip-hooks`
    - runs `bd setup codex`
    - scaffolds the shared workflow docs, skills, and helper scripts
+   - installs the managed root `.gitignore` block for local-only workflow assets
    - seeds `.beads/workflow/runtime-target.json` with local execution as the default
    - creates standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`
 4. Verify the repo is ready:
@@ -52,6 +53,7 @@ Typical stage-2 changes:
 - mirror the same specialization to `.claude/skills/build-and-test/SKILL.md`
 - add runtime-specific setup or operational notes
 - add repo-specific guidance outside the managed blocks in `AGENTS.md` or `CLAUDE.md`
+- rely on `sync-workflow-backup` / `finishing-a-development-branch` to publish updated workflow docs and skills through the backup repo, not the downstream project remote
 
 When executing `Configure target runtime for this repo`:
 
@@ -72,6 +74,7 @@ Examples:
 ## Ongoing Maintenance
 
 - edit shared workflow skills in this template repo, then run `update-skills` for downstream repos
+- keep scaffolded workflow docs, skills, and helper scripts local-only in the downstream repo and sync them to `agentic-workflows/<project>/`
 - keep repo-specific `build-and-test` customizations local to the downstream repo
 - keep actual SSH host aliases checkout-local in `.beads/workflow/runtime-target.json`
 - if template changes should not overwrite a downstream specialization, rely on the existing scaffold behavior that preserves `build-and-test`

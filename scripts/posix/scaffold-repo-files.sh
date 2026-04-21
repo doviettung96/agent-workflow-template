@@ -151,17 +151,21 @@ rm -rf "${repo_path}/.claude/skills/start-epic-worktree"
 mkdir -p "${repo_path}/scripts/windows" "${repo_path}/scripts/posix" "${repo_path}/scripts/shared"
 cp "${template_root}/scripts/windows/workflow-status.ps1" "${repo_path}/scripts/windows/workflow-status.ps1"
 cp "${template_root}/scripts/windows/agent-mail.ps1" "${repo_path}/scripts/windows/agent-mail.ps1"
+cp "${template_root}/scripts/windows/sync-workflow-backup.ps1" "${repo_path}/scripts/windows/sync-workflow-backup.ps1"
 rm -f "${repo_path}/scripts/windows/shared-beads.ps1"
 rm -f "${repo_path}/scripts/windows/start-epic-worktree.ps1"
 cp "${template_root}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/workflow-status.sh"
 cp "${template_root}/scripts/posix/agent-mail.sh" "${repo_path}/scripts/posix/agent-mail.sh"
+cp "${template_root}/scripts/posix/sync-workflow-backup.sh" "${repo_path}/scripts/posix/sync-workflow-backup.sh"
 rm -f "${repo_path}/scripts/posix/shared-beads.sh"
 rm -f "${repo_path}/scripts/posix/start-epic-worktree.sh"
-chmod +x "${repo_path}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/agent-mail.sh"
+chmod +x "${repo_path}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/agent-mail.sh" "${repo_path}/scripts/posix/sync-workflow-backup.sh"
 cp "${template_root}/scripts/shared/agent_mail.py" "${repo_path}/scripts/shared/agent_mail.py"
 cp "${template_root}/scripts/shared/manage_instructions.py" "${repo_path}/scripts/shared/manage_instructions.py"
 cp "${template_root}/scripts/shared/target_runtime.py" "${repo_path}/scripts/shared/target_runtime.py"
 rm -f "${repo_path}/scripts/shared/run_plan_critic.py"
+cp "${template_root}/scripts/shared/sync_workflow_backup.py" "${repo_path}/scripts/shared/sync_workflow_backup.py"
+cp "${template_root}/scripts/shared/workflow_backup.py" "${repo_path}/scripts/shared/workflow_backup.py"
 rm -f "${repo_path}/scripts/shared/shared_beads.py"
 rm -f "${repo_path}/scripts/shared/start_epic_worktree.py"
 printf 'Copied script helpers\n'
@@ -189,6 +193,9 @@ printf 'Persisted profile=%s to .beads/workflow/profile.json\n' "${effective_pro
 mkdir -p "${repo_path}/docs"
 cp "${template_root}/docs/TROUBLESHOOTING.md" "${repo_path}/docs/TROUBLESHOOTING.md"
 printf 'Copied docs/TROUBLESHOOTING.md\n'
+
+"${python_cmd}" "${template_root}/scripts/shared/sync_workflow_backup.py" ensure-ignore --repo "${repo_path}"
+printf 'Updated .gitignore managed workflow block\n'
 
 "${python_cmd}" "${template_root}/scripts/shared/manage_instructions.py" "${repo_path}/AGENTS.md" "${template_root}/templates/AGENTS.snippet.md"
 "${python_cmd}" "${template_root}/scripts/shared/manage_instructions.py" "${repo_path}/CLAUDE.md" "${template_root}/templates/CLAUDE.snippet.md"

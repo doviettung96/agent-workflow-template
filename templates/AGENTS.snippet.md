@@ -8,6 +8,7 @@ Preferred entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use 
 The executor test skill lives at `.codex/skills/build-and-test/SKILL.md`; use it between implementation and final verification.
 
 Use `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh` to inspect `.beads/workflow/`, the shared control plane, and Beads backend state. Use `scripts/windows/agent-mail.ps1` or `scripts/posix/agent-mail.sh` for shared epic locks, reservations, and mailbox inspection.
+Workflow scaffold files such as `AGENTS.md`, `CLAUDE.md`, `BEADS_WORKFLOW.md`, `docs/plans/`, and `.codex/.claude` skills stay local-only in downstream Git. Mirror them to the backup repo with `scripts/windows/sync-workflow-backup.ps1` or `scripts/posix/sync-workflow-backup.sh` before opening a PR.
 
 Keep repo exploration local. If `.beads/workflow/runtime-target.json` selects SSH, route build, test, run, deploy, migration, or other project-execution commands through `scripts/shared/target_runtime.py` or the repo-local `target-runtime-exec` skill instead of assuming the local machine.
 
