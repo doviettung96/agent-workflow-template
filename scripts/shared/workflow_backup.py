@@ -339,5 +339,5 @@ def remove_managed_files_from_index(repo_root: Path) -> list[str]:
     tracked = list_tracked_managed_files(repo_root)
     if not tracked:
         return []
-    git(repo_root, "rm", "--cached", "-f", "--", *tracked, capture_output=False)
+    git(repo_root, "rm", "--cached", "--sparse", "-f", "--", *tracked, capture_output=False)
     return tracked
