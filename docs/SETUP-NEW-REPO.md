@@ -59,6 +59,8 @@ When executing `Configure target runtime for this repo`:
 
 - ask the user up front whether this checkout should use `local` or `ssh`
 - if the user chooses `ssh`, collect the concrete `ssh_host`, `remote_platform`, `remote_workdir`, and any relevant sync preference before closing the bead
+- when `sync_strategy=rsync`, treat sync as additive by default and do not remove remote-only files; if the remote workdir contains disposable files only and the user explicitly wants mirroring, confirm that separately instead of assuming destructive sync
+- when `sync_strategy=archive`, use a dedicated remote workdir because archive sync replaces that directory contents during extraction
 - collect `remote_python` too when Python-based commands should use a specific interpreter on the remote host (for example a project Miniconda env)
 - inspect the repo for stable evidence about the intended target environment first
 - use repo evidence to validate or complete the configuration, but not to skip the explicit runtime choice prompt

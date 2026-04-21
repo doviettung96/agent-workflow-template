@@ -251,7 +251,6 @@ def sync_with_rsync(config: dict[str, Any]) -> None:
     args = [
         rsync,
         "-az",
-        "--delete",
         "--exclude=.git/",
         "--exclude=.beads/",
         "--exclude=.claude/",

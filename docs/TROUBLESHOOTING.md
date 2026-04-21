@@ -117,6 +117,8 @@ Fix:
    rsync --version
    ```
 
+   The default SSH `rsync` flow is additive and keeps remote-only files. If the remote workdir also stores large artifacts or model weights, prefer `sync_strategy=rsync` over `archive` and keep those artifacts outside paths the repo itself writes to.
+
 3. Confirm the named SSH host works outside the workflow first:
 
    ```bash
