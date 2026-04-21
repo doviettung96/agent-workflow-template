@@ -1,3 +1,0 @@
-display_name: Plan Debate
-short_description: Adversarial plan review before Beads
-default_prompt: Use $plan-debate to challenge a settled plan before turning it into Beads.

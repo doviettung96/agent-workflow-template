@@ -1,3 +1,0 @@
-display_name: Plan Critic
-short_description: Adversarial plan review
-default_prompt: Use $plan-critic to review an approved plan and return only blocking and advisory findings.

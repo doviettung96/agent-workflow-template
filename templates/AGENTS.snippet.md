@@ -3,7 +3,7 @@
 
 Use `BEADS_WORKFLOW.md` for the current planner, manual executor, and swarm executor flow. All workflow skills are repo-local: Codex skills live under `.codex/skills/`, Claude skills under `.claude/skills/`.
 
-Preferred entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use `planner-research` only inside a planner session when `brainstorming` still leaves material factual uncertainty. Use `plan-debate` before `beads-planner` when the user asks for extra scrutiny or the plan is risky. Treat `executor-loop` and `executor-loop-epic` as compatibility paths, not the default for long epic execution.
+Preferred entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use `planner-research` only inside a planner session when `brainstorming` still leaves material factual uncertainty. Treat `executor-loop` and `executor-loop-epic` as compatibility paths, not the default for long epic execution.
 
 The executor test skill lives at `.codex/skills/build-and-test/SKILL.md`; use it between implementation and final verification.
 

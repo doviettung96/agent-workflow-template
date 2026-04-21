@@ -3,7 +3,7 @@ This repo uses `bd` for issue tracking. Use `bd`, not markdown TODO files or alt
 
 Live `.beads` state is local-only and should not be committed. Use one top-level epic executor session at a time in a checkout.
 
-Preferred workflow entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use `planner-research` only inside planner sessions, use `plan-debate` before `beads-planner` when the user asks for extra scrutiny or the plan is risky, and keep `writing-plans` executor-only. Treat long-running loop executors as compatibility paths rather than the default for epic work.
+Preferred workflow entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use `planner-research` only inside planner sessions and keep `writing-plans` executor-only. Treat long-running loop executors as compatibility paths rather than the default for epic work.
 
 Swarm-ready beads must be fresh-session-safe: a fresh worker should be able to execute from the bead contract, persisted inputs, and local code inspection without replaying prior chat.
 

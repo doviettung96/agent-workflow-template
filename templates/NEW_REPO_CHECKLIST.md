@@ -18,7 +18,6 @@
    - `plan-beads`
    - `brainstorming`
    - `planner-research` if needed
-   - `plan-debate` if needed
    - `beads-planner`
    - `validate-beads` if the epic is intended for `swarm-epic`
 6. Ensure early swarm-targeted beads include `Read:`, `Inputs:`, `Files:`, and `Verify:` so a fresh worker can execute them without replaying planner chat.

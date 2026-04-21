@@ -31,7 +31,6 @@ You do not need project-specific skills yet.
    - `plan-beads`
    - `brainstorming`
    - `planner-research` only if facts still matter
-   - `plan-debate` if needed
    - confirm the settled plan for Beads creation
    - `beads-planner`
    - `validate-beads` when the epic is intended for `swarm-epic`
@@ -48,7 +47,6 @@ Customize the repo only after the real workflow becomes obvious from the first p
 Typical stage-2 changes:
 
 - optionally customize `.beads/workflow/runtime-target.json` in active checkouts with `python scripts/shared/target_runtime.py configure ...`
-- optionally customize `scripts/shared/run_plan_critic.py` backend defaults only if the repo needs a non-standard debate gate policy
 - add repo-owned wrapper commands for build, run, and verification when local Windows and remote POSIX/Windows commands differ
 - specialize `.codex/skills/build-and-test/SKILL.md`
 - mirror the same specialization to `.claude/skills/build-and-test/SKILL.md`

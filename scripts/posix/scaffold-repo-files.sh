@@ -97,6 +97,8 @@ find "${template_root}/skills" -mindepth 1 -maxdepth 1 -type d | while read -r s
   cp -R "${src}" "${dst}"
   printf 'Copied Codex skill: %s\n' "${name}"
 done
+rm -rf "${repo_path}/.codex/skills/plan-debate"
+rm -rf "${repo_path}/.codex/skills/plan-critic"
 if [[ -d "${template_root}/templates/.codex/skills" ]]; then
   find "${template_root}/templates/.codex/skills" -mindepth 1 -maxdepth 1 -type d | while read -r src; do
     name="$(basename "${src}")"
@@ -130,6 +132,8 @@ find "${template_root}/skills" -mindepth 1 -maxdepth 1 -type d | while read -r s
   cp -R "${src}" "${dst}"
   printf 'Copied Claude skill: %s\n' "${name}"
 done
+rm -rf "${repo_path}/.claude/skills/plan-debate"
+rm -rf "${repo_path}/.claude/skills/plan-critic"
 if [[ -d "${template_root}/templates/.claude/skills" ]]; then
   find "${template_root}/templates/.claude/skills" -mindepth 1 -maxdepth 1 -type d | while read -r src; do
     name="$(basename "${src}")"
@@ -156,8 +160,8 @@ rm -f "${repo_path}/scripts/posix/start-epic-worktree.sh"
 chmod +x "${repo_path}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/agent-mail.sh"
 cp "${template_root}/scripts/shared/agent_mail.py" "${repo_path}/scripts/shared/agent_mail.py"
 cp "${template_root}/scripts/shared/manage_instructions.py" "${repo_path}/scripts/shared/manage_instructions.py"
-cp "${template_root}/scripts/shared/run_plan_critic.py" "${repo_path}/scripts/shared/run_plan_critic.py"
 cp "${template_root}/scripts/shared/target_runtime.py" "${repo_path}/scripts/shared/target_runtime.py"
+rm -f "${repo_path}/scripts/shared/run_plan_critic.py"
 rm -f "${repo_path}/scripts/shared/shared_beads.py"
 rm -f "${repo_path}/scripts/shared/start_epic_worktree.py"
 printf 'Copied script helpers\n'

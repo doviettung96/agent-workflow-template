@@ -7,7 +7,6 @@ This template repo is intentionally self-contained:
 - `skills/` contains the shared workflow skills scaffolded into each repo
 - `templates/` contains repo-local files and snippets
 - `templates/.codex/skills/build-and-test/` contains the generic stage-1 validator that downstream repos can later specialize
-- `templates/.codex/skills/plan-critic/` and `templates/.claude/skills/plan-critic/` contain provider-specific debate critics
 - `scripts/shared/target_runtime.py` routes project execution through the selected local or SSH runtime target
 - `scripts/windows/` and `scripts/posix/` provide setup, migration, and sync helpers
 - `docs/` contains install and troubleshooting notes
@@ -78,10 +77,9 @@ Project-specific downstream files:
 1. `plan-beads`
 2. `brainstorming`
 3. `planner-research` when facts still need verification
-4. `plan-debate` when the user asks for extra scrutiny or the plan is risky
-5. brief the settled recommendation and get confirmation to create Beads
-6. `beads-planner`
-7. `validate-beads`
+4. brief the settled recommendation and get confirmation to create Beads
+5. `beads-planner`
+6. `validate-beads`
 
 ### Executor Session
 
@@ -131,10 +129,9 @@ Use the planner flow immediately, even if the repo is mostly empty:
 1. `plan-beads`
 2. `brainstorming`
 3. `planner-research` only when facts still matter
-4. `plan-debate` if needed
-5. confirm the settled plan for Beads creation
-6. `beads-planner`
-7. `validate-beads` when the resulting epic is meant for `swarm-epic`
+4. confirm the settled plan for Beads creation
+5. `beads-planner`
+6. `validate-beads` when the resulting epic is meant for `swarm-epic`
 
 Make the first execution plans explicit about `## Verification`, because the stage-1 `build-and-test` skill follows that section literally.
 
@@ -213,8 +210,6 @@ The intended repo-specific divergences are the local `build-and-test` skill, rep
   Epic-scoped multi-agent execution
 - `templates/.codex/skills/build-and-test/SKILL.md`
   Generic stage-1 validation skill scaffolded into each target repo
-- `templates/.codex/skills/plan-critic/` and `templates/.claude/skills/plan-critic/`
-  Provider-specific plan critics used by the planner debate gate
 - `skills/target-runtime-exec/`
   Shared skill for routing build/test/run/deploy commands through the selected target runtime
 - `templates/AGENTS.snippet.md`

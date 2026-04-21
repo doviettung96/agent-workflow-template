@@ -13,7 +13,6 @@ This repo uses **`bd`** for task state and selected execution-quality skills for
 Codex and Claude Code can enter the workflow through repo-local skills installed under `.codex/skills/` and `.claude/skills/`:
 
 - `plan-beads`
-- `plan-debate`
 - `executor-once`
 - `executor-loop`
 - `executor-loop-epic`
@@ -28,10 +27,9 @@ Turns a fuzzy idea into structured, claimable beads. No code is written.
 
 1. `brainstorming` - clarify scope, options, and design direction
 2. `planner-research` - only if material factual uncertainty remains
-3. `plan-debate` - optional adversarial review when the user asks for extra scrutiny or the plan is risky
-4. brief the settled recommendation and confirm Beads creation
-5. `beads-planner` - translate the design into Beads epics, tasks, and dependencies
-6. `validate-beads` - confirm the epic is swarm-ready and fresh-session-safe when parallel execution is intended
+3. brief the settled recommendation and confirm Beads creation
+4. `beads-planner` - translate the design into Beads epics, tasks, and dependencies
+5. `validate-beads` - confirm the epic is swarm-ready and fresh-session-safe when parallel execution is intended
 
 Entry: a feature idea, bug report, or project change.
 Exit: beads created with dependencies, ready for `bd ready` or `swarm-epic`.
