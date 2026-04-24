@@ -27,7 +27,14 @@ BEADS_FILES = (
 )
 
 DOC_FILES = (
+    "docs/WORKFLOW_NOTES.md",
     "docs/TROUBLESHOOTING.md",
+)
+
+RUNTIME_LOCAL_ONLY_FILES = (
+    ".beads/config.yaml",
+    ".beads/metadata.json",
+    ".claude/settings.json",
 )
 
 MANAGED_DIRS = (
@@ -65,8 +72,12 @@ IGNORE_ENTRIES = (
     "AGENTS.md",
     "BEADS_WORKFLOW.md",
     "CLAUDE.md",
+    "docs/WORKFLOW_NOTES.md",
     "docs/plans/",
     "docs/TROUBLESHOOTING.md",
+    ".beads/config.yaml",
+    ".beads/metadata.json",
+    ".claude/settings.json",
     "scripts/posix/agent-mail.sh",
     "scripts/posix/sync-workflow-backup.sh",
     "scripts/posix/workflow-status.sh",
@@ -149,6 +160,22 @@ def collect_managed_files(repo_root: Path) -> list[str]:
 
 def list_tracked_managed_files(repo_root: Path) -> list[str]:
     candidates = collect_managed_files(repo_root)
+    if not candidates:
+        return []
+    result = git(repo_root, "ls-files", "-z", "--", *candidates)
+    return [item for item in result.stdout.split("\0") if item]
+
+
+def collect_runtime_local_only_files(repo_root: Path) -> list[str]:
+    files: list[str] = []
+    for rel in RUNTIME_LOCAL_ONLY_FILES:
+        if (repo_root / rel).is_file():
+            files.append(rel)
+    return files
+
+
+def list_tracked_local_only_files(repo_root: Path) -> list[str]:
+    candidates = sorted(set(list_tracked_managed_files(repo_root) + collect_runtime_local_only_files(repo_root)))
     if not candidates:
         return []
     result = git(repo_root, "ls-files", "-z", "--", *candidates)
@@ -336,7 +363,7 @@ def sync_workflow_backup(
 
 
 def remove_managed_files_from_index(repo_root: Path) -> list[str]:
-    tracked = list_tracked_managed_files(repo_root)
+    tracked = list_tracked_local_only_files(repo_root)
     if not tracked:
         return []
     git(repo_root, "rm", "--cached", "--sparse", "-f", "--", *tracked, capture_output=False)

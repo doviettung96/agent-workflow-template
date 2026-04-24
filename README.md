@@ -292,8 +292,8 @@ The intended repo-specific divergences are the local `build-and-test` skill, rep
 - `bd init` is per repo.
 - `bd setup codex` is per repo.
 - The scaffolding scripts do not use Dolt remotes.
-- Live `.beads` runtime is local-only and should not be committed.
-- Scaffolded workflow files are local-only in downstream Git and should be mirrored through the backup repo before PRs.
+- Live `.beads` runtime and local agent settings such as `.beads/config.yaml`, `.beads/metadata.json`, and `.claude/settings.json` are local-only and should not be committed.
+- Scaffolded workflow files are local-only in downstream Git and should be mirrored through the backup repo before PRs, including repo-specific workflow notes such as `docs/WORKFLOW_NOTES.md`.
 
 ## Attribution
 
