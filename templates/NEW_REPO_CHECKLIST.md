@@ -7,7 +7,7 @@
    - macOS/Linux: `bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo <prefix>`
    - Windows: `pwsh -File .\scripts\windows\bootstrap-new-repo.ps1 -RepoPath D:\path\to\repo -Prefix <prefix>`
 3. Verify:
-   - `br version`
+   - `br --version`
    - `br ready --json --no-db`
    - `br where --no-db`
    - `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh`

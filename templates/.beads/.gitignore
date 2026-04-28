@@ -25,6 +25,7 @@ redirect
 .br_recovery/
 .local_version
 .sync.lock
+.write.lock
 *.db
 *.db-journal
 *.db-shm

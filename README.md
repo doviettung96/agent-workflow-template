@@ -217,21 +217,21 @@ bash ./scripts/posix/migrate-downstream-to-workflow-backup.sh /path/to/repo
 
 This is the one-time cleanup for older repos that still track `AGENTS.md`, `CLAUDE.md`, `BEADS_WORKFLOW.md`, `docs/plans/`, repo-local skills, and scaffolded helper scripts in the downstream project remote.
 
-### 5. Migrate an existing `br` repo back to `br`
+### 5. Migrate an existing `bd` repo to `br`
 
 Windows:
 
 ```powershell
-pwsh -File .\scripts\windows\migrate-downstream-to-bd.ps1 -RepoPath D:\path\to\repo
+pwsh -File .\scripts\windows\migrate-downstream-to-br.ps1 -RepoPath D:\path\to\repo
 ```
 
 macOS/Linux:
 
 ```bash
-bash ./scripts/posix/migrate-downstream-to-bd.sh /path/to/repo
+bash ./scripts/posix/migrate-downstream-to-br.sh /path/to/repo
 ```
 
-The migration helper imports the current live `issues.jsonl` into a new local `bd` database, archives the old `br` state under `.beads/backup/`, removes the shared-beads layer, and then reapplies the template workflow files.
+The migration helper converts the current local `bd` state into a `br --no-db` JSONL workflow, archives the previous `.beads` state under `.beads/backup/`, removes obsolete `bd` artifacts, and then reapplies the template workflow files.
 
 ## Editing Skills
 

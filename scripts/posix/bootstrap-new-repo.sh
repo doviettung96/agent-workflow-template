@@ -18,6 +18,16 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 bash "${script_dir}/check-prereqs.sh"
 
+python_cmd=""
+if command -v python3 >/dev/null 2>&1; then
+  python_cmd="python3"
+elif command -v python >/dev/null 2>&1; then
+  python_cmd="python"
+else
+  printf 'python is required for bootstrap-new-repo.sh but was not found on PATH\n' >&2
+  exit 1
+fi
+
 mkdir -p "${repo_path}"
 
 if ! git -C "${repo_path}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -38,5 +48,5 @@ printf 'Profile: %s\n' "${profile}"
 )
 
 bash "${script_dir}/scaffold-repo-files.sh" "${repo_path}" "${prefix}" "${profile}"
-python "${script_dir}/../shared/ensure_stage1_beads.py" "${repo_path}" --profile "${profile}"
+"${python_cmd}" "${script_dir}/../shared/ensure_stage1_beads.py" "${repo_path}" --profile "${profile}"
 printf 'Bootstrap complete.\n'

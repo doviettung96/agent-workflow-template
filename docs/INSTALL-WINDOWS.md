@@ -2,17 +2,25 @@
 
 ## Install `br`
 
-Recommended:
+Native PowerShell helpers require `br` on the Windows `PATH`. If Rust is installed:
 
 ```powershell
-irm https://raw.githubusercontent.com/steveyegge/beads/main/install.ps1 | iex
+cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
+```
+
+WSL install:
+
+```powershell
+wsl bash -lc 'curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/beads_rust/main/install.sh?$(date +%s)" | bash'
 ```
 
 Verify:
 
 ```powershell
-br version
+br --version
 ```
+
+If `br` is installed only inside WSL, run the POSIX setup helpers from WSL instead of the PowerShell helpers.
 
 ## Install Python
 
@@ -34,8 +42,8 @@ The bootstrap script initializes git if needed, runs `br init --prefix yourprefi
 
 For the full stage-1 then stage-2 adoption flow, see [SETUP-NEW-REPO.md](SETUP-NEW-REPO.md).
 
-## Migrate an Existing `br` Repo To `bd`
+## Migrate an Existing `bd` Repo To `br`
 
 ```powershell
-pwsh -File .\scripts\windows\migrate-downstream-to-bd.ps1 -RepoPath D:\path\to\repo
+pwsh -File .\scripts\windows\migrate-downstream-to-br.ps1 -RepoPath D:\path\to\repo
 ```

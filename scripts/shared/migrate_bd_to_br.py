@@ -45,9 +45,15 @@ def run(repo_root: Path, *args: str) -> subprocess.CompletedProcess[str]:
 def parse_prefix(config_path: Path, fallback: str) -> str:
     if config_path.exists():
         text = config_path.read_text(encoding="utf-8", errors="ignore")
-        match = re.search(r"^\s*issue_prefix:\s*\"?([^\"#\r\n]+)", text, flags=re.MULTILINE)
-        if match:
-            return match.group(1).strip()
+        patterns = [
+            r"^\s*issue_prefix:\s*\"?([^\"#\r\n]+)",
+            r"^\s*issue-prefix:\s*\"?([^\"#\r\n]+)",
+            r"^\s*prefix:\s*\"?([^\"#\r\n]+)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, flags=re.MULTILINE)
+            if match:
+                return match.group(1).strip()
     return fallback
 
 
@@ -128,6 +134,28 @@ def load_json(text: str, context: str) -> object:
         return json.loads(text)
     except json.JSONDecodeError as exc:
         raise MigrationError(f"failed to parse JSON from {context}: {exc}", code=6) from exc
+
+
+def load_jsonl_issues(path: Path) -> list[dict[str, object]]:
+    if not path.exists():
+        raise MigrationError(f"could not find fallback issues.jsonl at {path}", code=5)
+
+    issues: list[dict[str, object]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            payload = load_json(line, f"{path}:{line_number}")
+            if not isinstance(payload, dict):
+                raise MigrationError(f"expected JSON object at {path}:{line_number}", code=6)
+            if "issue_type" not in payload and "type" in payload:
+                payload["issue_type"] = payload.pop("type")
+            issues.append(payload)
+
+    if not issues:
+        raise MigrationError(f"fallback issues.jsonl contains no issues: {path}", code=8)
+    return issues
 
 
 def get_full_issue(repo_root: Path, issue_id: str) -> dict[str, object]:
@@ -213,6 +241,7 @@ def remove_obsolete_bd_artifacts(repo_beads: Path) -> list[str]:
     leftovers: list[str] = []
     obsolete_paths = [
         repo_beads / "dolt",
+        repo_beads / "embeddeddolt",
         repo_beads / "dolt-server.lock",
         repo_beads / "dolt-server.log",
         repo_beads / "dolt-server.pid",
@@ -220,6 +249,9 @@ def remove_obsolete_bd_artifacts(repo_beads: Path) -> list[str]:
         repo_beads / ".beads-credential-key",
         repo_beads / ".local_version",
         repo_beads / "interactions.jsonl",
+        repo_beads / "issues-sync-source.json",
+        repo_beads / "last-touched",
+        repo_beads / "push-state.json",
     ]
     for path in obsolete_paths:
         if not path.exists():
@@ -248,12 +280,18 @@ def main(argv: list[str]) -> int:
     if not repo_beads.exists():
         raise MigrationError(f"repo does not contain .beads: {repo_root}", code=5)
 
-    issues_payload = load_json(run(repo_root, "bd", "list", "--all", "--limit", "0", "--json").stdout, "bd list")
-    if not isinstance(issues_payload, list):
-        raise MigrationError("unexpected bd list payload", code=6)
-    issues = [issue for issue in issues_payload if isinstance(issue, dict)]
-    if not issues:
-        raise MigrationError("bd list returned no issues to migrate", code=8)
+    use_bd_export = True
+    try:
+        issues_payload = load_json(run(repo_root, "bd", "list", "--all", "--limit", "0", "--json").stdout, "bd list")
+        if not isinstance(issues_payload, list):
+            raise MigrationError("unexpected bd list payload", code=6)
+        issues = [issue for issue in issues_payload if isinstance(issue, dict)]
+        if not issues:
+            raise MigrationError("bd list returned no issues to migrate", code=8)
+    except MigrationError as exc:
+        sys.stderr.write(f"bd export unavailable, falling back to .beads/issues.jsonl: {exc}\n")
+        issues = load_jsonl_issues(repo_beads / "issues.jsonl")
+        use_bd_export = False
 
     fallback_prefix = str(issues[0].get("id", repo_root.name)).split("-", 1)[0]
     prefix = args.prefix or parse_prefix(repo_beads / "config.yaml", fallback_prefix)
@@ -271,9 +309,12 @@ def main(argv: list[str]) -> int:
         shutil.copytree(workflow_src, workflow_backup)
 
     converted: list[dict[str, object]] = []
-    for issue in issues:
-        full_issue = get_full_issue(repo_root, str(issue["id"]))
-        converted.append(convert_issue(issue, full_issue))
+    if use_bd_export:
+        for issue in issues:
+            full_issue = get_full_issue(repo_root, str(issue["id"]))
+            converted.append(convert_issue(issue, full_issue))
+    else:
+        converted = issues
 
     run(repo_root, "br", "init", "--prefix", prefix, "--no-db")
     for db_artifact in repo_beads.glob("beads.db*"):

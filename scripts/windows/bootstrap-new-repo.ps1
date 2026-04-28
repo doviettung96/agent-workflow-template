@@ -7,7 +7,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Find-Python {
+    foreach ($candidate in @("py", "python", "python3")) {
+        $command = Get-Command $candidate -ErrorAction SilentlyContinue
+        if ($command) {
+            return $candidate
+        }
+    }
+    throw "Python is required for bootstrap-new-repo.ps1 but was not found on PATH."
+}
+
 & (Join-Path $PSScriptRoot "check-prereqs.ps1")
+$python = Find-Python
 
 if (-not (Test-Path $RepoPath)) {
     New-Item -ItemType Directory -Path $RepoPath | Out-Null
@@ -33,5 +44,11 @@ try {
 }
 
 & (Join-Path $PSScriptRoot "scaffold-repo-files.ps1") -RepoPath $RepoPath -Prefix $Prefix -Profile $Profile -TemplateRoot $TemplateRoot
-python (Join-Path $TemplateRoot "scripts\shared\ensure_stage1_beads.py") $RepoPath --profile $Profile
+if ($python -eq "py") {
+    & py -3 (Join-Path $TemplateRoot "scripts\shared\ensure_stage1_beads.py") $RepoPath --profile $Profile
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+} else {
+    & $python (Join-Path $TemplateRoot "scripts\shared\ensure_stage1_beads.py") $RepoPath --profile $Profile
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 Write-Host "Bootstrap complete."

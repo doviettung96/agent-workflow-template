@@ -3,13 +3,13 @@
 ## Install `br`
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
+curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/beads_rust/main/install.sh?$(date +%s)" | bash
 ```
 
 Verify:
 
 ```bash
-br version
+br --version
 ```
 
 ## Install Python
@@ -32,8 +32,8 @@ The bootstrap script initializes git if needed, runs `br init --prefix yourprefi
 
 For the full stage-1 then stage-2 adoption flow, see [SETUP-NEW-REPO.md](SETUP-NEW-REPO.md).
 
-## Migrate an Existing `br` Repo To `bd`
+## Migrate an Existing `bd` Repo To `br`
 
 ```bash
-bash ./scripts/posix/migrate-downstream-to-bd.sh /path/to/repo
+bash ./scripts/posix/migrate-downstream-to-br.sh /path/to/repo
 ```
