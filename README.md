@@ -57,7 +57,7 @@ Downstream repos keep the workflow scaffold on disk, but stop publishing it thro
 
 - downstream Git ignores the scaffolded workflow surface
 - `agentic-workflows/<project>/` becomes the remote history for those workflow files
-- `finishing-a-development-branch` runs workflow-backup sync before branch push / PR creation
+- `finishing-a-development-branch <epic-id>` syncs workflow backup, reconstructs an epic PR branch from prefixed commits, then pushes / creates the PR
 - the default backup repo is a sibling checkout `../agentic-workflows`; override with `AGENTIC_WORKFLOWS_REPO`
 
 Sync manually when needed:
@@ -132,7 +132,7 @@ Use one of:
 - `executor-loop-epic <epic-id>` for sequential worker-backed execution inside one epic
 - `swarm-epic <epic-id>` for epic-scoped multi-agent execution
 
-`swarm-epic` runs in the current checkout and uses branch `epic/<epic-id>` for the target epic.
+`swarm-epic` runs in the current checkout on the current feature branch. It does not require branch `epic/<epic-id>` or a clean worktree. If execution starts on `main`, create a generic temporary branch such as `feat/work-<timestamp>` first; if already on any non-`main` branch, stay there.
 
 If you want checkout isolation for a truly parallel epic, run `start-epic-worktree` from the current checkout first. It creates the worktree and copies the ignored workflow surface into it so `swarm-epic` works there too.
 
@@ -141,9 +141,14 @@ If you want checkout isolation for a truly parallel epic, run `start-epic-worktr
 - Live Beads state is local to this clone under `.beads/`
 - Beads task state is not shared through Git remotes
 - Code still moves through normal feature branches and pull requests
+- Do not execute epic work directly on `main`. Use a generic temporary branch such as `feat/work-<timestamp>` when no feature branch is already checked out.
+- A temporary feature branch may contain commits for multiple epics as long as every epic commit subject starts with `<epic-id>:`
+- When files contain unrelated dirty work, stage explicit paths or hunks for the epic commit; `git add -p` is an accepted normal workflow
 - Run one top-level epic executor session at a time in a clone
 
 `executor-once` and `executor-loop-epic` also use fresh workers for implementation, but keep one bead active at a time. `swarm-epic` parallelizes ready descendant beads inside one epic. When you need a separate checkout, `start-epic-worktree` prepares a worktree with its own copied local workflow surface.
+
+When an epic is finished, `finishing-a-development-branch <epic-id>` creates `epic/<epic-id>` from current `main`, cherry-picks only commits whose subject starts exactly `<epic-id>:`, verifies that reconstructed branch, pushes it, and opens the PR. It reports temporary-branch cleanup commands when safe, but does not delete branches automatically.
 
 Worker-ready does not mean dependency-free. It means each bead is fresh-session-safe: a new worker can execute it from the bead contract, persisted inputs, and local code inspection without replaying the full epic chat.
 

@@ -7,6 +7,8 @@ This repo uses **`br --no-db`** for task state and selected execution-quality sk
 - The current checkout owns the live `.beads/` state.
 - Live Beads state is local to this clone and is not shared through Git.
 - Run one top-level epic executor session at a time in a clone to avoid shared-checkout Git conflicts.
+- Epic execution can happen on any current feature branch; it does not require branch `epic/<epic-id>` or a clean worktree.
+- If epic execution starts on `main`, create a generic temporary branch such as `feat/work-<timestamp>` first. If already on any non-`main` branch, do not switch branches.
 - If you want checkout isolation for a parallel epic, use `start-epic-worktree` from the current checkout. It creates a Git worktree and hydrates the local-only workflow files into it.
 
 ## Workflow Skills
@@ -63,12 +65,12 @@ If that epic should run in its own checkout, start with `start-epic-worktree` in
 Default composition:
 
 1. `swarm-epic`
-2. create or check out branch `epic/<epic-id>` in the current checkout or prepared worktree
+2. inspect the current feature branch and dirty-worktree context
 3. coordinator assigns work and owns bead-state changes
 4. `execute-bead-worker` for worker execution
 5. final repo-local `build-and-test`
 6. `review-epic`
-7. `finishing-a-development-branch`
+7. `finishing-a-development-branch <epic-id>`
 
 In swarm mode:
 
@@ -76,6 +78,7 @@ In swarm mode:
 - workers implement, verify, and report
 - workers are fresh per bead and rely on the bead contract plus local inspection, not the full coordinator chat history
 - blocked workers classify the blocker so the coordinator can decide whether to reply to the same worker or replace it with a fresh one
+- commits for one epic must use the exact subject prefix `<epic-id>:` so finishing can select them from a mixed temporary branch
 - Agent Mail owns epic locks, file reservations, and message threads
 - local `.beads/workflow/` stores checkout-local runtime and handoff state
 
@@ -88,11 +91,16 @@ In swarm mode:
 
 ## Branch and PR Workflow
 
-- Do code work on feature branches.
+- Do code work on feature branches, not directly on `main`.
+- Use generic temporary branch names like `feat/work-<timestamp>` for mixed execution branches; reserve `epic/<epic-id>` for reconstructed PR branches.
+- Temporary feature branches may contain commits for more than one epic.
+- Stage only the intended paths or hunks for each commit when files contain unrelated local edits; `git add -p` is an accepted normal workflow.
+- Prefix every epic commit subject with `<epic-id>:`. This prefix is the PR slicing contract.
 - Open pull requests instead of merging locally.
 - Beads state itself is local-only; code moves through Git, not Beads exports.
 - Workflow scaffold files stay local-only in downstream Git and are mirrored to the backup repo with `scripts/posix/sync-workflow-backup.sh` or `scripts/windows/sync-workflow-backup.ps1`.
-- `finishing-a-development-branch` handles workflow-backup sync, branch push, and PR creation.
+- `finishing-a-development-branch <epic-id>` selects only commits with that prefix, creates PR branch `epic/<epic-id>` from `main`, cherry-picks those commits, verifies again, pushes, and creates the PR.
+- After all prefixed commits from a temporary branch have PR branches, the finishing skill reports cleanup commands for the temporary branch but does not delete it automatically.
 
 ## Operational Notes
 

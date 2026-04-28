@@ -28,6 +28,8 @@ Keep repo exploration local. If `.beads/workflow/runtime-target.json` selects SS
 - Do not use markdown TODO files, TodoWrite, or alternate trackers
 - Live `.beads` state is local-only and should not be committed
 - Run one top-level epic executor session at a time in a checkout
+- Epic execution can run on the current feature branch; it does not require branch `epic/<epic-id>` or a clean worktree
+- If epic execution starts on `main`, create a generic temporary branch such as `feat/work-<timestamp>` first; if already on any non-`main` branch, do not switch branches
 
 ## Essential Commands
 
@@ -38,7 +40,10 @@ br create --title="Summary" --description="Details" --type=task|bug|feature|epic
 br update <id> --status=in_progress --no-db
 br close <id> --reason="Completed" --no-db
 br dep add <child-id> <parent-id> --type parent-child --no-db
-git checkout -b epic/<epic-id>
+git status --short
+git switch -c "feat/work-<timestamp>"
+git add -p
+git commit -m "<epic-id>: <description>"
 ```
 
 ## Notes
@@ -46,6 +51,8 @@ git checkout -b epic/<epic-id>
 - Epics must use `--type=epic`
 - Check `br ready --no-db` before asking what to work on next
 - `swarm-epic` may coordinate workers inside one epic, but only the coordinator updates bead status during swarm execution
+- Commits for one epic must start with the exact subject prefix `<epic-id>:` so `finishing-a-development-branch <epic-id>` can cherry-pick the epic slice from a mixed temporary branch
+- Use explicit path staging or `git add -p` when files contain unrelated dirty work
 - Worker-ready beads must be fresh-session-safe: a fresh worker should be able to execute from the bead contract, persisted inputs, and local code inspection without replaying prior chat
 - If the current checkout cannot open the Beads workspace, inspect `br where --no-db` and run `br init --prefix <prefix> --no-db` before continuing
 <!-- END TEMPLATE BR WORKFLOW -->

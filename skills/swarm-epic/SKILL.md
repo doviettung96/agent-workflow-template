@@ -1,6 +1,6 @@
 ---
 name: swarm-epic
-description: "Coordinate multi-agent execution for one epic. Use after planning when the user wants parallel work across ready descendant beads with coordinator-owned Beads state, automatic branch setup, automatic epic review, runtime files, and Agent Mail reservations."
+description: "Coordinate multi-agent execution for one epic. Use after planning when the user wants parallel work across ready descendant beads with coordinator-owned Beads state, feature-branch execution, automatic epic review, runtime files, and Agent Mail reservations."
 ---
 
 # Swarm Epic
@@ -24,12 +24,20 @@ The coordinator should remain thin. Workers are fresh per bead and should rely o
    br show <epic-id> --json --no-db
    ```
 4. Ensure the epic has passed `validate-beads`. In the normal flow this should already be true because `plan-beads` ends with validation. If the epic has not been validated, stop and run that gate first.
-5. Ensure the current checkout is on branch `epic/<epic-id>`:
-   - if already on `epic/<epic-id>`, continue
-   - otherwise inspect local changes with `git status --short`
-   - local tracked, staged, or untracked changes do not block by themselves; if present, warn that the epic branch will inherit them if the checkout succeeds
-   - attempt to create or switch to branch `epic/<epic-id>`
-   - if `git checkout -b epic/<epic-id>` or `git checkout epic/<epic-id>` fails because a tracked or untracked path would be overwritten, stop and tell the user exactly which paths must be committed, stashed, moved, or cleaned
+5. Confirm the execution branch and dirty-worktree context:
+   ```bash
+   git branch --show-current
+   git status --short
+   ```
+   - run from the current feature branch; it does not need to be named `epic/<epic-id>`
+   - if the checkout is on any non-`main` branch, do not check out another branch
+   - if the checkout is on `main`, create and switch to a generic temporary branch before code work starts:
+     - Windows: `git switch -c ("feat/work-" + (Get-Date -Format "yyyyMMdd-HHmmss"))`
+     - POSIX: `git switch -c "feat/work-$(date +%Y%m%d-%H%M%S)"`
+   - do not use `epic/<epic-id>` as the execution branch; that name is reserved for the reconstructed PR branch created by `finishing-a-development-branch <epic-id>`
+   - local tracked, staged, or untracked changes do not block by themselves
+   - if files the epic will touch are already dirty, stage and commit only the intended hunks or paths for this epic; `git add -p` is normal and allowed
+   - every implementation commit for this epic must start with the exact subject prefix `<epic-id>:`
 6. Confirm the current checkout resolves the Beads workspace correctly:
    ```bash
    br where --no-db
@@ -95,7 +103,7 @@ The coordinator should remain thin. Workers are fresh per bead and should rely o
 16. When the epic has no ready descendants left:
    - run the repo-local `build-and-test` skill one final time for the whole epic
    - automatically run `review-epic` as part of swarm completion
-   - if the review passes or only yields non-blocking follow-up work, use `finishing-a-development-branch`
+   - if the review passes or only yields non-blocking follow-up work, use `finishing-a-development-branch <epic-id>`
 17. When stopping early:
    - write `HANDOFF.json`
    - release any outstanding reservations owned by the coordinator
@@ -120,4 +128,5 @@ The coordinator should remain thin. Workers are fresh per bead and should rely o
 - Do not assign a bead that still depends on conversational memory instead of persisted `Inputs:`.
 - Treat blocked workers as reusable only when the blocker is local and clarifiable. If the bead contract or scope is wrong, fix the bead and prefer a fresh worker.
 - If `acquire-epic` fails because another coordinator owns the lock, stop and inspect `workflow-status` instead of forcing progress.
-- Treat branch setup and epic review as part of the default `swarm-epic` composition, not optional operator memory.
+- Treat execution-branch inspection, commit-prefix discipline, and epic review as part of the default `swarm-epic` composition, not optional operator memory.
+- Do not require a clean worktree just to start the epic. Keep commits scoped by staging explicit paths or hunks.

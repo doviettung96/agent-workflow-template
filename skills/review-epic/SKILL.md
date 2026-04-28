@@ -36,7 +36,7 @@ Catch integration, regression, and quality issues that bead-level verification c
 7. If the epic is ready:
    - state that the epic passed review
    - summarize any non-blocking follow-up beads
-   - proceed to `finishing-a-development-branch`
+   - proceed to `finishing-a-development-branch <epic-id>`
 
 ## Output Format
 

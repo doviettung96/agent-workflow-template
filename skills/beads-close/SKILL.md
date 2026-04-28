@@ -43,7 +43,7 @@ Do not invoke this skill:
 4. Commit code changes:
    ```bash
    git add <changed files>
-   git commit -m "<type>: <description>"
+   git commit -m "<epic-id>: <description>"
    ```
 
 ## Rules
@@ -54,6 +54,8 @@ Do not invoke this skill:
   ```
 - When `executor-loop`, `executor-loop-epic`, or any other loop is driving the workflow, hand control back to the loop after the current bead is closed and the local commit is complete.
 - Work happens on feature branches. Merging to `main` is done via PR, not local merge.
+- When the work belongs to an epic, the commit subject must start with the exact parent epic id plus colon: `<epic-id>:`. This lets `finishing-a-development-branch <epic-id>` reconstruct the PR branch from a mixed temporary branch.
+- Dirty files do not block closeout by themselves. If a file contains unrelated local edits, stage only the intended hunks with `git add -p` or stage explicit paths that are wholly in scope.
 - Live `.beads` state is local runtime. Do not treat it as something to publish through Git during normal closeout.
 - `swarm-epic`, `executor-once`, and `executor-loop-epic` own bead status transitions while coordinating worker-backed runs. Workers never call `beads-close`.
 - Keep the closeout note concise but concrete. It should tell a fresh downstream worker what changed, where the result lives, and what is now safe to assume.

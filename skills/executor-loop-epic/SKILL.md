@@ -19,14 +19,20 @@ Compatibility path only. For full coordinator-plus-worker execution with reserva
    ```bash
    br show <epic-id> --json --no-db
    ```
-4. Create a feature branch for this epic:
+4. Confirm the execution branch and dirty-worktree context:
    ```bash
-   git checkout -b epic/<epic-id>
+   git branch --show-current
+   git status --short
    ```
-   If the branch already exists, check it out instead:
-   ```bash
-   git checkout epic/<epic-id>
-   ```
+   - run from the current feature branch; it does not need to be named `epic/<epic-id>`
+   - if the checkout is on any non-`main` branch, do not check out another branch
+   - if the checkout is on `main`, create and switch to a generic temporary branch before code work starts:
+     - Windows: `git switch -c ("feat/work-" + (Get-Date -Format "yyyyMMdd-HHmmss"))`
+     - POSIX: `git switch -c "feat/work-$(date +%Y%m%d-%H%M%S)"`
+   - do not use `epic/<epic-id>` as the execution branch; that name is reserved for the reconstructed PR branch created by `finishing-a-development-branch <epic-id>`
+   - local tracked, staged, or untracked changes do not block by themselves
+   - if files the epic will touch are already dirty, stage and commit only the intended hunks or paths for this epic; `git add -p` is normal and allowed
+   - every implementation commit for this epic must start with the exact subject prefix `<epic-id>:`
 5. Find ready work only within that epic's descendant tree:
    ```bash
    br ready --parent <epic-id> --json --no-db
@@ -60,7 +66,7 @@ Compatibility path only. For full coordinator-plus-worker execution with reserva
 11. When the epic has no ready descendants left:
     - run `build-and-test` one final time to verify the full epic
     - invoke `review-epic` if the user wants an epic-level quality gate before the PR
-    - use `finishing-a-development-branch` to push the feature branch and create a PR targeting `main`
+    - use `finishing-a-development-branch <epic-id>` to reconstruct an epic PR branch from prefixed commits and create a PR targeting `main`
 12. When stopping early:
     - summarize the current bead, the blocker, and what input or fix is needed
 
@@ -74,5 +80,6 @@ Compatibility path only. For full coordinator-plus-worker execution with reserva
 - Never continue past a blocker without user input.
 - If the supplied epic id is not actually an epic, stop and ask the user whether to scope to that parent bead anyway or choose a different epic.
 - Never merge locally; the PR is the merge mechanism.
+- Do not require a clean worktree just to execute the epic. Keep commits scoped by staging explicit paths or hunks.
 - This is a sequential compatibility path, not the primary swarm workflow.
 - If the session accumulates too much coordinator context, stop after the current bead and restart the next bead in a fresh session.
