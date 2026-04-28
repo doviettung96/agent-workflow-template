@@ -63,7 +63,7 @@ If the user has not mentioned a profile, ask once whether this repo is a game re
 Run from the downstream repo root:
 
 ```bash
-bd where
+br where --no-db
 ```
 
 Interpret the result this way:
@@ -75,7 +75,7 @@ Do not guess based only on file names or the presence of `.beads/`.
 
 ## Update Flow
 
-Use this when `bd where` succeeds.
+Use this when `br where --no-db` succeeds.
 
 1. Run the template's platform-appropriate update script against the downstream repo.
 2. Run `scripts/shared/ensure_stage1_beads.py <repo>` from the template repo afterward.
@@ -100,7 +100,7 @@ bash ./scripts/posix/update-skills.sh "<downstream-repo>" [game-re]
 
 ## Bootstrap Flow
 
-Use this when `bd where` fails.
+Use this when `br where --no-db` fails.
 
 1. Determine the Beads prefix.
 2. If the prefix was omitted, propose the downstream folder name as the default and ask before continuing.
@@ -125,8 +125,8 @@ bash ./scripts/posix/bootstrap-new-repo.sh "<downstream-repo>" "<prefix>" [game-
 The bootstrap script already:
 
 - initializes git when needed
-- runs `bd init`
-- runs `bd setup codex`
+- runs `br init --prefix <prefix> --no-db`
+- runs `br agents --add --force --no-db`
 - scaffolds shared docs, skills, and scripts
 - creates the standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`
 
@@ -135,9 +135,9 @@ The bootstrap script already:
 After either flow completes, verify the downstream repo with:
 
 ```bash
-bd where
-bd ready --json
-bd list --json
+br where --no-db
+br ready --json --no-db
+br list --json --no-db
 ```
 
 Check for exactly one bead titled:

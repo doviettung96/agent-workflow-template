@@ -1,25 +1,27 @@
 # Beads Workflow
 
-This repo uses **`bd`** for task state and selected execution-quality skills for planning and delivery. Beads remains the source of truth for `epic`, `task`, `bug`, and `chore` state.
+This repo uses **`br --no-db`** for task state and selected execution-quality skills for planning and delivery. Beads remains the source of truth for `epic`, `task`, `bug`, and `chore` state.
 
 ## Local-Only Beads Model
 
-- The current checkout owns the live `.beads/` database.
+- The current checkout owns the live `.beads/` state.
 - Live Beads state is local to this clone and is not shared through Git.
 - Run one top-level epic executor session at a time in a clone to avoid shared-checkout Git conflicts.
+- If you want checkout isolation for a parallel epic, use `start-epic-worktree` from the current checkout. It creates a Git worktree and hydrates the local-only workflow files into it.
 
 ## Workflow Skills
 
 Codex and Claude Code can enter the workflow through repo-local skills installed under `.codex/skills/` and `.claude/skills/`:
 
 - `plan-beads`
+- `start-epic-worktree`
 - `executor-once`
 - `executor-loop`
 - `executor-loop-epic`
 - `swarm-epic`
 - `review-epic`
 
-When an executor skill stops on a blocker, continue in normal chat by telling the agent to resume the blocked bead. For long epics, prefer a fresh session per bead over one continuously growing executor thread.
+When an executor skill stops on a blocker, continue in normal chat by telling the agent to resume the blocked bead. For long epics, prefer `swarm-epic` or repeated worker-backed `executor-once` cycles over one continuously growing executor thread.
 
 ## Planner Session
 
@@ -32,35 +34,36 @@ Turns a fuzzy idea into structured, claimable beads. No code is written.
 5. `validate-beads` - confirm the epic is swarm-ready and fresh-session-safe when parallel execution is intended
 
 Entry: a feature idea, bug report, or project change.
-Exit: beads created with dependencies, ready for `bd ready` or `swarm-epic`.
+Exit: beads created with dependencies, ready for `br ready --no-db` or `swarm-epic`.
 
-Swarm-ready does not mean dependency-free. It means each bead carries enough persisted context that a fresh worker can execute it without replaying the prior epic chat.
+Worker-ready does not mean dependency-free. It means each bead carries enough persisted context that a fresh worker can execute it without replaying the prior epic chat.
 
-## Manual Executor Session
+## Single-Bead Executor Session
 
-Claims one bead and delivers it.
+Claims one bead, dispatches a fresh worker, reviews the result, verifies, and closes it.
 
 1. `beads-claim`
-2. `writing-plans`
-3. implement
-4. `systematic-debugging` if blocked
-5. repo-local `build-and-test`
-6. `requesting-code-review` or `verification-before-completion`
-7. `beads-close`
+2. `execute-bead-worker` for implementation
+3. coordinator review of the worker report
+4. repo-local `build-and-test`
+5. `requesting-code-review` or `verification-before-completion`
+6. `beads-close`
 
-Entry: a ready bead from `bd ready`.
+Entry: a ready bead from `br ready --no-db`.
 Exit: bead closed, code committed, follow-up beads created if needed.
 
-For manual work on longer epics, prefer repeated fresh `executor-once` sessions bead-by-bead. Treat `executor-loop` and `executor-loop-epic` as compatibility paths when a long-lived session is still acceptable.
+If worker spawning is unavailable, `executor-once` stops and reports the blocker instead of falling back to coordinator-local implementation. `executor-loop` remains the compatibility path for old current-session manual execution. `executor-loop-epic` is sequential but still worker-backed: one ready descendant bead, one fresh worker, one closeout.
 
 ## Epic Swarm Session
 
 Use `swarm-epic <epic-id>` when one epic has multiple ready descendants that can safely move in parallel.
 
+If that epic should run in its own checkout, start with `start-epic-worktree` in the source checkout and then continue inside the new worktree.
+
 Default composition:
 
 1. `swarm-epic`
-2. create or check out branch `epic/<epic-id>` in the current checkout
+2. create or check out branch `epic/<epic-id>` in the current checkout or prepared worktree
 3. coordinator assigns work and owns bead-state changes
 4. `execute-bead-worker` for worker execution
 5. final repo-local `build-and-test`
@@ -79,7 +82,7 @@ In swarm mode:
 ## Session Boundaries
 
 - Planner sessions do not write code.
-- Manual executor sessions do not re-plan the whole project.
+- Executor sessions do not re-plan the whole project.
 - Epic swarm sessions stay inside one epic.
 - Do not run multiple top-level code-writing epic sessions in the same checkout at the same time.
 
@@ -96,8 +99,8 @@ In swarm mode:
 - Run `scripts/windows/workflow-status.ps1` or `scripts/posix/workflow-status.sh` to inspect checkout runtime plus Agent Mail state.
 - Run `scripts/windows/sync-workflow-backup.ps1` or `scripts/posix/sync-workflow-backup.sh` before a PR when you need to sync workflow docs, skills, or helper scripts outside the normal branch-finish flow.
 - Keep repo exploration local. Route runtime-dependent project commands through `scripts/shared/target_runtime.py` when the checkout config selects SSH execution.
-- If `bd where` or `bd context` fails in the current checkout, repair the repo with `bd bootstrap --yes` before continuing.
-- Use `bd ready` before asking what to work on next.
+- If `br where --no-db` or `br info --json --no-db` fails in the current checkout, repair the repo with `br init --prefix <prefix> --no-db` before continuing.
+- Use `br ready --no-db` before asking what to work on next.
 
 ## Game-RE Profile (optional)
 

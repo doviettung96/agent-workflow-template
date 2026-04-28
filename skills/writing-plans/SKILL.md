@@ -16,7 +16,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
 <HARD-GATE>
-This is an **executor skill**. It should only be invoked in a session where a bead has been claimed via `bd update <id> --status in_progress`. Do NOT invoke this in a planner session that just ran `brainstorming`, `planner-research`, or `beads-planner`.
+This is an **executor skill**. It should only be invoked in a session where a bead has been claimed via `br update <id> --status in_progress --no-db`. Do NOT invoke this in a planner session that just ran `brainstorming`, `planner-research`, or `beads-planner`.
 </HARD-GATE>
 
 **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
@@ -189,7 +189,8 @@ After saving the plan:
 
 **"Plan complete and saved to `docs/plans/<filename>.md`. Ready to execute?"**
 
-- If this skill was invoked by `/executor-loop`, `/executor-loop-epic`, or `/executor-once`, proceed to implementation automatically â€” do not wait for confirmation.
+- If this skill was invoked by `/executor-loop`, proceed to implementation automatically - do not wait for confirmation.
+- `executor-once` and `executor-loop-epic` normally dispatch `execute-bead-worker` directly after claim; do not insert this skill into those flows unless the coordinator explicitly asks for a local plan document.
 - Otherwise, wait for user confirmation before proceeding.
 
 **When proceeding:** Use Codex subagents when they help, with code review (`requesting-code-review`) after each major task.

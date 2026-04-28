@@ -9,19 +9,19 @@ Coordinate epic-scoped execution across one or more workers.
 
 ## Goal
 
-Drive an epic to completion while keeping the current checkout's local `bd`/`.beads` store as the single source of truth.
+Drive an epic to completion while keeping the current checkout's local `br`/`.beads` store as the single source of truth.
 
 The coordinator should remain thin. Workers are fresh per bead and should rely on the bead contract plus local code inspection, not the full epic session history.
 
 ## Steps
 
-1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.
+1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `br init --prefix <prefix> --no-db` plus the repo scaffolding steps.
 2. Determine the target epic:
    - if the user supplied an epic id, use it
    - otherwise ask for the epic id or enough selector text to identify one unambiguously
 3. Inspect the epic:
    ```bash
-   bd show <epic-id> --json
+   br show <epic-id> --json --no-db
    ```
 4. Ensure the epic has passed `validate-beads`. In the normal flow this should already be true because `plan-beads` ends with validation. If the epic has not been validated, stop and run that gate first.
 5. Ensure the current checkout is on branch `epic/<epic-id>`:
@@ -30,10 +30,10 @@ The coordinator should remain thin. Workers are fresh per bead and should rely o
    - local tracked, staged, or untracked changes do not block by themselves; if present, warn that the epic branch will inherit them if the checkout succeeds
    - attempt to create or switch to branch `epic/<epic-id>`
    - if `git checkout -b epic/<epic-id>` or `git checkout epic/<epic-id>` fails because a tracked or untracked path would be overwritten, stop and tell the user exactly which paths must be committed, stashed, moved, or cleaned
-6. Confirm the current checkout resolves the Beads database correctly:
+6. Confirm the current checkout resolves the Beads workspace correctly:
    ```bash
-   bd where
-   bd context --json
+   br where --no-db
+   br info --json --no-db
    ```
 7. Initialize or refresh local `.beads/workflow/` in this checkout:
    - `state.json` tracks mode, coordinator identity, workers, assignments, reservations, blockers, and next action
@@ -41,7 +41,7 @@ The coordinator should remain thin. Workers are fresh per bead and should rely o
    - `HANDOFF.json` captures pause and resume details when the session stops early
 8. Inspect ready descendants:
    ```bash
-   bd ready --parent <epic-id> --json
+   br ready --parent <epic-id> --json --no-db
    ```
 9. Initialize shared Agent Mail and acquire the epic lock for this coordinator:
    - Windows:
@@ -60,7 +60,7 @@ The coordinator should remain thin. Workers are fresh per bead and should rely o
    - preferred: coordinator plus fresh workers with Agent Mail reservations
    - fallback: sequential epic execution in the current session when Agent Mail or worker spawning is unavailable
 11. Coordinator rules:
-   - the coordinator is the only writer for `bd update` and `bd close`
+   - the coordinator is the only writer for `br update --no-db` and `br close --no-db`
    - move only assigned ready leaf beads to `in_progress`; do not mark the epic itself `in_progress` just because child work has started
    - each worker owns at most one bead at a time
    - do not assign a bead until its file scope is reserved or confirmed conflict-free in the shared control plane

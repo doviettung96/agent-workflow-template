@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -135,9 +136,19 @@ def run(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
         args,
         cwd=repo,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         check=False,
     )
+
+
+def emit_portable_stdout(text: str) -> None:
+    if not text:
+        return
+    encoding = sys.stdout.encoding or "utf-8"
+    safe = text.encode(encoding, errors="replace").decode(encoding, errors="replace")
+    sys.stdout.write(safe)
 
 
 def _resolve_profile(repo: Path, cli_profile: str | None) -> str:
@@ -167,16 +178,23 @@ def main() -> int:
     # stage-1 bead does not get re-created as a duplicate on every update-skills
     # run. Without --limit=0 any repo with >50 issues silently loses older beads
     # from the existing-title set.
-    list_result = run(repo, "bd", "list", "--all", "--limit", "0", "--json")
+    list_result = run(repo, "br", "list", "--all", "--limit", "0", "--json", "--no-db")
     if list_result.returncode != 0:
         sys.stderr.write(list_result.stderr)
         return list_result.returncode
 
     try:
-        issues = json.loads(list_result.stdout or "[]")
+        payload = json.loads(list_result.stdout or "{}")
     except json.JSONDecodeError as exc:
-        sys.stderr.write(f"Failed to parse `bd list --json`: {exc}\n")
+        sys.stderr.write(f"Failed to parse `br list --json --no-db`: {exc}\n")
         return 1
+
+    if isinstance(payload, dict):
+        issues = payload.get("issues", [])
+    elif isinstance(payload, list):
+        issues = payload
+    else:
+        issues = []
 
     existing_titles = {
         issue.get("title"): issue.get("id")
@@ -197,7 +215,7 @@ def main() -> int:
 
         create_result = run(
             repo,
-            "bd",
+            "br",
             "create",
             "--type",
             "chore",
@@ -209,13 +227,22 @@ def main() -> int:
             title,
             "--description",
             bead["description"],
+            "--no-db",
         )
         if create_result.returncode != 0:
             sys.stderr.write(create_result.stderr)
             return create_result.returncode
 
         created_any = True
-        sys.stdout.write(create_result.stdout)
+        output = create_result.stdout or ""
+        if output.strip():
+            emit_portable_stdout(output)
+            continue
+        issue_id = ""
+        match = re.search(r"\b([A-Za-z0-9_-]+-[A-Za-z0-9_-]+)\b", output)
+        if match:
+            issue_id = match.group(1)
+        print(f"Created stage-1 follow-up bead: {issue_id or title}")
 
     if not created_any:
         print(f"All stage-1 follow-up beads already exist (profile={profile}).")

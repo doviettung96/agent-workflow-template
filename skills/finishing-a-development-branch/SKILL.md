@@ -23,14 +23,14 @@ Before invoking this skill, ensure:
 ### 1. Verify clean downstream state
 
 ```bash
-bd where
+br where --no-db
 git status
 git log --oneline main..HEAD
 ```
 
 - Working tree must be clean (no uncommitted changes)
 - There must be commits ahead of main
-- `bd where` must succeed in the current checkout
+- `br where --no-db` must succeed in the current checkout
 - If dirty, stop and ask the user to commit or stash
 
 ### 2. Sync the workflow backup mirror
@@ -100,7 +100,7 @@ Branch: <branch-name>
 
 - Treat Beads as local runtime. Do not try to publish live `.beads` state through Git during normal branch completion.
 - Workflow scaffold files are local-only in downstream Git. Publish them through the workflow backup mirror instead of the downstream project remote.
-- If `bd where` fails, stop and repair the checkout with `bd bootstrap --yes` before pushing or creating a PR.
+- If `br where --no-db` fails, stop and repair the checkout with `br init --prefix <prefix> --no-db` before pushing or creating a PR.
 
 ## Integration
 

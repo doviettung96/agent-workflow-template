@@ -5,23 +5,22 @@ Use this guide when starting a downstream repo from scratch or when a repo is st
 ## Stage 1: General Bootstrap
 
 1. Ensure machine prerequisites exist:
-   - `bd`
-   - `dolt`
+   - `br`
    - Python
 2. Bootstrap the repo from this template:
    - macOS/Linux: `bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo <prefix>`
    - Windows: `pwsh -File .\scripts\windows\bootstrap-new-repo.ps1 -RepoPath D:\path\to\repo -Prefix <prefix>`
 3. The bootstrap script:
    - initializes git if the target path is not already a repo
-   - runs `bd init -p <prefix> --server --skip-agents --skip-hooks`
-   - runs `bd setup codex`
+   - runs `br init --prefix <prefix> --no-db`
+   - runs `br agents --add --force --no-db`
    - scaffolds the shared workflow docs, skills, and helper scripts
    - installs the managed root `.gitignore` block for local-only workflow assets
    - seeds `.beads/workflow/runtime-target.json` with local execution as the default
    - creates standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`
 4. Verify the repo is ready:
-   - `bd where`
-   - `bd ready --json`
+   - `br where --no-db`
+   - `br ready --json --no-db`
    - `scripts/posix/workflow-status.sh` or `scripts/windows/workflow-status.ps1`
 
 ## First Work In An Empty Repo
@@ -36,7 +35,7 @@ You do not need project-specific skills yet.
    - `beads-planner`
    - `validate-beads` when the epic is intended for `swarm-epic`
 2. Let the first planning pass define the runtime shape, likely files, verification needs, and the persisted inputs later beads should rely on.
-3. For swarm-targeted beads, make sure the bead contract includes `Read:`, `Inputs:`, `Files:`, and `Verify:` so a fresh worker can execute without replaying planner chat.
+3. For worker-targeted beads, make sure the bead contract includes `Read:`, `Inputs:`, `Files:`, and `Verify:` so a fresh worker can execute without replaying planner chat.
 4. Make sure early execution plans include a precise `## Verification` section with exact commands and expected evidence. The stage-1 `build-and-test` skill depends on that section and will not guess.
 5. Keep the bootstrap-created `Configure target runtime for this repo` and `Specialize build-and-test for this repo` beads independent. Do not make them children of the first feature epic.
 6. If a repo's first real verification must run on a non-local machine, complete `Configure target runtime for this repo` before those feature beads execute.
@@ -52,7 +51,7 @@ Typical stage-2 changes:
 - specialize `.codex/skills/build-and-test/SKILL.md`
 - mirror the same specialization to `.claude/skills/build-and-test/SKILL.md`
 - add runtime-specific setup or operational notes
-- add repo-specific guidance outside the managed blocks in `AGENTS.md` or `CLAUDE.md`
+- add repo-specific guidance in `AGENTS.md`; keep `CLAUDE.md` as a thin reference to `AGENTS.md`
 - rely on `sync-workflow-backup` / `finishing-a-development-branch` to publish updated workflow docs and skills through the backup repo, not the downstream project remote
 
 When executing `Configure target runtime for this repo`:

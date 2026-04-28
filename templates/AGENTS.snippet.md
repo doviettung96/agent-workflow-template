@@ -1,9 +1,11 @@
-<!-- BEGIN TEMPLATE BD WORKFLOW -->
+<!-- BEGIN TEMPLATE BR WORKFLOW -->
 ## Workflow Guide
 
-Use `BEADS_WORKFLOW.md` for the current planner, manual executor, and swarm executor flow. All workflow skills are repo-local: Codex skills live under `.codex/skills/`, Claude skills under `.claude/skills/`.
+Use `BEADS_WORKFLOW.md` for the current planner, worker-backed executor, manual compatibility executor, and swarm executor flow. All workflow skills are repo-local: Codex skills live under `.codex/skills/`, Claude skills under `.claude/skills/`.
 
 Preferred entry points are `plan-beads`, `swarm-epic`, and `executor-once`. Use `planner-research` only inside a planner session when `brainstorming` still leaves material factual uncertainty. Treat `executor-loop` and `executor-loop-epic` as compatibility paths, not the default for long epic execution.
+
+Use `start-epic-worktree` only when you truly want a parallel epic in its own checkout. It prepares a Git worktree and hydrates the local-only workflow files there. Then run `swarm-epic` inside that worktree.
 
 The executor test skill lives at `.codex/skills/build-and-test/SKILL.md`; use it between implementation and final verification.
 
@@ -12,9 +14,17 @@ Workflow scaffold files such as `AGENTS.md`, `CLAUDE.md`, `BEADS_WORKFLOW.md`, `
 
 Keep repo exploration local. If `.beads/workflow/runtime-target.json` selects SSH, route build, test, run, deploy, migration, or other project-execution commands through `scripts/shared/target_runtime.py` or the repo-local `target-runtime-exec` skill instead of assuming the local machine.
 
-## Issue Tracking With `bd`
+## Planning And Execution Policy
 
-- Use `bd` for all issue tracking
+- `AGENTS.md` is the canonical instruction file for repo policy; keep other assistant-specific files as thin references back to this file
+- present implementation options during planning time, not during execution after work has already started
+- once the user approves one option, implement only that option
+- do not silently switch to a fallback, backup plan, or alternate implementation path
+- if the chosen option fails or proves non-viable, stop, explain the failure, and discuss new options before continuing
+
+## Issue Tracking With `br`
+
+- Use `br --no-db` for all issue tracking
 - Do not use markdown TODO files, TodoWrite, or alternate trackers
 - Live `.beads` state is local-only and should not be committed
 - Run one top-level epic executor session at a time in a checkout
@@ -22,20 +32,20 @@ Keep repo exploration local. If `.beads/workflow/runtime-target.json` selects SS
 ## Essential Commands
 
 ```bash
-bd ready --json
-bd show <id> --json
-bd create --title="Summary" --description="Details" --type=task|bug|feature|epic --priority=2
-bd update <id> --status=in_progress
-bd close <id> --reason="Completed"
-bd dep add <child-id> <parent-id>
+br ready --json --no-db
+br show <id> --json --no-db
+br create --title="Summary" --description="Details" --type=task|bug|feature|epic --priority=2 --no-db
+br update <id> --status=in_progress --no-db
+br close <id> --reason="Completed" --no-db
+br dep add <child-id> <parent-id> --type parent-child --no-db
 git checkout -b epic/<epic-id>
 ```
 
 ## Notes
 
 - Epics must use `--type=epic`
-- Check `bd ready` before asking what to work on next
+- Check `br ready --no-db` before asking what to work on next
 - `swarm-epic` may coordinate workers inside one epic, but only the coordinator updates bead status during swarm execution
-- Swarm-ready beads must be fresh-session-safe: a fresh worker should be able to execute from the bead contract, persisted inputs, and local code inspection without replaying prior chat
-- If the current checkout cannot open the Beads database, inspect `bd where` and run `bd bootstrap --yes` before continuing
-<!-- END TEMPLATE BD WORKFLOW -->
+- Worker-ready beads must be fresh-session-safe: a fresh worker should be able to execute from the bead contract, persisted inputs, and local code inspection without replaying prior chat
+- If the current checkout cannot open the Beads workspace, inspect `br where --no-db` and run `br init --prefix <prefix> --no-db` before continuing
+<!-- END TEMPLATE BR WORKFLOW -->

@@ -11,9 +11,13 @@ LEGACY_BLOCKS = [
     ("<!-- BEGIN BEADS INTEGRATION v:", "<!-- END BEADS INTEGRATION -->"),
     ("<!-- br-agent-instructions-v", "<!-- end-br-agent-instructions -->"),
     ("<!-- bv-agent-instructions-v", "<!-- end-bv-agent-instructions -->"),
+    ("<!-- BEGIN TEMPLATE BD WORKFLOW -->", "<!-- END TEMPLATE BD WORKFLOW -->"),
     ("<!-- BEGIN TEMPLATE BR WORKFLOW -->", "<!-- END TEMPLATE BR WORKFLOW -->"),
 ]
 
+# Keep these legacy snippets verbatim so downstream AGENTS/CLAUDE files that still
+# contain older workflow text can be normalized away during refresh. The strings
+# below are cleanup targets, not the current source-of-truth workflow guidance.
 LEGACY_SNIPPETS = [
     "## Issue Tracking\n\nUses `"
     + chr(98)

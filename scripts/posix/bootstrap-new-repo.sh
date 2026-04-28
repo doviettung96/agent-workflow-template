@@ -31,8 +31,10 @@ printf 'Profile: %s\n' "${profile}"
 
 (
   cd "${repo_path}"
-  bd init -p "${prefix}" --server --skip-agents --skip-hooks
-  bd setup codex
+  br init --prefix "${prefix}" --no-db
+  rm -f .beads/beads.db .beads/beads.db-wal .beads/beads.db-shm
+  br config set issue_prefix "${prefix}" --no-db
+  br agents --add --force --no-db
 )
 
 bash "${script_dir}/scaffold-repo-files.sh" "${repo_path}" "${prefix}" "${profile}"

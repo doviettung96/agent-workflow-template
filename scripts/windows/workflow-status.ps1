@@ -180,9 +180,9 @@ if (-not $hasHandoff) {
     Write-Host ("Handoff next action: {0}" -f (Get-ValueOrDefault -Value $handoff.next_action -Default "none"))
 }
 
-if ((Get-Command bd -ErrorAction SilentlyContinue) -and $state -and $state.epic_id) {
+if ((Get-Command br -ErrorAction SilentlyContinue) -and $state -and $state.epic_id) {
     try {
-        $readyRaw = bd ready --parent $state.epic_id --json
+        $readyRaw = br ready --parent $state.epic_id --json --no-db
         $ready = @($readyRaw | ConvertFrom-Json)
         if ($ready.Count -eq 0) {
             Write-Host "Ready descendants: none"
@@ -248,27 +248,15 @@ if (Test-Path $agentMailScript) {
     Write-Host "Shared control plane: unavailable"
 }
 
-if (Get-Command bd -ErrorAction SilentlyContinue) {
+if (Get-Command br -ErrorAction SilentlyContinue) {
     try {
         Write-Host "Beads location:"
-        bd where
-        $contextRaw = bd context --json
+        br where --no-db
+        $contextRaw = br info --json --no-db
         $context = $contextRaw | ConvertFrom-Json
-        $backendValue = $null
-        if ($context.PSObject.Properties.Name -contains "backend") {
-            $backendValue = $context.backend
-        }
-
-        if ($backendValue -is [string]) {
-            Write-Host ("Beads backend: {0}" -f (Get-ValueOrDefault -Value $backendValue -Default "unknown"))
-            Write-Host ("Beads mode: {0}" -f (Get-ValueOrDefault -Value $context.dolt_mode -Default "unknown"))
-        } elseif ($backendValue) {
-            Write-Host ("Beads backend: {0}" -f (Get-ValueOrDefault -Value $backendValue.type -Default "unknown"))
-            Write-Host ("Beads mode: {0}" -f (Get-ValueOrDefault -Value $backendValue.mode -Default "unknown"))
-        } else {
-            Write-Host "Beads backend: unknown"
-            Write-Host "Beads mode: unknown"
-        }
+        Write-Host "Beads backend: br"
+        Write-Host ("Beads mode: {0}" -f (Get-ValueOrDefault -Value $context.mode -Default "unknown"))
+        Write-Host ("Beads JSONL: {0}" -f (Get-ValueOrDefault -Value $context.jsonl_path -Default "unknown"))
     } catch {
         Write-Warning "Failed to inspect Beads backend state."
     }

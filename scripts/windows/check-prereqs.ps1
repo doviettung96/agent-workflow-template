@@ -10,7 +10,7 @@ function Test-Command {
 }
 
 $missing = @()
-foreach ($cmd in @("git", "bd", "dolt")) {
+foreach ($cmd in @("git", "br")) {
     if (-not (Test-Command -Name $cmd)) {
         $missing += $cmd
     }
@@ -28,4 +28,4 @@ if ($missing.Count -gt 0) {
     Write-Error ("Missing required commands: " + ($missing -join ", "))
 }
 
-Write-Host "Required commands found: git, bd, dolt, python"
+Write-Host "Required commands found: git, br, python"

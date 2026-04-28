@@ -45,15 +45,18 @@ MANAGED_DIRS = (
 
 SCRIPT_FILES = (
     "scripts/posix/agent-mail.sh",
+    "scripts/posix/start-epic-worktree.sh",
     "scripts/posix/sync-workflow-backup.sh",
     "scripts/posix/workflow-status.sh",
     "scripts/shared/agent_mail.py",
     "scripts/shared/harness.py",
     "scripts/shared/manage_instructions.py",
+    "scripts/shared/start_epic_worktree.py",
     "scripts/shared/sync_workflow_backup.py",
     "scripts/shared/target_runtime.py",
     "scripts/shared/workflow_backup.py",
     "scripts/windows/agent-mail.ps1",
+    "scripts/windows/start-epic-worktree.ps1",
     "scripts/windows/sync-workflow-backup.ps1",
     "scripts/windows/workflow-status.ps1",
 )
@@ -62,7 +65,29 @@ OPTIONAL_DIRS = (
     "scripts/shared/harness_backends",
 )
 
+LOCAL_STATE_ENTRIES = (
+    ".beads/.br_history/",
+    ".beads/.sync.lock",
+    ".beads/backup/",
+    ".beads/config.yaml",
+    ".beads/issues.jsonl",
+    ".beads/last-touched",
+    ".beads/metadata.json",
+)
+
+WORKTREE_LOCAL_STATE_FILES = (
+    ".beads/config.yaml",
+    ".beads/issues.jsonl",
+    ".beads/last-touched",
+    ".beads/metadata.json",
+)
+
+WORKTREE_LOCAL_STATE_DIRS = (
+    ".beads/workflow",
+)
+
 IGNORE_ENTRIES = (
+    *LOCAL_STATE_ENTRIES,
     ".beads/workflow/",
     ".beads/PRIME.md",
     ".beads/.gitignore",
@@ -79,16 +104,19 @@ IGNORE_ENTRIES = (
     ".beads/metadata.json",
     ".claude/settings.json",
     "scripts/posix/agent-mail.sh",
+    "scripts/posix/start-epic-worktree.sh",
     "scripts/posix/sync-workflow-backup.sh",
     "scripts/posix/workflow-status.sh",
     "scripts/shared/agent_mail.py",
     "scripts/shared/harness.py",
     "scripts/shared/harness_backends/",
     "scripts/shared/manage_instructions.py",
+    "scripts/shared/start_epic_worktree.py",
     "scripts/shared/sync_workflow_backup.py",
     "scripts/shared/target_runtime.py",
     "scripts/shared/workflow_backup.py",
     "scripts/windows/agent-mail.ps1",
+    "scripts/windows/start-epic-worktree.ps1",
     "scripts/windows/sync-workflow-backup.ps1",
     "scripts/windows/workflow-status.ps1",
 )
@@ -149,6 +177,22 @@ def collect_managed_files(repo_root: Path) -> list[str]:
         if path.is_file():
             files.add(rel)
     for rel_dir in (*MANAGED_DIRS, *OPTIONAL_DIRS):
+        base = repo_root / rel_dir
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*")):
+            if path.is_file():
+                files.add(path.relative_to(repo_root).as_posix())
+    return sorted(files)
+
+
+def collect_worktree_local_files(repo_root: Path) -> list[str]:
+    files: set[str] = set(collect_managed_files(repo_root))
+    for rel in WORKTREE_LOCAL_STATE_FILES:
+        path = repo_root / rel
+        if path.is_file():
+            files.add(rel)
+    for rel_dir in WORKTREE_LOCAL_STATE_DIRS:
         base = repo_root / rel_dir
         if not base.is_dir():
             continue
@@ -368,3 +412,27 @@ def remove_managed_files_from_index(repo_root: Path) -> list[str]:
         return []
     git(repo_root, "rm", "--cached", "--sparse", "-f", "--", *tracked, capture_output=False)
     return tracked
+
+
+def remove_local_state_files_from_index(repo_root: Path) -> list[str]:
+    result = git(repo_root, "ls-files", "-z", "--", *LOCAL_STATE_ENTRIES)
+    tracked = [item for item in result.stdout.split("\0") if item]
+    if not tracked:
+        return []
+    git(repo_root, "rm", "--cached", "--sparse", "-f", "--", *tracked, capture_output=False)
+    return tracked
+
+
+def copy_worktree_local_files(source_repo: Path, dest_repo: Path) -> list[str]:
+    source_repo = resolve_repo_root(source_repo)
+    dest_repo = resolve_repo_root(dest_repo)
+    copied: list[str] = []
+    for rel in collect_worktree_local_files(source_repo):
+        src = source_repo / rel
+        dst = dest_repo / rel
+        if _files_match(src, dst):
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        copied.append(rel)
+    return copied

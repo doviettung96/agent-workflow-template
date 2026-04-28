@@ -4,7 +4,7 @@ set -euo pipefail
 require_codex="${REQUIRE_CODEX:-0}"
 missing=()
 
-for cmd in git bd dolt; do
+for cmd in git br; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     missing+=("$cmd")
   fi
@@ -23,4 +23,4 @@ if (( ${#missing[@]} > 0 )); then
   exit 1
 fi
 
-printf 'Required commands found: git, bd, dolt, python\n'
+printf 'Required commands found: git, br, python\n'

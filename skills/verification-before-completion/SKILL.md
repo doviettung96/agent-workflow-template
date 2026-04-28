@@ -132,9 +132,9 @@ From 24 failure memories:
 
 ## Beads Runtime Gate
 
-- For local `bd` repos, verified completion is not enough by itself.
-- Before commit, PR creation, or handoff, confirm the current checkout can still resolve the Beads database with `bd where`.
-- If the checkout cannot resolve Beads, repair it with `bd bootstrap --yes`.
+- For local `br` repos, verified completion is not enough by itself.
+- Before commit, PR creation, or handoff, confirm the current checkout can still resolve the Beads workspace with `br where --no-db`.
+- If the checkout cannot resolve Beads, repair it with `br init --prefix <prefix> --no-db`.
 
 ## Harness-First Rule for In-Game Actions
 

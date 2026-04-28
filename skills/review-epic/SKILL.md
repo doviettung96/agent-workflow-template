@@ -15,7 +15,7 @@ Catch integration, regression, and quality issues that bead-level verification c
 
 1. Confirm the target epic and inspect it:
    ```bash
-   bd show <epic-id> --json
+   br show <epic-id> --json --no-db
    ```
 2. Review the epic goal, closed child beads, open follow-up beads, and changed files or commits for the branch.
 3. Run the final repo-local `build-and-test` workflow if it has not already been run for the whole epic in the current session.

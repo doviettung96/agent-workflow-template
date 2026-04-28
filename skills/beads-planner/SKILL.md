@@ -14,11 +14,11 @@ Turn planning output into a Beads structure that another agent or engineer can e
 1. Confirm whether the conversation already produced a settled execution plan or whether `plan-beads` supplied a clear topic that still needs planning.
 2. If no plan exists, create a lightweight execution plan first.
 3. Translate the settled plan into Beads:
-   - one `epic` for the main outcome; use `--type epic` so `bd` recognizes it as an epic and `bd ready --parent` works correctly
+   - one `epic` for the main outcome; use `--type epic` so `br` recognizes it as an epic and `br ready --no-db --parent` works correctly
    - small executable `task` beads for implementation work
    - `bug` beads for concrete broken behavior
    - `chore` beads for tooling, cleanup, or maintenance work
-   - parent all child beads under the epic: `bd dep add <child-id> <epic-id>`
+   - parent all child beads under the epic: `br dep add <child-id> <epic-id> --type parent-child --no-db`
 4. Add dependencies explicitly instead of relying on ordering in prose.
 5. Include validation work as its own bead when it is meaningful:
    - tests
@@ -28,7 +28,7 @@ Turn planning output into a Beads structure that another agent or engineer can e
    - target-runtime setup when verification must run on a non-local machine
 6. If the epic includes runtime logic changes, make the last bead an end-to-end `build-and-test` bead that depends on all implementation beads.
 7. If the epic's verification depends on SSH execution or platform-specific wrapper scripts, add or depend on a standalone runtime-target setup bead before the affected implementation beads.
-8. For any bead that may run under `swarm-epic`, encode this execution contract directly in the description or notes:
+8. For any bead that may run under `swarm-epic`, `executor-once`, or `executor-loop-epic`, encode this execution contract directly in the description or notes:
    - `Read:` exact files, docs, or code areas a fresh worker must inspect before editing
    - `Inputs:` persisted prerequisites only, such as upstream bead ids, committed code, generated artifacts, or bead notes that the worker must rely on
    - `Files:` exact file paths or directory scope the worker may touch
@@ -44,8 +44,8 @@ Turn planning output into a Beads structure that another agent or engineer can e
 - Prefer a few clear beads over a large brainstorm list.
 - Keep Beads as the source of truth for task state. Do not create parallel markdown task lists.
 - Separate project-level planning from single-task execution plans. Detailed execution plans belong to the execution phase, not the bead decomposition phase.
-- Swarm-ready beads should be specific enough that a fresh worker can start from the bead alone plus local code inspection.
-- Treat "fresh-session-safe" as the target property for swarm work. A bead may depend on earlier beads, but it must not depend on replaying the prior epic chat.
+- Worker-ready beads should be specific enough that a fresh worker can start from the bead alone plus local code inspection.
+- Treat "fresh-session-safe" as the target property for worker-backed work. A bead may depend on earlier beads, but it must not depend on replaying the prior epic chat.
 - Split any bead that spans multiple unrelated code areas, multiple independently testable outcomes, or a broad refactor that would likely force worker context compaction.
 - If a later bead needs prior results, persist them in code, artifacts, or bead notes and reference them in `Inputs:` instead of assuming conversational memory.
 
@@ -67,12 +67,12 @@ Do not:
 - claim or execute the beads you just created
 - invoke `beads-claim`, `writing-plans`, `build-and-test`, `swarm-epic`, or `beads-close`
 - start coding or dispatch implementation subagents
-- run `bd ready` and pick up work
+- run `br ready --no-db` and pick up work
 
 Do:
 
 - report the created beads and their dependency structure
-- if this skill was invoked directly, tell the user: "Beads created. Run `validate-beads` before `swarm-epic`, or claim one with `bd ready` in a manual executor session."
+- if this skill was invoked directly, tell the user: "Beads created. Run `validate-beads` before `swarm-epic`, or claim one with `br ready --no-db` in an executor session."
 - if `plan-beads` invoked this skill, immediately hand back to `plan-beads` so it can run `validate-beads` before ending the planner session
 </HARD-GATE>
 

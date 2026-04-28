@@ -170,8 +170,8 @@ PY
 )"
 fi
 
-if command -v bd >/dev/null 2>&1 && [[ -n "${epic_id}" ]]; then
-  ready_json="$(bd ready --parent "${epic_id}" --json 2>/dev/null || true)"
+if command -v br >/dev/null 2>&1 && [[ -n "${epic_id}" ]]; then
+  ready_json="$(br ready --parent "${epic_id}" --json --no-db 2>/dev/null || true)"
   if [[ -z "${ready_json}" ]]; then
     printf 'Ready descendants: none\n'
   elif [[ -n "${python_cmd}" ]]; then
@@ -252,11 +252,11 @@ else
   printf 'Shared control plane: unavailable\n'
 fi
 
-if command -v bd >/dev/null 2>&1; then
+if command -v br >/dev/null 2>&1; then
   printf 'Beads location:\n'
-  bd where || true
+  br where --no-db || true
   if [[ -n "${python_cmd}" ]]; then
-    context_json="$(bd context --json 2>/dev/null || true)"
+    context_json="$(br info --json --no-db 2>/dev/null || true)"
     if [[ -n "${context_json}" ]]; then
       CONTEXT_JSON="${context_json}" "${python_cmd}" - <<'PY'
 import json
@@ -269,14 +269,9 @@ except json.JSONDecodeError:
     print("Beads location: unavailable")
     raise SystemExit(0)
 
-backend = data.get("backend")
-if isinstance(backend, str):
-    print(f"Beads backend: {backend or 'unknown'}")
-    print(f"Beads mode: {data.get('dolt_mode') or 'unknown'}")
-else:
-    backend = backend or {}
-    print(f"Beads backend: {backend.get('type') or 'unknown'}")
-    print(f"Beads mode: {backend.get('mode') or 'unknown'}")
+print("Beads backend: br")
+print(f"Beads mode: {data.get('mode') or 'unknown'}")
+print(f"Beads JSONL: {data.get('jsonl_path') or 'unknown'}")
 PY
     else
       printf 'Beads location: unavailable\n'

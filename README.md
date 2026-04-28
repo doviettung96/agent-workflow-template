@@ -1,6 +1,6 @@
 # Agent Workflow Template
 
-Reusable Beads workflow scaffold for Codex and Claude, standardized on local-only `bd` with Dolt in server mode plus single-checkout swarm execution, with optional SSH-backed runtime execution for downstream repos.
+Reusable Beads workflow scaffold for Codex and Claude, standardized on local-only `br --no-db` plus checkout-local swarm execution, with optional hydrated Git worktrees for parallel epics and optional SSH-backed runtime execution for downstream repos.
 
 This template repo is intentionally self-contained:
 
@@ -16,18 +16,17 @@ This template repo is intentionally self-contained:
 
 Install once per machine:
 
-- `bd`
-- `dolt`
+- `br`
 - Python (for Agent Mail and workflow helpers)
 
 Initialize per repo:
 
-- `bd init -p <prefix> --server --skip-agents --skip-hooks`
-- `bd setup codex`
+- `br init --prefix <prefix> --no-db`
+- `br agents --add --force --no-db`
 - `BEADS_WORKFLOW.md`
 - `.codex/skills/`
 - `.claude/skills/`
-- `AGENTS.md` and `CLAUDE.md` managed snippets
+- `AGENTS.md` as the canonical managed instructions file plus a thin `CLAUDE.md` reference snippet
 - managed `.gitignore` block for local-only workflow assets
 
 ## Two-Stage Adoption
@@ -100,7 +99,7 @@ General downstream files:
 - `BEADS_WORKFLOW.md`
 - `.beads/PRIME.md`, `.beads/README.md`
 - `.beads/workflow/runtime-target.json` with local defaults
-- managed workflow blocks in `AGENTS.md` and `CLAUDE.md`
+- the managed workflow block in `AGENTS.md` plus a thin `CLAUDE.md` reference block
 - `.codex/skills/` and `.claude/skills/` copied from `skills/` plus any provider-specific template skills
 - helper scripts under `scripts/`
 - `docs/TROUBLESHOOTING.md`
@@ -109,7 +108,7 @@ Project-specific downstream files:
 
 - the repo-local specialized `build-and-test`
 - any repo-owned wrapper scripts for platform-specific build or verification commands
-- any repo-context prose outside the managed workflow blocks
+- any repo-context prose outside the managed `AGENTS.md` workflow block
 - runtime-specific setup, deployment, or smoke-test docs
 - handoff files such as `LOCAL_WORKFLOW_SETUP.md`
 
@@ -128,22 +127,25 @@ Project-specific downstream files:
 
 Use one of:
 
-- `executor-once` for one manual bead or a fresh-session manual bead-by-bead rhythm
+- `executor-once` for one worker-backed bead with a fresh implementation subagent
 - `executor-loop` for sequential manual execution when a long-lived session is still acceptable
+- `executor-loop-epic <epic-id>` for sequential worker-backed execution inside one epic
 - `swarm-epic <epic-id>` for epic-scoped multi-agent execution
 
 `swarm-epic` runs in the current checkout and uses branch `epic/<epic-id>` for the target epic.
 
+If you want checkout isolation for a truly parallel epic, run `start-epic-worktree` from the current checkout first. It creates the worktree and copies the ignored workflow surface into it so `swarm-epic` works there too.
+
 ## Local-Only Beads Model
 
 - Live Beads state is local to this clone under `.beads/`
-- Beads task state is not shared through Git or Dolt remotes
+- Beads task state is not shared through Git remotes
 - Code still moves through normal feature branches and pull requests
 - Run one top-level epic executor session at a time in a clone
 
-`swarm-epic` still parallelizes ready descendant beads inside one epic, but it does not try to isolate multiple epics with worktrees anymore.
+`executor-once` and `executor-loop-epic` also use fresh workers for implementation, but keep one bead active at a time. `swarm-epic` parallelizes ready descendant beads inside one epic. When you need a separate checkout, `start-epic-worktree` prepares a worktree with its own copied local workflow surface.
 
-Swarm-ready does not mean dependency-free. It means each bead is fresh-session-safe: a new worker can execute it from the bead contract, persisted inputs, and local code inspection without replaying the full epic chat.
+Worker-ready does not mean dependency-free. It means each bead is fresh-session-safe: a new worker can execute it from the bead contract, persisted inputs, and local code inspection without replaying the full epic chat.
 
 When a worker blocks, the worker should classify the blocker. Local clarifications or environment issues can stay on the same worker; contract or scope problems should be fixed by the coordinator and usually retried with a fresh worker.
 
@@ -163,7 +165,7 @@ macOS/Linux:
 bash ./scripts/posix/bootstrap-new-repo.sh /path/to/repo myproj
 ```
 
-The bootstrap script initializes git if needed, initializes Beads locally with `bd`, installs Codex integration, scaffolds the workflow docs, skills, and helper scripts into the repo, seeds the local runtime-target config, and creates standalone stage-2 follow-up beads for configuring the target runtime and specializing `build-and-test`.
+The bootstrap script initializes git if needed, initializes Beads locally with `br`, installs Codex integration, scaffolds the workflow docs, skills, and helper scripts into the repo, seeds the local runtime-target config, and creates standalone stage-2 follow-up beads for configuring the target runtime and specializing `build-and-test`.
 It also installs the managed root `.gitignore` block and the downstream `sync-workflow-backup` helper.
 
 ### 2. Plan the first work
@@ -179,7 +181,7 @@ Use the planner flow immediately, even if the repo is mostly empty:
 
 Make the first execution plans explicit about `## Verification`, because the stage-1 `build-and-test` skill follows that section literally.
 
-Make the first swarm-targeted beads explicit about `Read:` and `Inputs:` as well, so a fresh worker can execute without replaying planner chat.
+Make the first worker-targeted beads explicit about `Read:` and `Inputs:` as well, so a fresh worker can execute without replaying planner chat.
 
 If verification may run through SSH or across mixed Windows/POSIX environments, prefer repo-owned wrapper commands in `## Verification` instead of brittle ad hoc shell pipelines.
 
@@ -215,7 +217,7 @@ bash ./scripts/posix/migrate-downstream-to-workflow-backup.sh /path/to/repo
 
 This is the one-time cleanup for older repos that still track `AGENTS.md`, `CLAUDE.md`, `BEADS_WORKFLOW.md`, `docs/plans/`, repo-local skills, and scaffolded helper scripts in the downstream project remote.
 
-### 5. Migrate an existing `br` repo back to `bd`
+### 5. Migrate an existing `br` repo back to `br`
 
 Windows:
 
@@ -272,14 +274,16 @@ The intended repo-specific divergences are the local `build-and-test` skill, rep
   Shared planner/executor workflow for a repo
 - `skills/swarm-epic/`
   Epic-scoped multi-agent execution
+- `skills/start-epic-worktree/`
+  Optional helper for creating a hydrated parallel worktree before epic execution
 - `templates/.codex/skills/build-and-test/SKILL.md`
   Generic stage-1 validation skill scaffolded into each target repo
 - `skills/target-runtime-exec/`
   Shared skill for routing build/test/run/deploy commands through the selected target runtime
 - `templates/AGENTS.snippet.md`
-  Managed snippet for `AGENTS.md`
+  Canonical managed snippet for `AGENTS.md`
 - `templates/CLAUDE.snippet.md`
-  Managed snippet for `CLAUDE.md`
+  Thin reference snippet for `CLAUDE.md`
 - `templates/NEW_REPO_CHECKLIST.md`
   Human checklist for setting up a new project
 - `scripts/shared/workflow_backup.py`
@@ -289,9 +293,9 @@ The intended repo-specific divergences are the local `build-and-test` skill, rep
 
 ## Notes
 
-- `bd init` is per repo.
-- `bd setup codex` is per repo.
-- The scaffolding scripts do not use Dolt remotes.
+- `br init` is per repo.
+- `br agents --add --force --no-db` is per repo.
+- The scaffolding scripts do not use tracker remotes.
 - Live `.beads` runtime and local agent settings such as `.beads/config.yaml`, `.beads/metadata.json`, and `.claude/settings.json` are local-only and should not be committed.
 - Scaffolded workflow files are local-only in downstream Git and should be mirrored through the backup repo before PRs, including repo-specific workflow notes such as `docs/WORKFLOW_NOTES.md`.
 

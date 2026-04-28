@@ -30,6 +30,7 @@ def main() -> int:
         push=True,
     )
     removed_from_index = workflow_backup.remove_managed_files_from_index(repo_root)
+    removed_local_state = workflow_backup.remove_local_state_files_from_index(repo_root)
 
     payload = {
         "repo_root": str(repo_root),
@@ -41,6 +42,7 @@ def main() -> int:
         "backup_pushed": sync_result.pushed,
         "backup_commit_message": sync_result.commit_message,
         "removed_from_index": removed_from_index,
+        "removed_local_state_from_index": removed_local_state,
     }
     if args.json:
         print(json.dumps(payload, indent=2))

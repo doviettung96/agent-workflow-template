@@ -111,8 +111,6 @@ if [[ -d "${template_root}/templates/.codex/skills" ]]; then
     printf 'Copied Codex provider skill: %s\n' "${name}"
   done
 fi
-rm -rf "${repo_path}/.codex/skills/start-epic-worktree"
-
 mkdir -p "${repo_path}/.claude/skills"
 if [[ ! -d "${repo_path}/.claude/skills/build-and-test" ]]; then
   cp -R "${template_root}/templates/.codex/skills/build-and-test" "${repo_path}/.claude/skills/build-and-test"
@@ -146,28 +144,26 @@ if [[ -d "${template_root}/templates/.claude/skills" ]]; then
     printf 'Copied Claude provider skill: %s\n' "${name}"
   done
 fi
-rm -rf "${repo_path}/.claude/skills/start-epic-worktree"
-
 mkdir -p "${repo_path}/scripts/windows" "${repo_path}/scripts/posix" "${repo_path}/scripts/shared"
 cp "${template_root}/scripts/windows/workflow-status.ps1" "${repo_path}/scripts/windows/workflow-status.ps1"
 cp "${template_root}/scripts/windows/agent-mail.ps1" "${repo_path}/scripts/windows/agent-mail.ps1"
+cp "${template_root}/scripts/windows/start-epic-worktree.ps1" "${repo_path}/scripts/windows/start-epic-worktree.ps1"
 cp "${template_root}/scripts/windows/sync-workflow-backup.ps1" "${repo_path}/scripts/windows/sync-workflow-backup.ps1"
 rm -f "${repo_path}/scripts/windows/shared-beads.ps1"
-rm -f "${repo_path}/scripts/windows/start-epic-worktree.ps1"
 cp "${template_root}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/workflow-status.sh"
 cp "${template_root}/scripts/posix/agent-mail.sh" "${repo_path}/scripts/posix/agent-mail.sh"
+cp "${template_root}/scripts/posix/start-epic-worktree.sh" "${repo_path}/scripts/posix/start-epic-worktree.sh"
 cp "${template_root}/scripts/posix/sync-workflow-backup.sh" "${repo_path}/scripts/posix/sync-workflow-backup.sh"
 rm -f "${repo_path}/scripts/posix/shared-beads.sh"
-rm -f "${repo_path}/scripts/posix/start-epic-worktree.sh"
-chmod +x "${repo_path}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/agent-mail.sh" "${repo_path}/scripts/posix/sync-workflow-backup.sh"
+chmod +x "${repo_path}/scripts/posix/workflow-status.sh" "${repo_path}/scripts/posix/agent-mail.sh" "${repo_path}/scripts/posix/start-epic-worktree.sh" "${repo_path}/scripts/posix/sync-workflow-backup.sh"
 cp "${template_root}/scripts/shared/agent_mail.py" "${repo_path}/scripts/shared/agent_mail.py"
 cp "${template_root}/scripts/shared/manage_instructions.py" "${repo_path}/scripts/shared/manage_instructions.py"
+cp "${template_root}/scripts/shared/start_epic_worktree.py" "${repo_path}/scripts/shared/start_epic_worktree.py"
 cp "${template_root}/scripts/shared/target_runtime.py" "${repo_path}/scripts/shared/target_runtime.py"
 rm -f "${repo_path}/scripts/shared/run_plan_critic.py"
 cp "${template_root}/scripts/shared/sync_workflow_backup.py" "${repo_path}/scripts/shared/sync_workflow_backup.py"
 cp "${template_root}/scripts/shared/workflow_backup.py" "${repo_path}/scripts/shared/workflow_backup.py"
 rm -f "${repo_path}/scripts/shared/shared_beads.py"
-rm -f "${repo_path}/scripts/shared/start_epic_worktree.py"
 printf 'Copied script helpers\n'
 
 # Profile-gated: harness runtime installs only for game-re repos.

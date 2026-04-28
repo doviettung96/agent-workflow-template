@@ -13,11 +13,11 @@ Catch planning defects before workers start coding. This is a planner-side valid
 
 ## Steps
 
-1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `bd init --prefix <prefix>` plus the repo scaffolding steps.
+1. If the current repo is not initialized for Beads, stop and tell the user to run the template bootstrap script or at minimum `br init --prefix <prefix> --no-db` plus the repo scaffolding steps.
 2. Determine the target epic:
    - if the user supplied an epic id, use it
    - otherwise use the most recent planning context and ask only if the target epic is ambiguous
-3. Inspect the epic and its child beads. Use `bd show <epic-id> --json` plus the current planning context and `.beads/` state as needed.
+3. Inspect the epic and its child beads. Use `br show <epic-id> --json --no-db` plus the current planning context and `.beads/` state as needed.
 4. Validate the epic against this checklist:
    - the target is actually an epic
    - child beads are small enough for one focused worker session

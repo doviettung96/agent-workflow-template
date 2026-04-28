@@ -24,8 +24,10 @@ Write-Host "Profile: $Profile"
 
 Push-Location $RepoPath
 try {
-    bd init -p $Prefix --server --skip-agents --skip-hooks
-    bd setup codex
+    br init --prefix $Prefix --no-db
+    Get-ChildItem -Path ".beads" -Filter "beads.db*" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+    br config set issue_prefix $Prefix --no-db
+    br agents --add --force --no-db
 } finally {
     Pop-Location
 }

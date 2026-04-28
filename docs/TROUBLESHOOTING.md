@@ -1,49 +1,50 @@
 # Troubleshooting
 
-## Current checkout cannot find the Beads database
+## Current checkout cannot find the Beads workspace
 
 Symptoms:
 
-- `bd where` fails in the current checkout
-- `bd ready` or `bd show` says the database is missing
-- `bd context` shows stale server details
+- `br where --no-db` fails in the current checkout
+- `br ready --no-db` or `br show --no-db` says the workspace is missing
+- `br info --json --no-db` cannot resolve `.beads`
 
 Fix:
 
 1. Check the Beads context from the current checkout:
 
    ```bash
-   bd where
-   bd context
+   br where --no-db
+   br info --json --no-db
    ```
 
 2. Repair the repo-local Beads state:
 
    ```bash
-   bd bootstrap --yes
+   br init --prefix <prefix> --no-db
    ```
 
-## Local Dolt server endpoint changed
+## Local Beads state looks stale
 
 Symptoms:
 
-- `bd where` or `bd ready` warns that the Dolt server port changed
-- the current checkout is pointing at stale local server info
+- `br where --no-db` resolves the wrong checkout
+- `br ready --no-db` does not match the current `issues.jsonl`
+- `.beads/` contains leftover files from an older tracker layout
 
 Fix:
 
-1. Check server state:
+1. Inspect current state:
 
    ```bash
-   bd dolt status
-   bd context
+   br where --no-db
+   br info --json --no-db
    ```
 
 2. If the checkout is unhealthy, run:
 
    ```bash
-   bd bootstrap --yes
-   bd doctor
+   br init --prefix <prefix> --no-db
+   br doctor --no-db
    ```
 
 ## Old `br` artifacts remain after rollback
@@ -57,11 +58,11 @@ Symptoms:
 Fix:
 
 1. Re-run the rollback scaffold or migration script for the repo.
-2. Confirm the repo now uses `bd`:
+2. Confirm the repo now uses `br --no-db`:
 
    ```bash
-   bd where
-   bd ready --json
+   br where --no-db
+   br ready --json --no-db
    ```
 
 3. Ignore or remove archived `br` backups under `.beads/backup/` if they are no longer needed.

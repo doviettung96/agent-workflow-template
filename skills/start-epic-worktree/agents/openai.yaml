@@ -1,0 +1,3 @@
+display_name: Start Epic Worktree
+short_description: Create a hydrated worktree for one epic
+default_prompt: Create a git worktree for one epic and hydrate the local-only workflow files into it before execution starts.
