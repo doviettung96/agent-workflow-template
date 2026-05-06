@@ -1,0 +1,38 @@
+# harbor.yml — agent profiles for the harbor runner.
+#
+# Place this at the repo root (next to .beads/) and harbor will load it
+# automatically. Profiles supplement the built-in defaults (fast / balanced /
+# thorough / claude-opus); override the same name to change the built-in.
+#
+# {model} and {effort} are substituted in args_template. If a substituted token
+# is empty, the whole flag is dropped — so claude profiles can omit `effort`.
+
+default_profile: balanced
+
+profiles:
+  fast:
+    agent_kind: codex
+    command: ["codex"]
+    args_template: ["-m", "{model}", "--reasoning-effort", "{effort}"]
+    model: gpt-5.3-codex
+    effort: low
+
+  balanced:
+    agent_kind: codex
+    command: ["codex"]
+    args_template: ["-m", "{model}", "--reasoning-effort", "{effort}"]
+    model: gpt-5.3-codex
+    effort: medium
+
+  thorough:
+    agent_kind: codex
+    command: ["codex"]
+    args_template: ["-m", "{model}", "--reasoning-effort", "{effort}"]
+    model: gpt-5.3-codex
+    effort: high
+
+  claude-opus:
+    agent_kind: claude
+    command: ["claude"]
+    args_template: ["--model", "{model}", "--dangerously-skip-permissions"]
+    model: claude-opus-4-7
