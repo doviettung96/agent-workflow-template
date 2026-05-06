@@ -15,6 +15,7 @@ from harbor.orchestrator import (
     parse_files_section,
     run_bead,
     session_name_for,
+    window_name_for,
 )
 
 
@@ -44,6 +45,15 @@ def test_parse_files_section_lists_paths():
 
 def test_parse_files_section_empty_when_missing():
     assert parse_files_section("Read:\n- foo\n") == []
+
+
+def test_window_name_for_replaces_dots():
+    """tmux's target syntax uses `.` as the pane separator, so a bead-id like
+    `awt-zmq.99` would otherwise mistarget. Sanitization keeps the bead-id
+    intact for state but gives tmux a safe window name."""
+    assert window_name_for("awt-zmq.99") == "awt-zmq_99"
+    assert window_name_for("plain") == "plain"
+    assert window_name_for("a.b.c") == "a_b_c"
 
 
 # ---------- prompt injection ----------
@@ -96,6 +106,63 @@ def test_inject_prompt_stdin_rejected_for_interactive():
         inject_prompt(fake_tmux, "s", "w", profile, "body", Path("x.md"))
 
 
+def test_inject_prompt_prompt_arg_is_noop(tmp_path: Path):
+    """For prompt_arg profiles the prompt rode in on the launch command — there
+    is nothing to inject afterwards."""
+    from harbor.agent import AgentProfile
+
+    profile = AgentProfile(
+        name="p", agent_kind="codex", command=["codex"], args_template=[],
+        prompt_injection="prompt_arg",
+        launch_template="codex (Get-Content -Raw '{prompt_path}')",
+    )
+    fake_tmux = MagicMock()
+    inject_prompt(fake_tmux, "s", "w", profile, "body", tmp_path / "x.md")
+    fake_tmux.send_keys.assert_not_called()
+    fake_tmux.send_keys_literal.assert_not_called()
+
+
+def test_launch_agent_uses_launch_template_when_set(tmp_path: Path):
+    from harbor.agent import AgentProfile
+    from harbor.orchestrator import launch_agent
+
+    profile = AgentProfile(
+        name="codex-fast", agent_kind="codex", command=["codex"], args_template=[],
+        model="gpt-5.5", effort="low",
+        prompt_injection="prompt_arg",
+        launch_template=(
+            "codex -m {model} -c model_reasoning_effort={effort} --no-alt-screen "
+            "(Get-Content -Raw '{prompt_path}')"
+        ),
+    )
+    prompt_path = tmp_path / "p.md"
+    prompt_path.write_text("hi", encoding="utf-8")
+    fake_tmux = MagicMock()
+
+    cmd = launch_agent(fake_tmux, "s", "w", profile, None, None, prompt_path)
+
+    assert "codex -m gpt-5.5" in cmd
+    assert "model_reasoning_effort=low" in cmd
+    assert "--no-alt-screen" in cmd
+    assert prompt_path.resolve().as_posix() in cmd
+    fake_tmux.send_keys.assert_called_once_with("s", "w", cmd)
+
+
+def test_launch_agent_falls_back_to_argv_when_no_launch_template(tmp_path: Path):
+    from harbor.agent import AgentProfile
+    from harbor.orchestrator import launch_agent
+
+    profile = AgentProfile(
+        name="x", agent_kind="claude", command=["claude"],
+        args_template=["--model", "{model}"],
+        model="claude-opus-4-7",
+    )
+    fake_tmux = MagicMock()
+    cmd = launch_agent(fake_tmux, "s", "w", profile, None, None, tmp_path / "p.md")
+    assert cmd == "claude --model claude-opus-4-7"
+    fake_tmux.send_keys.assert_called_once_with("s", "w", cmd)
+
+
 # ---------- run_bead end-to-end (mocked tmux + br + mail) ----------
 
 @pytest.fixture
@@ -139,8 +206,8 @@ def test_run_bead_happy_path(tmp_path: Path, bead_payload, monkeypatch):
     fake_beads.close.return_value = None
 
     fake_tmux_instance = MagicMock()
-    fake_tmux_instance.attach_command.return_value = "tmux -L harbor attach -t harbor-X:awt-test.5"
-    fake_tmux_instance.window_exists.return_value = True
+    fake_tmux_instance.attach_command.return_value = "tmux -L harbor attach -t harbor-X-awt-test_5"
+    fake_tmux_instance.has_session.return_value = True
     # The first poll already sees the sentinel.
     fake_tmux_instance.capture_pane.side_effect = _capture_pane_sequence(
         _make_pane_with_sentinel("awt-test.5", "ok", "none"),
@@ -167,10 +234,9 @@ def test_run_bead_happy_path(tmp_path: Path, bead_payload, monkeypatch):
     assert result.closed is True
     fake_beads.update_status.assert_called_once_with("awt-test.5", "in_progress")
     fake_beads.close.assert_called_once_with("awt-test.5")
-    # tmux interactions: ensure_session, new_window, send_keys (for agent cmd),
-    # send_keys (for prompt @-ref), capture_pane.
-    fake_tmux_instance.new_window.assert_called_once()
-    assert fake_tmux_instance.send_keys.call_count >= 2  # agent CLI + prompt @ref
+    # Per-bead-session model: ensure_session is the spawn step, no new_window.
+    fake_tmux_instance.ensure_session.assert_called_once()
+    assert fake_tmux_instance.send_keys.call_count >= 1  # agent CLI launch
     fake_tmux_instance.capture_pane.assert_called()
     # Prompt file should have been persisted.
     prompt_path = tmp_path / PROMPTS_DIR / "awt-test.5.md"
@@ -193,7 +259,7 @@ def test_run_bead_blocker_marks_stuck_then_recovers_on_reemission(
 
     fake_tmux_instance = MagicMock()
     fake_tmux_instance.attach_command.return_value = "<attach>"
-    fake_tmux_instance.window_exists.return_value = True
+    fake_tmux_instance.has_session.return_value = True
     fake_tmux_instance.capture_pane.side_effect = _capture_pane_sequence(
         # Iteration 1: just the blocked sentinel
         _make_pane_with_sentinel("awt-test.6", "blocked", "clarify"),
@@ -244,7 +310,7 @@ def test_run_bead_blocked_pane_left_alive_when_no_reemission(
 
     fake_tmux_instance = MagicMock()
     fake_tmux_instance.attach_command.return_value = "<attach>"
-    fake_tmux_instance.window_exists.return_value = True
+    fake_tmux_instance.has_session.return_value = True
     fake_tmux_instance.capture_pane.return_value = _make_pane_with_sentinel(
         "awt-test.7", "blocked", "contract"
     )
@@ -265,9 +331,9 @@ def test_run_bead_blocked_pane_left_alive_when_no_reemission(
 
     assert result.closed is False
     fake_beads.close.assert_not_called()
-    # Window not killed by harbor (keep_pane_after_finish default True; and
+    # Session not killed by harbor (keep_pane_after_finish default True; and
     # blocker path never auto-kills).
-    fake_tmux_instance.kill_window.assert_not_called()
+    fake_tmux_instance.kill_session.assert_not_called()
 
 
 def test_run_bead_handles_kill_signal(tmp_path: Path, bead_payload, monkeypatch):
@@ -280,7 +346,7 @@ def test_run_bead_handles_kill_signal(tmp_path: Path, bead_payload, monkeypatch)
     fake_beads.show.return_value = bead_payload
     fake_tmux_instance = MagicMock()
     fake_tmux_instance.attach_command.return_value = "<attach>"
-    fake_tmux_instance.window_exists.return_value = True
+    fake_tmux_instance.has_session.return_value = True
     # Empty pane — no sentinel
     fake_tmux_instance.capture_pane.return_value = "agent running...\n"
 
@@ -288,12 +354,15 @@ def test_run_bead_handles_kill_signal(tmp_path: Path, bead_payload, monkeypatch)
     target = tmp_path / FALLBACK_DIR
     target.mkdir(parents=True, exist_ok=True)
 
-    def new_window_se(session, window, cwd, command):
-        # Simulate user clicking 'kill' immediately after the pane spawns.
-        (target / f"{window}.json").write_text(
+    def ensure_session_se(session, cwd, *, default_shell=None):
+        # Simulate user clicking 'kill' immediately after the session spawns.
+        # The kill-signal file is keyed on bead_id, matching how the webview
+        # writes it.
+        bead_id = "awt-test.8"
+        (target / f"{bead_id}.json").write_text(
             json.dumps(
                 {
-                    "bead_id": window, "exit_code": 137,
+                    "bead_id": bead_id, "exit_code": 137,
                     "sentinel_status": "blocked", "blocker_class": "env",
                     "last_output": "(killed by webui)",
                 }
@@ -301,7 +370,7 @@ def test_run_bead_handles_kill_signal(tmp_path: Path, bead_payload, monkeypatch)
             encoding="utf-8",
         )
 
-    fake_tmux_instance.new_window.side_effect = new_window_se
+    fake_tmux_instance.ensure_session.side_effect = ensure_session_se
 
     with (
         patch("harbor.orchestrator.Beads", return_value=fake_beads),
@@ -331,13 +400,13 @@ def test_run_bead_window_disappearance_aborts(tmp_path: Path, bead_payload, monk
     fake_tmux_instance = MagicMock()
     fake_tmux_instance.attach_command.return_value = "<attach>"
 
-    # Window initially exists (so we get past start), then "dies".
+    # Session initially exists (so we get past start), then "dies".
     exists_calls = count()
 
-    def window_exists(_s, _w):
+    def has_session(_s):
         return next(exists_calls) < 1
 
-    fake_tmux_instance.window_exists.side_effect = window_exists
+    fake_tmux_instance.has_session.side_effect = has_session
     fake_tmux_instance.capture_pane.return_value = "still warming up...\n"
 
     with (
@@ -376,7 +445,7 @@ def test_run_bead_clears_stale_kill_signal(tmp_path: Path, bead_payload, monkeyp
     fake_beads.show.return_value = bead_payload
     fake_tmux_instance = MagicMock()
     fake_tmux_instance.attach_command.return_value = "<attach>"
-    fake_tmux_instance.window_exists.return_value = True
+    fake_tmux_instance.has_session.return_value = True
     # Sentinel emitted on first poll so run completes naturally.
     fake_tmux_instance.capture_pane.return_value = _make_pane_with_sentinel(
         "awt-test.10", "ok", "none"

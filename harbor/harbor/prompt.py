@@ -12,19 +12,24 @@ from typing import Any
 
 SENTINEL_INSTRUCTION = (
     "When you have finished (success OR blocker), the LAST line of your message "
-    "MUST be exactly one of:\n"
-    "    HARBOR-DONE: {bead_id} status=ok classification=none\n"
-    "    HARBOR-DONE: {bead_id} status=blocked classification=clarify\n"
-    "    HARBOR-DONE: {bead_id} status=blocked classification=env\n"
-    "    HARBOR-DONE: {bead_id} status=blocked classification=contract\n"
-    "    HARBOR-DONE: {bead_id} status=blocked classification=scope\n"
-    "Do not print anything after this line in that message. The harbor daemon "
-    "polls the pane for the most recent HARBOR-DONE line and uses it to decide "
-    "whether to close the bead.\n\n"
-    "If you emit a `blocked` sentinel, harbor leaves you running so a human can "
-    "attach to the pane and reply directly. After they respond, address their "
-    "guidance and emit a fresh HARBOR-DONE line — harbor only acts on the most "
-    "recent one, so re-emission is the supported way to recover from a blocker."
+    "MUST follow this exact form (literal, no angle brackets in your output):\n\n"
+    "    HARBOR-DONE: BEAD-ID status=STATUS classification=CLASSIFICATION\n\n"
+    "Where:\n"
+    "  BEAD-ID        is exactly: {bead_id}\n"
+    "  STATUS         is one of:  ok | blocked\n"
+    "  CLASSIFICATION is one of:  none (when status=ok)\n"
+    "                              clarify | env | contract | scope (when status=blocked)\n\n"
+    "Use 'clarify' for a missing detail, 'env' for tool/environment failure, "
+    "'contract' for a malformed bead description, 'scope' if the work needs splitting.\n\n"
+    "Do not print anything after that line in the same message. The harbor daemon "
+    "polls the pane for the most recent matching line and uses it to decide whether "
+    "to close the bead. Note: harbor parses ONLY the literal HARBOR-DONE line — the "
+    "placeholders above (BEAD-ID, STATUS, CLASSIFICATION) are descriptive; you must "
+    "substitute real values.\n\n"
+    "If you emit a `blocked` line, harbor leaves you running so a human can attach "
+    "to the pane and reply directly. After they respond, address their guidance and "
+    "emit a fresh HARBOR-DONE line — harbor only acts on the most recent one, so "
+    "re-emission is the supported way to recover from a blocker."
 )
 
 
@@ -91,14 +96,21 @@ def render_worker_prompt(bead: dict[str, Any]) -> str:
 def parse_sentinel(text: str, bead_id: str) -> tuple[str, str] | None:
     """Find the last `HARBOR-DONE: <id> status=... classification=...` line.
 
-    Returns (status, classification) if found and the bead-id matches, else None.
+    The sentinel is matched ANYWHERE on the line, not just at the start, so
+    that REPL prefixes (codex prepends `• ` to model messages, claude adds its
+    own marker glyph, etc.) don't hide it. Returns (status, classification) if
+    found and the bead-id matches, else None.
     """
     needle = f"HARBOR-DONE: {bead_id} "
-    matches = [line for line in text.splitlines() if line.strip().startswith(needle)]
+    matches: list[tuple[str, int]] = []
+    for line in text.splitlines():
+        idx = line.find(needle)
+        if idx != -1:
+            matches.append((line, idx))
     if not matches:
         return None
-    last = matches[-1].strip()
-    rest = last[len(needle):].strip()
+    last_line, last_idx = matches[-1]
+    rest = last_line[last_idx + len(needle):].strip()
     fields: dict[str, str] = {}
     for tok in rest.split():
         if "=" in tok:

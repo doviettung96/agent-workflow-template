@@ -160,13 +160,13 @@ def test_run_bead_action_rejects_unknown_profile(app_client):
     assert r.status_code == 400
 
 
-def test_kill_writes_synthetic_fallback_and_kills_window(app_client, tmp_path: Path):
+def test_kill_writes_synthetic_fallback_and_kills_session(app_client, tmp_path: Path):
     client, _, fake_tmux = app_client
-    fake_tmux.window_exists.return_value = True
+    fake_tmux.has_session.return_value = True
 
     r = client.post("/actions/kill/awt-test.1", follow_redirects=False)
     assert r.status_code == 303
-    fake_tmux.kill_window.assert_called_once()
+    fake_tmux.kill_session.assert_called_once()
     fb = tmp_path / ".beads/workflow/runner-finished/awt-test.1.json"
     assert fb.exists()
     data = json.loads(fb.read_text(encoding="utf-8"))

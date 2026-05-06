@@ -100,20 +100,26 @@ def test_load_config_rejects_unknown_default(tmp_path: Path):
         load_config(yml)
 
 
-def test_config_get_with_none_uses_default():
+def test_config_get_with_none_uses_default(tmp_path: Path, monkeypatch):
+    """Built-in default_profile is `balanced` when no harbor.yml is in cwd.
+    Run from a clean tmp dir so a project-local harbor.yml in the test runner's
+    cwd doesn't leak."""
+    monkeypatch.chdir(tmp_path)
     cfg: Config = load_config()
     assert cfg.get(None).name == "balanced"
 
 
-def test_config_get_unknown_raises():
+def test_config_get_unknown_raises(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     cfg = load_config()
     with pytest.raises(KeyError):
         cfg.get("does-not-exist")
 
 
-def test_prompt_injection_defaults_to_file_ref():
-    """Built-in profiles should default to file_ref since codex/claude both
-    support `@<path>` to load a prompt from disk."""
+def test_prompt_injection_defaults_to_file_ref(tmp_path: Path, monkeypatch):
+    """Built-in profiles default to file_ref. Run from a clean tmp dir so any
+    project-local harbor.yml override doesn't leak."""
+    monkeypatch.chdir(tmp_path)
     cfg = load_config()
     for name in ("fast", "balanced", "thorough", "claude-opus"):
         assert cfg.profiles[name].prompt_injection == "file_ref", (
@@ -149,3 +155,69 @@ def test_prompt_injection_invalid_value_rejected(tmp_path: Path):
     )
     with pytest.raises(ValueError, match="prompt_injection"):
         load_config(yml)
+
+
+def test_prompt_arg_requires_prompt_path_placeholder(tmp_path: Path):
+    yml = tmp_path / "harbor.yml"
+    yml.write_text(
+        "profiles:\n"
+        "  bad:\n"
+        "    agent_kind: codex\n"
+        "    command: [codex]\n"
+        "    args_template: []\n"
+        "    prompt_injection: prompt_arg\n"
+        "    launch_template: 'codex -m {model}'\n",  # missing {prompt_path}
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="prompt_path"):
+        load_config(yml)
+
+
+def test_default_shell_loads_from_yaml(tmp_path: Path):
+    yml = tmp_path / "harbor.yml"
+    yml.write_text(
+        "default_shell: C:/Program Files/Git/bin/bash.exe\n"
+        "profiles:\n"
+        "  fast:\n"
+        "    agent_kind: codex\n"
+        "    command: [codex]\n"
+        "    args_template: []\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(yml)
+    assert cfg.default_shell == "C:/Program Files/Git/bin/bash.exe"
+
+
+def test_default_shell_explicit_overrides_autodetect(tmp_path: Path, monkeypatch):
+    """If harbor.yml sets default_shell, the auto-detected value is ignored."""
+    monkeypatch.setattr("harbor.agent._auto_detect_default_shell", lambda: "/auto/detected")
+    yml = tmp_path / "harbor.yml"
+    yml.write_text(
+        "default_shell: /explicit/bash\n"
+        "profiles: {}\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(yml)
+    assert cfg.default_shell == "/explicit/bash"
+
+
+def test_launch_template_loads_from_yaml(tmp_path: Path):
+    yml = tmp_path / "harbor.yml"
+    yml.write_text(
+        "profiles:\n"
+        "  fast:\n"
+        "    agent_kind: codex\n"
+        "    command: [codex]\n"
+        "    args_template: []\n"
+        "    model: gpt-5.5\n"
+        "    effort: low\n"
+        "    prompt_injection: prompt_arg\n"
+        "    launch_template: \"codex -m {model} -c model_reasoning_effort={effort} "
+        "--no-alt-screen (Get-Content -Raw '{prompt_path}')\"\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(yml)
+    p = cfg.profiles["fast"]
+    assert p.prompt_injection == "prompt_arg"
+    assert "{prompt_path}" in p.launch_template
+    assert "model_reasoning_effort={effort}" in p.launch_template

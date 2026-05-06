@@ -1,0 +1,59 @@
+# harbor.yml — local agent profiles for this template repo.
+#
+# Sits next to .beads/ at the repo root so harbor picks it up automatically.
+# Tuned for codex-cli 0.128+. On Windows harbor auto-detects Git Bash and uses
+# it as the tmux default-shell, so launch_template can rely on POSIX-style
+# `"$(cat 'path')"` substitution instead of PowerShell quoting hell.
+#
+# Codex specifics worth knowing:
+#   - --reasoning-effort flag does not exist; use `-c model_reasoning_effort=...`
+#   - The TUI submits on Enter, so a multi-line prompt cannot be pasted —
+#     the prompt has to ride on the launch command line via {prompt_path}.
+#   - --no-alt-screen keeps model output in terminal scrollback so harbor's
+#     capture-pane poll can see HARBOR-DONE sentinels.
+
+default_profile: fast
+
+# Override the auto-detected shell here if needed (e.g. WSL bash):
+# default_shell: "C:/Program Files/Git/bin/bash.exe"
+
+profiles:
+  fast:
+    agent_kind: codex
+    command: ["codex"]
+    args_template: []
+    model: gpt-5.5
+    effort: low
+    prompt_injection: prompt_arg
+    launch_template: >-
+      codex -m {model} -c model_reasoning_effort={effort} --no-alt-screen
+      -s workspace-write -a never "$(cat '{prompt_path}')"
+
+  balanced:
+    agent_kind: codex
+    command: ["codex"]
+    args_template: []
+    model: gpt-5.5
+    effort: medium
+    prompt_injection: prompt_arg
+    launch_template: >-
+      codex -m {model} -c model_reasoning_effort={effort} --no-alt-screen
+      -s workspace-write -a never "$(cat '{prompt_path}')"
+
+  thorough:
+    agent_kind: codex
+    command: ["codex"]
+    args_template: []
+    model: gpt-5.5
+    effort: high
+    prompt_injection: prompt_arg
+    launch_template: >-
+      codex -m {model} -c model_reasoning_effort={effort} --no-alt-screen
+      -s workspace-write -a never "$(cat '{prompt_path}')"
+
+  claude-opus:
+    agent_kind: claude
+    command: ["claude"]
+    args_template: ["--model", "{model}", "--dangerously-skip-permissions"]
+    model: claude-opus-4-7
+    prompt_injection: file_ref

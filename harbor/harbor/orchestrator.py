@@ -61,9 +61,42 @@ class RunBeadOptions:
     capture_lines: int = 2000
 
 
-def session_name_for(repo_root: Path) -> str:
+def session_name_for(repo_root: Path, bead_id: str | None = None) -> str:
+    """Tmux session name. With `bead_id`, the name is per-bead so each agent
+    gets its own session — the only model that targets reliably under psmux,
+    where `send-keys -t <session>:<window>` is unreliable for non-active
+    windows. With `bead_id=None`, returns the per-repo prefix only (used in
+    the webview's "harbor running" badges)."""
     digest = hashlib.sha256(str(repo_root.resolve()).encode("utf-8")).hexdigest()[:8]
-    return f"{SESSION_PREFIX}{digest}"
+    base = f"{SESSION_PREFIX}{digest}"
+    if bead_id is None:
+        return base
+    return f"{base}-{window_name_for(bead_id)}"
+
+
+def window_name_for(bead_id: str) -> str:
+    """Tmux parses `.` in target strings as the pane separator
+    (`session:window.pane`), so bead-ids like `awt-zmq.99` are unsafe in
+    targets. Replace `.` with `_`. Used inside `session_name_for` so that the
+    sanitized id appears in the per-bead session name; bead_id itself stays
+    untouched in state/storage."""
+    return bead_id.replace(".", "_")
+
+
+def write_tmux_config(workflow_dir: Path, default_shell: str | None) -> Path | None:
+    """Write a tiny tmux conf with `default-shell` so the very FIRST session's
+    auto-created window already runs the right shell. Returns the conf path,
+    or None if there's nothing to configure."""
+    if not default_shell:
+        return None
+    workflow_dir.mkdir(parents=True, exist_ok=True)
+    conf = workflow_dir / "harbor-tmux.conf"
+    conf.write_text(
+        f"# Auto-written by harbor — do not edit by hand.\n"
+        f"set-option -g default-shell \"{default_shell}\"\n",
+        encoding="utf-8",
+    )
+    return conf
 
 
 def parse_files_section(description: str) -> list[str]:
@@ -161,21 +194,27 @@ def inject_prompt(
     """Push the worker prompt into the agent's interactive REPL.
 
     The mode is per-profile — see AgentProfile.prompt_injection. `stdin` is the
-    legacy non-interactive mode and is not valid for live panes; it raises so
-    misconfiguration fails loud rather than silently doing nothing.
+    legacy non-interactive mode and is not valid for live panes; `prompt_arg`
+    means the prompt was injected as part of the launch command line and there's
+    nothing left to do here.
     """
     mode = profile.prompt_injection
     if mode == "file_ref":
-        # codex/claude REPL accept `@<path>` to load a file as the prompt body.
-        # Use POSIX-style path so it works under MSYS/Git-Bash + native Windows shells.
+        # claude REPL accepts `@<path>` to load a file as the prompt body.
+        # Codex does NOT — use prompt_arg for codex.
         ref = prompt_path.resolve().as_posix()
         tmux.send_keys(session, window, f"@{ref}")
     elif mode == "send_keys":
         tmux.send_keys_literal(session, window, prompt, enter=True)
+    elif mode == "prompt_arg":
+        # The prompt rode in on the launch command line via launch_template's
+        # {prompt_path} placeholder — no further injection needed.
+        return
     elif mode == "stdin":
         raise ValueError(
             f"profile {profile.name!r}: prompt_injection=stdin is for the legacy "
-            "harbor-bead-runner only; interactive panes need 'file_ref' or 'send_keys'"
+            "harbor-bead-runner only; interactive panes need 'file_ref', 'send_keys', "
+            "or 'prompt_arg'"
         )
     else:
         raise ValueError(f"unknown prompt_injection {mode!r} on profile {profile.name!r}")
@@ -188,13 +227,27 @@ def launch_agent(
     profile: AgentProfile,
     model: str | None,
     effort: str | None,
+    prompt_path: Path,
 ) -> str:
     """Type the agent CLI command into the freshly-opened pane and Enter.
 
-    Returns the rendered argv so callers can log it.
+    When `profile.launch_template` is set, that string is formatted with
+    {model}/{effort}/{prompt_path} and sent verbatim — letting the pane's shell
+    do its own file substitution (e.g. PowerShell `(Get-Content -Raw '{path}')`
+    or bash `"$(cat '{path}')"`). Otherwise the legacy command + args_template
+    argv is shlex-joined and sent.
+
+    Returns the rendered command string so callers can log it.
     """
-    argv = profile.render_argv(model=model, effort=effort)
-    cmd = shlex.join(argv)
+    if profile.launch_template:
+        cmd = profile.launch_template.format(
+            model=(model if model is not None else profile.model),
+            effort=(effort if effort is not None else profile.effort),
+            prompt_path=prompt_path.resolve().as_posix(),
+        )
+    else:
+        argv = profile.render_argv(model=model, effort=effort)
+        cmd = shlex.join(argv)
     tmux.send_keys(session, window, cmd)
     return cmd
 
@@ -256,13 +309,18 @@ def run_bead(opts: RunBeadOptions, *, log: Callable[..., None] = print) -> RunBe
         except OSError:
             pass
 
-    # 2. Spawn the pane (no command — psmux drops trailing-command args).
-    tmux = Tmux()
-    session = session_name_for(repo_root)
-    tmux.ensure_session(session, str(repo_root))
-    window_name = opts.bead_id
-    tmux.new_window(session, window_name, str(repo_root), command="")
-    log(f"[harbor] spawned tmux window: {tmux.attach_command(session, window_name)}")
+    # 2. Spawn a dedicated tmux session for this bead. One bead = one session
+    #    sidesteps psmux's broken `-t session:window` targeting (only the
+    #    active window in any session is reliably reachable). The session's
+    #    auto-created default window IS the agent pane — no `new-window` dance.
+    #    A tmux conf (-f) sets default-shell BEFORE the session starts so the
+    #    first window already runs Git Bash on Windows, not PowerShell.
+    workflow_dir = repo_root / ".beads" / "workflow"
+    conf_path = write_tmux_config(workflow_dir, cfg.default_shell)
+    tmux = Tmux(config_path=str(conf_path) if conf_path else None)
+    session = session_name_for(repo_root, opts.bead_id)
+    tmux.ensure_session(session, str(repo_root), default_shell=cfg.default_shell)
+    log(f"[harbor] spawned tmux session: {tmux.attach_command(session)}")
 
     store.record_bead_start(
         run_id=run_id,
@@ -270,19 +328,23 @@ def run_bead(opts: RunBeadOptions, *, log: Callable[..., None] = print) -> RunBe
         profile=profile.name,
         model=opts.model or profile.model,
         effort=opts.effort or profile.effort,
-        window_name=window_name,
+        window_name=session,  # per-bead session IS the addressable target now
     )
 
     # 3. Launch the agent CLI inside the pane and wait for its banner.
-    agent_cmd = launch_agent(tmux, session, window_name, profile, opts.model, opts.effort)
+    #    With per-bead sessions, `window=""` targets the active (=only) window.
+    agent_cmd = launch_agent(
+        tmux, session, "", profile, opts.model, opts.effort, prompt_path
+    )
     log(f"[harbor] launched agent: {agent_cmd}")
     if opts.agent_startup_delay_s > 0:
         time.sleep(opts.agent_startup_delay_s)
 
-    # 4. Inject the prompt.
+    # 4. Inject the prompt (no-op when profile uses prompt_arg / launch_template).
     try:
-        inject_prompt(tmux, session, window_name, profile, prompt_text, prompt_path)
-        log(f"[harbor] injected prompt via {profile.prompt_injection} from {prompt_path}")
+        inject_prompt(tmux, session, "", profile, prompt_text, prompt_path)
+        if profile.prompt_injection != "prompt_arg":
+            log(f"[harbor] injected prompt via {profile.prompt_injection} from {prompt_path}")
     except Exception as e:  # noqa: BLE001
         log(f"[harbor] prompt injection failed: {e!r}; aborting")
         store.record_bead_finish(
@@ -313,15 +375,15 @@ def run_bead(opts: RunBeadOptions, *, log: Callable[..., None] = print) -> RunBe
             final_classification = kill.get("blocker_class") or "env"
             break
 
-        # Window gone? agent crashed or user killed it
-        if not tmux.window_exists(session, window_name):
-            log("[harbor] pane disappeared; treating as env-blocker")
+        # Session gone? agent crashed or user killed it (kill-session).
+        if not tmux.has_session(session):
+            log("[harbor] tmux session disappeared; treating as env-blocker")
             final_status = "blocked"
             final_classification = "env"
             break
 
         try:
-            pane = tmux.capture_pane(session, window_name, lines=opts.capture_lines)
+            pane = tmux.capture_pane(session, "", lines=opts.capture_lines)
         except TmuxError:
             time.sleep(opts.poll_interval_s)
             continue
@@ -365,7 +427,7 @@ def run_bead(opts: RunBeadOptions, *, log: Callable[..., None] = print) -> RunBe
                 )
                 log(
                     f"[harbor] {opts.bead_id} stuck ({classification}); "
-                    f"pane left alive at: {tmux.attach_command(session, window_name)}"
+                    f"pane left alive at: {tmux.attach_command(session)}"
                 )
 
         time.sleep(opts.poll_interval_s)
@@ -390,7 +452,7 @@ def run_bead(opts: RunBeadOptions, *, log: Callable[..., None] = print) -> RunBe
             blocker_class="none",
         )
         if not opts.keep_pane_after_finish:
-            tmux.kill_window(session, window_name)
+            tmux.kill_session(session)
     else:
         store.record_bead_finish(
             run_id=run_id,

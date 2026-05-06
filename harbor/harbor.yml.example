@@ -4,35 +4,76 @@
 # automatically. Profiles supplement the built-in defaults (fast / balanced /
 # thorough / claude-opus); override the same name to change the built-in.
 #
-# {model} and {effort} are substituted in args_template. If a substituted token
-# is empty, the whole flag is dropped — so claude profiles can omit `effort`.
+# Placeholders:
+#   {model}        — substituted in args_template / launch_template
+#   {effort}       — same. Empty values cause adjacent flags in args_template
+#                    to drop, but appear literally in launch_template (it's
+#                    your job to omit them there if they shouldn't render).
+#   {prompt_path}  — only valid in launch_template. Absolute POSIX path to the
+#                    rendered worker prompt at .beads/workflow/runner-prompts/<id>.md.
+#
+# prompt_injection modes (see harbor/agent.py for full notes):
+#   file_ref   — type "@<absolute-path>" + Enter (claude REPL).
+#   send_keys  — paste the prompt body verbatim via `send-keys -l` + Enter.
+#                Bad fit for REPLs that submit on Enter (codex).
+#   prompt_arg — the prompt rides in on the launch command via {prompt_path}.
+#                REQUIRED for codex; needs `launch_template` to use it.
+#   stdin      — legacy path through harbor-bead-runner. Not used for live panes.
+#
+# default_shell (top-level): on Windows, harbor auto-detects Git Bash and uses
+# it as the tmux pane shell, so launch_template can rely on POSIX-style
+# `"$(cat 'path')"` substitution instead of PowerShell argv quoting. Override
+# here if you have Git Bash installed somewhere non-default.
 
 default_profile: balanced
 
+# default_shell: "C:/Program Files/Git/bin/bash.exe"   # uncomment to override
+
 profiles:
+  # ---- codex-cli 0.128+ (no --reasoning-effort flag; uses -c config override
+  #      and submits on Enter, so the prompt has to ride on the launch line) ----
+  #
+  # Bash-style substitution `"$(cat 'path')"` works whenever the pane shell is
+  # POSIX (Git Bash on Windows, default on macOS/Linux). Harbor configures the
+  # pane to use Git Bash automatically on Windows.
   fast:
     agent_kind: codex
     command: ["codex"]
-    args_template: ["-m", "{model}", "--reasoning-effort", "{effort}"]
-    model: gpt-5.3-codex
+    args_template: []
+    model: gpt-5.5
     effort: low
+    prompt_injection: prompt_arg
+    launch_template: >-
+      codex -m {model} -c model_reasoning_effort={effort} --no-alt-screen
+      -s workspace-write -a never "$(cat '{prompt_path}')"
 
   balanced:
     agent_kind: codex
     command: ["codex"]
-    args_template: ["-m", "{model}", "--reasoning-effort", "{effort}"]
-    model: gpt-5.3-codex
+    args_template: []
+    model: gpt-5.5
     effort: medium
+    prompt_injection: prompt_arg
+    launch_template: >-
+      codex -m {model} -c model_reasoning_effort={effort} --no-alt-screen
+      -s workspace-write -a never "$(cat '{prompt_path}')"
 
   thorough:
     agent_kind: codex
     command: ["codex"]
-    args_template: ["-m", "{model}", "--reasoning-effort", "{effort}"]
-    model: gpt-5.3-codex
+    args_template: []
+    model: gpt-5.5
     effort: high
+    prompt_injection: prompt_arg
+    launch_template: >-
+      codex -m {model} -c model_reasoning_effort={effort} --no-alt-screen
+      -s workspace-write -a never "$(cat '{prompt_path}')"
 
+  # Claude Code REPL accepts `@<path>` to load a prompt body from disk, so we
+  # can stick with the simpler file_ref injection and a regular argv command.
   claude-opus:
     agent_kind: claude
     command: ["claude"]
     args_template: ["--model", "{model}", "--dangerously-skip-permissions"]
     model: claude-opus-4-7
+    prompt_injection: file_ref

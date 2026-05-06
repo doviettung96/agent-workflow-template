@@ -143,11 +143,11 @@ def create_app(repo_root: str | Path) -> FastAPI:
         store = _store()
         snap = store.snapshot()
 
-        # Decorate workers with the attach command for convenience.
+        # Decorate workers with the attach command for convenience. With per-bead
+        # sessions, `window_name` IS the session name — attach without a window.
         tmux = _tmux()
-        session = session_name_for(state.repo_root)
         for w in snap["workers"]:
-            w["attach_command"] = tmux.attach_command(session, w["window_name"])
+            w["attach_command"] = tmux.attach_command(w["window_name"])
 
         # Ready beads (top-level, no parent filter — Phase 2 will add epic scoping)
         try:
@@ -179,10 +179,10 @@ def create_app(repo_root: str | Path) -> FastAPI:
             raise HTTPException(404, f"bead {bead_id!r} not found ({e})")
 
         tmux = _tmux()
-        session = session_name_for(state.repo_root)
-        attach_cmd = tmux.attach_command(session, bead_id)
+        session = session_name_for(state.repo_root, bead_id)
+        attach_cmd = tmux.attach_command(session)
         try:
-            pane = tmux.capture_pane(session, bead_id, lines=300) if tmux.window_exists(session, bead_id) else ""
+            pane = tmux.capture_pane(session, "", lines=300) if tmux.has_session(session) else ""
         except Exception:  # noqa: BLE001
             pane = ""
 
@@ -206,9 +206,8 @@ def create_app(repo_root: str | Path) -> FastAPI:
         store = _store()
         snap = store.snapshot()
         tmux = _tmux()
-        session = session_name_for(state.repo_root)
         for w in snap["workers"]:
-            w["attach_command"] = tmux.attach_command(session, w["window_name"])
+            w["attach_command"] = tmux.attach_command(w["window_name"])
         return templates.TemplateResponse(
             "_status_partial.html",
             {"request": request, "snap": snap},
@@ -217,9 +216,9 @@ def create_app(repo_root: str | Path) -> FastAPI:
     @app.get("/_partials/pane/{bead_id}", response_class=HTMLResponse)
     async def pane_partial(request: Request, bead_id: str) -> HTMLResponse:
         tmux = _tmux()
-        session = session_name_for(state.repo_root)
+        session = session_name_for(state.repo_root, bead_id)
         try:
-            pane = tmux.capture_pane(session, bead_id, lines=300) if tmux.window_exists(session, bead_id) else ""
+            pane = tmux.capture_pane(session, "", lines=300) if tmux.has_session(session) else ""
         except Exception:  # noqa: BLE001
             pane = ""
         return HTMLResponse(f"<pre class='pane-capture'>{_escape(pane)}</pre>")
@@ -243,11 +242,11 @@ def create_app(repo_root: str | Path) -> FastAPI:
 
     @app.post("/actions/kill/{bead_id}")
     async def action_kill(bead_id: str) -> RedirectResponse:
-        # 1. Kill the tmux window (its agent dies with it).
+        # 1. Kill the tmux session (its agent dies with it).
         tmux = _tmux()
-        session = session_name_for(state.repo_root)
-        if tmux.window_exists(session, bead_id):
-            tmux.kill_window(session, bead_id)
+        session = session_name_for(state.repo_root, bead_id)
+        if tmux.has_session(session):
+            tmux.kill_session(session)
         # 2. Drop a synthetic fallback so run_bead's poll loop exits cleanly.
         target_dir = state.repo_root / FALLBACK_DIR
         target_dir.mkdir(parents=True, exist_ok=True)

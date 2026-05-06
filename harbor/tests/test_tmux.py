@@ -38,6 +38,47 @@ def test_ensure_session_creates_when_missing():
     assert "-c" in calls[1] and "/tmp/repo" in calls[1]
 
 
+def test_ensure_session_sets_default_shell_when_provided():
+    """When `default_shell` is passed, ensure_session sets it on the new session
+    so subsequent windows open with that shell."""
+    t = Tmux()
+    calls: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        calls.append(argv)
+        if argv[3] == "has-session":
+            return _completed(returncode=1)
+        return _completed(returncode=0)
+
+    with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
+        t.ensure_session("s1", "/tmp/repo", default_shell="C:/Program Files/Git/bin/bash.exe")
+
+    # Order: has-session, new-session, set-option default-shell
+    assert calls[0][3] == "has-session"
+    assert calls[1][3] == "new-session"
+    assert calls[2][3] == "set-option"
+    assert "default-shell" in calls[2]
+    assert "C:/Program Files/Git/bin/bash.exe" in calls[2]
+
+
+def test_ensure_session_no_default_shell_skips_set_option():
+    t = Tmux()
+    calls: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        calls.append(argv)
+        if argv[3] == "has-session":
+            return _completed(returncode=1)
+        return _completed(returncode=0)
+
+    with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
+        t.ensure_session("s1", "/tmp/repo")  # no default_shell
+
+    # Only has-session and new-session — no set-option
+    assert len(calls) == 2
+    assert calls[1][3] == "new-session"
+
+
 def test_ensure_session_skips_when_exists():
     t = Tmux()
     calls: list[list[str]] = []

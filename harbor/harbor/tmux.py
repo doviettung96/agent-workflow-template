@@ -33,17 +33,28 @@ class TmuxError(RuntimeError):
 
 @dataclass
 class Tmux:
-    """Bound to one tmux server name (default `harbor`)."""
+    """Bound to one tmux server name (default `harbor`).
+
+    `config_path`, when set and the server is being newly started, is passed via
+    `tmux -L <server> -f <path>` so any `set-option` directives apply before
+    the first session's default window is created. This is the clean way to
+    pin `default-shell` on Windows psmux — `set-option` after `new-session` is
+    too late to influence the auto-created window.
+    """
 
     server: str = DEFAULT_SERVER
-    # Cached `tmux -V` detection — psmux on Windows reports
-    # "tmux v3.3.1 — Terminal multiplexer for Windows (tmux alternative)" and
-    # diverges from real tmux for `kill-window` and `new-window` — see
-    # `feedback_windows_psmux_divergences.md` in repo memory.
+    config_path: str | None = None
+    # Cached `tmux -V` detection — older psmux builds reported
+    # "tmux v3.3.1 ... (tmux alternative)" and diverged from real tmux for
+    # `kill-window` and `new-window`. Newer builds drop the marker but harbor
+    # uses one-session-per-bead now so the divergences are mostly moot.
     _is_psmux_cache: bool | None = None
 
     def _run(self, *args: str, check: bool = True, capture: bool = True) -> subprocess.CompletedProcess[str]:
-        argv = ["tmux", "-L", self.server, *args]
+        argv = ["tmux", "-L", self.server]
+        if self.config_path:
+            argv += ["-f", self.config_path]
+        argv += list(args)
         cp = subprocess.run(
             argv,
             check=False,
@@ -75,11 +86,25 @@ class Tmux:
         cp = self._run("has-session", "-t", session, check=False)
         return cp.returncode == 0
 
-    def ensure_session(self, session: str, cwd: str) -> None:
-        """Create a detached session if it does not already exist (idempotent)."""
+    def ensure_session(self, session: str, cwd: str, *, default_shell: str | None = None) -> None:
+        """Create a detached session if it does not already exist (idempotent).
+
+        On psmux/Windows, the session's auto-created default window is the only
+        addressable pane — `tmux send-keys -t <session>:<window>` is unreliable
+        for non-active windows. Harbor therefore uses one session per bead and
+        targets `-t <session>:` (the active window) for all driving operations.
+
+        `default_shell`, if provided, is applied two ways for safety:
+          1. Server config file (`-f`) — picked up at server start, so the
+             very first session's default window already uses `default_shell`.
+          2. `set-option -t <session> default-shell` — set after creation as a
+             fallback for cases where the server already exists.
+        """
         if self.has_session(session):
             return
         self._run("new-session", "-d", "-A", "-s", session, "-c", cwd)
+        if default_shell:
+            self._run("set-option", "-t", session, "default-shell", default_shell, check=False)
 
     def kill_session(self, session: str) -> None:
         self._run("kill-session", "-t", session, check=False)
@@ -170,13 +195,22 @@ class Tmux:
 
     # ---- pane I/O ----
 
-    def send_keys(self, session: str, window: str, keys: str, *, enter: bool = True) -> None:
-        argv = ["send-keys", "-t", f"{session}:{window}", keys]
+    @staticmethod
+    def _target(session: str, window: str = "") -> str:
+        """Build a tmux target string. Empty `window` produces `<session>:` —
+        which targets the session's currently-active window, the only form
+        psmux respects reliably."""
+        if window:
+            return f"{session}:{window}"
+        return f"{session}:"
+
+    def send_keys(self, session: str, window: str = "", keys: str = "", *, enter: bool = True) -> None:
+        argv = ["send-keys", "-t", self._target(session, window), keys]
         if enter:
             argv.append("Enter")
         self._run(*argv)
 
-    def send_keys_literal(self, session: str, window: str, text: str, *, enter: bool = True) -> None:
+    def send_keys_literal(self, session: str, window: str = "", text: str = "", *, enter: bool = True) -> None:
         """Paste literal text via `send-keys -l` (no key-name interpretation).
 
         Multi-line input is handled by sending each line literally, then a synthetic
@@ -184,20 +218,21 @@ class Tmux:
         verbatim — including raw `\\n` — and not all tmux variants translate that
         into a press of Enter inside an interactive REPL.
         """
+        target = self._target(session, window)
         lines = text.splitlines() or [""]
         for i, line in enumerate(lines):
             if line:
-                self._run("send-keys", "-t", f"{session}:{window}", "-l", line)
+                self._run("send-keys", "-t", target, "-l", line)
             if i < len(lines) - 1:
-                self._run("send-keys", "-t", f"{session}:{window}", "Enter")
+                self._run("send-keys", "-t", target, "Enter")
         if enter:
-            self._run("send-keys", "-t", f"{session}:{window}", "Enter")
+            self._run("send-keys", "-t", target, "Enter")
 
-    def capture_pane(self, session: str, window: str, lines: int = 200) -> str:
+    def capture_pane(self, session: str, window: str = "", lines: int = 200) -> str:
         cp = self._run(
             "capture-pane",
             "-t",
-            f"{session}:{window}",
+            self._target(session, window),
             "-p",
             "-S",
             f"-{lines}",
@@ -207,6 +242,10 @@ class Tmux:
     # ---- attach hint ----
 
     def attach_command(self, session: str, window: str | None = None) -> str:
-        """The exact command a user can paste into a terminal to attach."""
-        target = session if window is None else f"{session}:{window}"
+        """The exact command a user can paste into a terminal to attach.
+
+        With per-bead sessions, callers usually pass `window=None` so the user
+        attaches to the session as a whole — the session has only one window.
+        """
+        target = session if not window else f"{session}:{window}"
         return f"tmux -L {shlex.quote(self.server)} attach -t {shlex.quote(target)}"
