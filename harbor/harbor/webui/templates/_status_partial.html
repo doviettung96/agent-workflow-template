@@ -1,0 +1,58 @@
+{# Live-refreshed dashboard status panel. Polled by HTMX every 2s. #}
+<div class="panel-body" id="status-body">
+  <p>
+    <span class="muted">mode:</span> <strong>{{ snap.mode }}</strong>
+    {% if snap.epic_id %}
+      &nbsp;<span class="muted">epic:</span> <code>{{ snap.epic_id }}</code>
+    {% endif %}
+    &nbsp;<span class="muted">runner:</span>
+    {% if snap.runner.active %}
+      <span class="pill ok">active (pid {{ snap.runner.pid }})</span>
+    {% else %}
+      <span class="pill">idle</span>
+    {% endif %}
+  </p>
+  <h3 style="margin: 12px 0 4px; font-size: 12px; color: var(--muted); text-transform: uppercase;">Workers ({{ snap.workers|length }})</h3>
+  {% if snap.workers %}
+    <table>
+      <thead>
+        <tr><th>bead</th><th>profile</th><th>model</th><th>effort</th><th>started</th><th>attach</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for w in snap.workers %}
+        <tr>
+          <td><a href="/bead/{{ w.bead_id }}"><code>{{ w.bead_id }}</code></a></td>
+          <td><span class="pill">{{ w.profile }}</span></td>
+          <td><code>{{ w.model or '—' }}</code></td>
+          <td>{{ w.effort or '—' }}</td>
+          <td class="muted">{{ w.started_at }}</td>
+          <td><code class="mono" style="font-size: 11px;">{{ w.attach_command }}</code></td>
+          <td>
+            <form class="inline" method="post" action="/actions/kill/{{ w.bead_id }}">
+              <button type="submit" class="danger">kill</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty">No workers running.</div>
+  {% endif %}
+
+  {% if snap.blockers %}
+    <h3 style="margin: 14px 0 4px; font-size: 12px; color: var(--err); text-transform: uppercase;">Recent blockers</h3>
+    <table>
+      <thead><tr><th>bead</th><th>classification</th><th>at</th></tr></thead>
+      <tbody>
+      {% for b in snap.blockers %}
+        <tr>
+          <td><a href="/bead/{{ b.bead_id }}"><code>{{ b.bead_id }}</code></a></td>
+          <td><span class="pill warn">{{ b.classification or '—' }}</span></td>
+          <td class="muted">{{ b.at }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>

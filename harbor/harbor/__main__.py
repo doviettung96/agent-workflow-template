@@ -32,7 +32,14 @@ def cmd_run_epic(args: argparse.Namespace) -> int:
 
 
 def cmd_daemon(args: argparse.Namespace) -> int:
-    return _not_implemented("daemon")
+    import uvicorn
+    from .webui.server import create_app
+
+    repo_root = Path(args.repo_root or Path.cwd()).resolve()
+    app = create_app(repo_root)
+    print(f"harbor daemon: serving http://{args.host}:{args.port}/ for repo {repo_root}")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
+    return 0
 
 
 def cmd_status(args: argparse.Namespace) -> int:
@@ -63,7 +70,9 @@ def build_parser() -> argparse.ArgumentParser:
     re.set_defaults(func=cmd_run_epic)
 
     d = sub.add_parser("daemon", help="Run the long-lived orchestrator + webview server.")
+    d.add_argument("--host", default="127.0.0.1")
     d.add_argument("--port", type=int, default=8765)
+    d.add_argument("--repo-root", default=None, help="Repo root (default: cwd).")
     d.set_defaults(func=cmd_daemon)
 
     st = sub.add_parser("status", help="Print current runner state.")

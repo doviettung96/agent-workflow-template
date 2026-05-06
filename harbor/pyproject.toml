@@ -31,5 +31,8 @@ harbor-bead-runner = "harbor.runner:main"
 where = ["."]
 include = ["harbor*"]
 
+[tool.setuptools.package-data]
+"harbor.webui" = ["templates/*.html"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}harbor dashboard{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <h2>Status</h2>
+  <div hx-get="/_partials/dashboard-status" hx-trigger="every 2s" hx-swap="innerHTML">
+    {% include "_status_partial.html" %}
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Ready beads ({{ ready|length }})</h2>
+  <div class="panel-body">
+    {% if ready %}
+      <table>
+        <thead>
+          <tr>
+            <th>bead</th>
+            <th>title</th>
+            <th>type</th>
+            <th>priority</th>
+            <th>start</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for b in ready %}
+          <tr>
+            <td><a href="/bead/{{ b.id }}"><code>{{ b.id }}</code></a></td>
+            <td>{{ b.title }}</td>
+            <td><span class="pill">{{ b.issue_type or 'task' }}</span></td>
+            <td>P{{ b.priority }}</td>
+            <td>
+              <form class="run-form" method="post" action="/actions/run-bead/{{ b.id }}">
+                <select name="profile">
+                  {% for p in profiles %}
+                    <option value="{{ p }}" {% if p == default_profile %}selected{% endif %}>{{ p }}</option>
+                  {% endfor %}
+                </select>
+                <input type="text" name="model" placeholder="model (override)">
+                <input type="text" name="effort" placeholder="effort (override)">
+                <button type="submit">▶ run</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No ready beads. Run <code>br ready --json --no-db</code> to investigate.</div>
+    {% endif %}
+  </div>
+</div>
+
+<p class="muted" style="font-size: 12px;">
+  Tip: clicking a bead opens its detail page with a live tmux capture and the exact attach command. Paste the attach command into Git Bash to interact with the agent.
+</p>
+
+{% endblock %}

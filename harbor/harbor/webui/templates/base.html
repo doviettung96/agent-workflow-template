@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}harbor{% endblock %}</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  <style>
+    :root {
+      --bg: #0e1116;
+      --panel: #161b22;
+      --border: #30363d;
+      --fg: #e6edf3;
+      --muted: #7d8590;
+      --accent: #58a6ff;
+      --ok: #3fb950;
+      --warn: #d29922;
+      --err: #f85149;
+      --code: #1f242c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.45 -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--fg);
+    }
+    header {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: baseline; gap: 18px;
+      background: var(--panel);
+    }
+    header h1 { margin: 0; font-size: 18px; }
+    header .crumbs { color: var(--muted); }
+    header a { color: var(--accent); text-decoration: none; }
+    main { padding: 18px 24px 60px; max-width: 1200px; margin: 0 auto; }
+    .panel {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 6px;
+      margin-bottom: 18px;
+    }
+    .panel h2 {
+      margin: 0; padding: 10px 14px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-body { padding: 12px 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+    code, .mono { font: 12.5px/1.4 "JetBrains Mono", "Cascadia Code", "Consolas", monospace; }
+    .pill {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; background: var(--code); color: var(--muted);
+    }
+    .pill.ok { color: var(--ok); }
+    .pill.warn { color: var(--warn); }
+    .pill.err { color: var(--err); }
+    button, .btn {
+      font: inherit; padding: 5px 12px; border-radius: 4px;
+      border: 1px solid var(--border); background: var(--code);
+      color: var(--fg); cursor: pointer;
+    }
+    button:hover { border-color: var(--accent); }
+    button.danger { color: var(--err); border-color: var(--err); }
+    select, input[type="text"] {
+      font: inherit; padding: 4px 8px; border-radius: 4px;
+      background: var(--code); color: var(--fg); border: 1px solid var(--border);
+    }
+    .pane-capture {
+      background: #000; color: #d8d8d8; padding: 10px 12px;
+      border-radius: 4px; max-height: 460px; overflow: auto;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .attach {
+      display: flex; gap: 8px; align-items: center;
+      background: var(--code); padding: 8px 10px; border-radius: 4px;
+    }
+    .attach code { color: var(--accent); flex: 1; user-select: all; }
+    .muted { color: var(--muted); }
+    form.inline { display: inline; }
+    form.run-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    form.run-form input[type="text"] { width: 9em; }
+    .empty { color: var(--muted); font-style: italic; padding: 14px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>harbor</h1>
+    <span class="crumbs">{% block crumbs %}<a href="/">dashboard</a>{% endblock %}</span>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+</body>
+</html>
