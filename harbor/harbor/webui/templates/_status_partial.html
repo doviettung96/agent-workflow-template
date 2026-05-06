@@ -12,6 +12,28 @@
       <span class="pill">idle</span>
     {% endif %}
   </p>
+
+  {% if snap.stuck %}
+    <h3 style="margin: 12px 0 4px; font-size: 12px; color: var(--err); text-transform: uppercase;">
+      Stuck — needs your help ({{ snap.stuck|length }})
+    </h3>
+    <table>
+      <thead>
+        <tr><th>bead</th><th>classification</th><th>window</th><th>last sentinel</th></tr>
+      </thead>
+      <tbody>
+      {% for s in snap.stuck %}
+        <tr>
+          <td><a href="/bead/{{ s.bead_id }}"><code>{{ s.bead_id }}</code></a></td>
+          <td><span class="pill err">{{ s.classification or 'unknown' }}</span></td>
+          <td><code>{{ s.window_name }}</code></td>
+          <td class="muted">{{ s.last_sentinel_at or s.started_at }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
   <h3 style="margin: 12px 0 4px; font-size: 12px; color: var(--muted); text-transform: uppercase;">Workers ({{ snap.workers|length }})</h3>
   {% if snap.workers %}
     <table>

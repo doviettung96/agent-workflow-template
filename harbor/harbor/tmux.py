@@ -31,11 +31,16 @@ class TmuxError(RuntimeError):
         self.stderr = stderr
 
 
-@dataclass(frozen=True)
+@dataclass
 class Tmux:
     """Bound to one tmux server name (default `harbor`)."""
 
     server: str = DEFAULT_SERVER
+    # Cached `tmux -V` detection — psmux on Windows reports
+    # "tmux v3.3.1 — Terminal multiplexer for Windows (tmux alternative)" and
+    # diverges from real tmux for `kill-window` and `new-window` — see
+    # `feedback_windows_psmux_divergences.md` in repo memory.
+    _is_psmux_cache: bool | None = None
 
     def _run(self, *args: str, check: bool = True, capture: bool = True) -> subprocess.CompletedProcess[str]:
         argv = ["tmux", "-L", self.server, *args]
@@ -48,6 +53,21 @@ class Tmux:
         if check and cp.returncode != 0:
             raise TmuxError(argv, cp.returncode, cp.stdout or "", cp.stderr or "")
         return cp
+
+    def is_psmux(self) -> bool:
+        """True iff the resident `tmux` is psmux (a Windows tmux-alike whose
+        `kill-window -t <session>:<window>` is a silent no-op)."""
+        if self._is_psmux_cache is not None:
+            return self._is_psmux_cache
+        try:
+            cp = subprocess.run(
+                ["tmux", "-V"], capture_output=True, text=True, check=False
+            )
+            out = (cp.stdout or "") + (cp.stderr or "")
+        except (FileNotFoundError, OSError):
+            out = ""
+        self._is_psmux_cache = "(tmux alternative)" in out
+        return self._is_psmux_cache
 
     # ---- session lifecycle ----
 
@@ -136,6 +156,16 @@ class Tmux:
         return out
 
     def kill_window(self, session: str, window: str) -> None:
+        """Kill the named window. On real tmux, `-t <session>:<window>` works
+        directly. psmux (Windows) ignores `-t` on kill-window and only kills the
+        currently-selected window — so we select the target first, then kill
+        without `-t`. Tracked at awt-zmq.12."""
+        if self.is_psmux():
+            # `select-window -t` IS supported on psmux. Once it's selected,
+            # `kill-window` (no -t) closes that one specifically.
+            self._run("select-window", "-t", f"{session}:{window}", check=False)
+            self._run("kill-window", check=False)
+            return
         self._run("kill-window", "-t", f"{session}:{window}", check=False)
 
     # ---- pane I/O ----
@@ -145,6 +175,23 @@ class Tmux:
         if enter:
             argv.append("Enter")
         self._run(*argv)
+
+    def send_keys_literal(self, session: str, window: str, text: str, *, enter: bool = True) -> None:
+        """Paste literal text via `send-keys -l` (no key-name interpretation).
+
+        Multi-line input is handled by sending each line literally, then a synthetic
+        `Enter` between lines. This is necessary because `-l` passes characters
+        verbatim — including raw `\\n` — and not all tmux variants translate that
+        into a press of Enter inside an interactive REPL.
+        """
+        lines = text.splitlines() or [""]
+        for i, line in enumerate(lines):
+            if line:
+                self._run("send-keys", "-t", f"{session}:{window}", "-l", line)
+            if i < len(lines) - 1:
+                self._run("send-keys", "-t", f"{session}:{window}", "Enter")
+        if enter:
+            self._run("send-keys", "-t", f"{session}:{window}", "Enter")
 
     def capture_pane(self, session: str, window: str, lines: int = 200) -> str:
         cp = self._run(

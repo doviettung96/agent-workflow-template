@@ -21,6 +21,13 @@ class AgentProfile:
     `args_template` may contain `{model}` and `{effort}` placeholders. Anything
     else stays literal. Empty values render as empty strings — caller filters
     them out so optional flags can drop cleanly.
+
+    `prompt_injection` controls how harbor pushes the worker prompt into the
+    interactive pane after launching the agent CLI:
+      - "file_ref": type `@<absolute-prompt-path>` then Enter (codex/claude REPL).
+      - "send_keys": paste the prompt body verbatim via `tmux send-keys -l` then Enter.
+      - "stdin": legacy non-interactive path — the prompt goes on the agent's
+        stdin via `harbor-bead-runner`. Not used by the interactive orchestrator.
     """
 
     name: str
@@ -30,6 +37,7 @@ class AgentProfile:
     model: str = ""
     effort: str = ""
     env: dict[str, str] = field(default_factory=dict)
+    prompt_injection: str = "file_ref"
 
     def render_argv(self, *, model: str | None = None, effort: str | None = None) -> list[str]:
         """Return the full argv to exec, with model/effort substituted."""
@@ -94,6 +102,12 @@ class Config:
 
 
 def _profile_from_dict(name: str, raw: dict[str, Any]) -> AgentProfile:
+    injection = raw.get("prompt_injection", "file_ref")
+    if injection not in {"file_ref", "send_keys", "stdin"}:
+        raise ValueError(
+            f"profile {name!r}: prompt_injection must be one of "
+            "'file_ref', 'send_keys', 'stdin'; got {injection!r}"
+        )
     return AgentProfile(
         name=name,
         agent_kind=raw.get("agent_kind") or raw.get("agent") or "codex",
@@ -102,6 +116,7 @@ def _profile_from_dict(name: str, raw: dict[str, Any]) -> AgentProfile:
         model=raw.get("model", ""),
         effort=raw.get("effort", ""),
         env=dict(raw.get("env", {})),
+        prompt_injection=injection,
     )
 
 

@@ -14,6 +14,7 @@ def test_snapshot_idle_when_no_run(tmp_path: Path):
     assert snap["mode"] == "idle"
     assert snap["epic_id"] is None
     assert snap["workers"] == []
+    assert snap["stuck"] == []
     assert snap["runner"]["active"] is False
 
 
@@ -82,6 +83,96 @@ def test_record_bead_lifecycle_updates_workers_and_blockers(tmp_path: Path):
     assert snap["blockers"][0]["classification"] == "contract"
 
 
+def test_blockers_survive_run_end_across_runs(tmp_path: Path):
+    """Regression for awt-zmq.13: a blocker from a prior run must still appear
+    on the dashboard after that run ends and a new (empty) run starts — and even
+    when no run is active at all."""
+    s = StateStore(tmp_path)
+    run_a = s.start_run(mode="single", epic_id=None, pid=111)
+    s.record_bead_start(
+        run_id=run_a, bead_id="b-old", profile="balanced",
+        model="m", effort="medium", window_name="b-old-w",
+    )
+    s.record_bead_finish(
+        run_id=run_a, bead_id="b-old", exit_code=1,
+        sentinel_status="blocked", blocker_class="contract",
+    )
+    s.end_run(run_a)
+
+    # No active run — blocker still visible
+    snap = s.snapshot()
+    assert snap["mode"] == "idle"
+    bead_ids = [b["bead_id"] for b in snap["blockers"]]
+    assert "b-old" in bead_ids
+
+    # New run begins; the historical blocker still surfaces
+    s.start_run(mode="single", epic_id=None, pid=222)
+    snap = s.snapshot()
+    bead_ids = [b["bead_id"] for b in snap["blockers"]]
+    assert "b-old" in bead_ids
+
+
+def test_stuck_workers_visible_in_snapshot_and_separate_from_workers(tmp_path: Path):
+    s = StateStore(tmp_path)
+    run_id = s.start_run(mode="single", epic_id=None, pid=42)
+
+    s.record_bead_start(
+        run_id=run_id, bead_id="b-stuck", profile="balanced",
+        model="m", effort="medium", window_name="b-stuck-w",
+    )
+    s.record_bead_stuck(
+        run_id=run_id, bead_id="b-stuck",
+        sentinel_status="blocked", blocker_class="clarify",
+    )
+    snap = s.snapshot()
+
+    # `running` workers list no longer contains the stuck bead.
+    assert all(w["bead_id"] != "b-stuck" for w in snap["workers"])
+    # `stuck` array does.
+    assert len(snap["stuck"]) == 1
+    assert snap["stuck"][0]["bead_id"] == "b-stuck"
+    assert snap["stuck"][0]["classification"] == "clarify"
+    assert snap["stuck"][0]["window_name"] == "b-stuck-w"
+
+
+def test_stuck_survives_run_end(tmp_path: Path):
+    s = StateStore(tmp_path)
+    run_id = s.start_run(mode="single", epic_id=None, pid=42)
+    s.record_bead_start(
+        run_id=run_id, bead_id="b-stuck", profile="balanced",
+        model="m", effort="medium", window_name="b-stuck-w",
+    )
+    s.record_bead_stuck(
+        run_id=run_id, bead_id="b-stuck",
+        sentinel_status="blocked", blocker_class="env",
+    )
+    s.end_run(run_id, status="aborted")
+
+    snap = s.snapshot()
+    assert snap["mode"] == "idle"
+    assert any(s["bead_id"] == "b-stuck" for s in snap["stuck"])
+
+
+def test_record_bead_resumed_flips_back_to_running(tmp_path: Path):
+    s = StateStore(tmp_path)
+    run_id = s.start_run(mode="single", epic_id=None, pid=42)
+    s.record_bead_start(
+        run_id=run_id, bead_id="b-r", profile="balanced",
+        model="m", effort="medium", window_name="b-r-w",
+    )
+    s.record_bead_stuck(
+        run_id=run_id, bead_id="b-r",
+        sentinel_status="blocked", blocker_class="clarify",
+    )
+    snap = s.snapshot()
+    assert any(x["bead_id"] == "b-r" for x in snap["stuck"])
+
+    s.record_bead_resumed(run_id=run_id, bead_id="b-r")
+    snap = s.snapshot()
+    assert all(x["bead_id"] != "b-r" for x in snap["stuck"])
+    assert any(w["bead_id"] == "b-r" for w in snap["workers"])
+
+
 def test_state_json_and_md_are_emitted(tmp_path: Path):
     s = StateStore(tmp_path)
     run_id = s.start_run(mode="epic", epic_id="epic-7", pid=42)
@@ -103,11 +194,30 @@ def test_state_json_and_md_are_emitted(tmp_path: Path):
     assert data["epic_id"] == "epic-7"
     assert data["runner"]["pid"] == 42
     assert any(w["bead_id"] == "b-9" for w in data["workers"])
+    assert "stuck" in data  # new field
 
     md = state_md.read_text(encoding="utf-8")
     assert "epic-7" in md
     assert "b-9" in md
     assert "thorough" in md
+    assert "Stuck" in md  # new section
+
+
+def test_state_md_renders_stuck_section(tmp_path: Path):
+    s = StateStore(tmp_path)
+    run_id = s.start_run(mode="single", epic_id=None, pid=1)
+    s.record_bead_start(
+        run_id=run_id, bead_id="b-stuck", profile="balanced",
+        model="m", effort="medium", window_name="w",
+    )
+    s.record_bead_stuck(
+        run_id=run_id, bead_id="b-stuck",
+        sentinel_status="blocked", blocker_class="clarify",
+    )
+    md = (tmp_path / ".beads/workflow/STATE.md").read_text(encoding="utf-8")
+    assert "Stuck" in md
+    assert "b-stuck" in md
+    assert "clarify" in md
 
 
 def test_end_run_marks_idle(tmp_path: Path):
@@ -131,3 +241,20 @@ def test_event_log_persists(tmp_path: Path):
     assert "custom" in types
     payloads = [json.loads(r["payload"]) for r in rows]
     assert any(p.get("hello") == "world" for p in payloads)
+
+
+def test_bead_stuck_event_is_logged(tmp_path: Path):
+    s = StateStore(tmp_path)
+    run_id = s.start_run(mode="single", epic_id=None)
+    s.record_bead_start(
+        run_id=run_id, bead_id="b", profile="p",
+        model="m", effort="e", window_name="w",
+    )
+    s.record_bead_stuck(
+        run_id=run_id, bead_id="b",
+        sentinel_status="blocked", blocker_class="clarify",
+    )
+    rows = s._conn.execute(
+        "SELECT type FROM events WHERE run_id = ? ORDER BY id", (run_id,)
+    ).fetchall()
+    assert any(r["type"] == "bead_stuck" for r in rows)

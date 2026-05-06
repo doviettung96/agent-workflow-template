@@ -41,19 +41,21 @@ CREATE TABLE IF NOT EXISTS runs (
 );
 
 CREATE TABLE IF NOT EXISTS bead_runs (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id          TEXT NOT NULL REFERENCES runs(run_id),
-    bead_id         TEXT NOT NULL,
-    profile         TEXT NOT NULL,
-    model           TEXT,
-    effort          TEXT,
-    window_name     TEXT NOT NULL,
-    status          TEXT NOT NULL DEFAULT 'spawning',
-    started_at      TEXT NOT NULL,
-    ended_at        TEXT,
-    exit_code       INTEGER,
-    sentinel_status TEXT,
-    blocker_class   TEXT
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id               TEXT NOT NULL REFERENCES runs(run_id),
+    bead_id              TEXT NOT NULL,
+    profile              TEXT NOT NULL,
+    model                TEXT,
+    effort               TEXT,
+    window_name          TEXT NOT NULL,
+    status               TEXT NOT NULL DEFAULT 'spawning',
+    started_at           TEXT NOT NULL,
+    ended_at             TEXT,
+    exit_code            INTEGER,
+    sentinel_status      TEXT,
+    blocker_class        TEXT,
+    last_sentinel_at     TEXT,
+    last_sentinel_status TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_bead_runs_run ON bead_runs(run_id);
@@ -70,6 +72,13 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS idx_events_run ON events(run_id);
 """
+
+# Columns added after the initial schema. Applied via ALTER TABLE on open so old
+# `harbor.db` files migrate without manual steps.
+_BEAD_RUNS_LATE_COLUMNS = (
+    ("last_sentinel_at", "TEXT"),
+    ("last_sentinel_status", "TEXT"),
+)
 
 
 def _now() -> str:
@@ -99,6 +108,12 @@ class StateStore:
         self._conn.row_factory = sqlite3.Row
         with closing(self._conn.cursor()) as cur:
             cur.executescript(_SCHEMA)
+            # Migrate older harbor.db files that pre-date the late columns.
+            cur.execute("PRAGMA table_info(bead_runs)")
+            existing = {row[1] for row in cur.fetchall()}
+            for col_name, col_decl in _BEAD_RUNS_LATE_COLUMNS:
+                if col_name not in existing:
+                    cur.execute(f"ALTER TABLE bead_runs ADD COLUMN {col_name} {col_decl}")
         self._conn.commit()
 
     # ---- run lifecycle ----
@@ -186,6 +201,50 @@ class StateStore:
         )
         self.write_state_files()
 
+    def record_bead_stuck(
+        self,
+        *,
+        run_id: str,
+        bead_id: str,
+        sentinel_status: str,
+        blocker_class: str | None,
+    ) -> None:
+        """Mark an open bead-run as `stuck`: agent emitted a blocker sentinel but
+        the pane is still alive so a human can intervene. The row stays open
+        (`ended_at` NULL) so a follow-up `status=ok` emission flips it to finished.
+        """
+        self._conn.execute(
+            "UPDATE bead_runs SET status = 'stuck', last_sentinel_at = ?, "
+            "last_sentinel_status = ?, blocker_class = ? "
+            "WHERE run_id = ? AND bead_id = ? AND ended_at IS NULL",
+            (_now(), sentinel_status, blocker_class, run_id, bead_id),
+        )
+        self._conn.commit()
+        self.record_event(
+            run_id=run_id,
+            bead_id=bead_id,
+            type="bead_stuck",
+            payload={"sentinel_status": sentinel_status, "blocker_class": blocker_class},
+        )
+        self.write_state_files()
+
+    def record_bead_resumed(
+        self,
+        *,
+        run_id: str,
+        bead_id: str,
+    ) -> None:
+        """Flip a `stuck` bead-run back to `running` (e.g. after a human pasted
+        guidance into the pane and the daemon detected fresh activity)."""
+        self._conn.execute(
+            "UPDATE bead_runs SET status = 'running' "
+            "WHERE run_id = ? AND bead_id = ? AND status = 'stuck' AND ended_at IS NULL",
+            (run_id, bead_id),
+        )
+        self._conn.commit()
+        self.record_event(run_id=run_id, bead_id=bead_id, type="bead_resumed")
+        self.write_state_files()
+
     # ---- events ----
 
     def record_event(
@@ -229,12 +288,41 @@ class StateStore:
             for r in rows
         ]
 
-    def recent_blockers(self, run_id: str, limit: int = 10) -> list[dict[str, Any]]:
+    def stuck_workers(self) -> list[dict[str, Any]]:
+        """Cross-run list of bead-runs whose pane is alive but the agent emitted
+        a blocker sentinel. These are the rows the dashboard's red 'needs your
+        help' panel renders."""
         rows = self._conn.execute(
-            "SELECT bead_id, blocker_class, ended_at FROM bead_runs "
-            "WHERE run_id = ? AND status = 'failed' "
+            "SELECT bead_id, profile, model, effort, window_name, run_id, "
+            "blocker_class, last_sentinel_at, started_at "
+            "FROM bead_runs WHERE status = 'stuck' "
+            "ORDER BY COALESCE(last_sentinel_at, started_at) DESC"
+        ).fetchall()
+        return [
+            {
+                "bead_id": r["bead_id"],
+                "profile": r["profile"],
+                "model": r["model"] or "",
+                "effort": r["effort"] or "",
+                "window_name": r["window_name"],
+                "run_id": r["run_id"],
+                "classification": r["blocker_class"],
+                "last_sentinel_at": r["last_sentinel_at"],
+                "started_at": r["started_at"],
+            }
+            for r in rows
+        ]
+
+    def recent_blockers(self, limit: int = 10) -> list[dict[str, Any]]:
+        """All historical (non-stuck) bead-runs that ended with a blocker, across
+        every run. Phase-1 used to scope this to the active run, which made
+        blockers vanish the moment a single-bead run ended (awt-zmq.13)."""
+        rows = self._conn.execute(
+            "SELECT bead_id, blocker_class, ended_at, run_id FROM bead_runs "
+            "WHERE blocker_class IS NOT NULL AND blocker_class != 'none' "
+            "AND status != 'stuck' "
             "ORDER BY ended_at DESC LIMIT ?",
-            (run_id, limit),
+            (limit,),
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -242,6 +330,11 @@ class StateStore:
 
     def snapshot(self) -> dict[str, Any]:
         run = self.active_run()
+        # Stuck and historical blockers are cross-run — they survive the end of
+        # whatever run produced them so the dashboard never loses visibility.
+        stuck = self.stuck_workers()
+        blockers = self.recent_blockers()
+
         if not run:
             return {
                 "version": 1,
@@ -250,9 +343,14 @@ class StateStore:
                 "coordinator": None,
                 "agent_mail": {"status": "unknown", "last_error": None},
                 "workers": [],
+                "stuck": stuck,
                 "assignments": [],
                 "reservations": [],
-                "blockers": [],
+                "blockers": [
+                    {"bead_id": b["bead_id"], "classification": b["blocker_class"], "at": b["ended_at"]}
+                    for b in blockers
+                    if b["blocker_class"]
+                ],
                 "last_action": None,
                 "next_action": "Start `harbor run-bead` or `harbor run-epic`.",
                 "runner": {"active": False, "pid": None, "mode": "idle"},
@@ -260,7 +358,6 @@ class StateStore:
 
         run_id = run["run_id"]
         workers = self.active_workers(run_id)
-        blockers = self.recent_blockers(run_id)
         return {
             "version": 1,
             "mode": "swarm" if run["mode"] == "epic" else "single",
@@ -279,6 +376,7 @@ class StateStore:
                 }
                 for w in workers
             ],
+            "stuck": stuck,
             # Harbor doesn't model `assignments` separately — workers ARE the assignments.
             "assignments": [{"bead_id": w.bead_id, "worker": w.window_name} for w in workers],
             # Reservations are written by harbor.mail directly into Agent Mail's store; we
@@ -324,6 +422,17 @@ class StateStore:
                 lines.append(
                     f"- `{w['bead_id']}` — profile=`{w['profile']}` model=`{w['model']}` "
                     f"effort=`{w['effort']}` window=`{w['window_name']}`"
+                )
+        else:
+            lines.append("- None")
+        lines.append("")
+        lines.append("## Stuck (needs human help)")
+        lines.append("")
+        if snap.get("stuck"):
+            for s in snap["stuck"]:
+                lines.append(
+                    f"- `{s['bead_id']}` — {s['classification']} (window=`{s['window_name']}`, "
+                    f"last_sentinel={s['last_sentinel_at'] or '—'})"
                 )
         else:
             lines.append("- None")

@@ -11,16 +11,20 @@ from __future__ import annotations
 from typing import Any
 
 SENTINEL_INSTRUCTION = (
-    "When you have finished (success OR blocker), the LAST line of your final "
-    "message MUST be exactly:\n"
+    "When you have finished (success OR blocker), the LAST line of your message "
+    "MUST be exactly one of:\n"
     "    HARBOR-DONE: {bead_id} status=ok classification=none\n"
-    "  or\n"
     "    HARBOR-DONE: {bead_id} status=blocked classification=clarify\n"
     "    HARBOR-DONE: {bead_id} status=blocked classification=env\n"
     "    HARBOR-DONE: {bead_id} status=blocked classification=contract\n"
     "    HARBOR-DONE: {bead_id} status=blocked classification=scope\n"
-    "Do not print anything after this line. The harbor daemon parses it to "
-    "decide whether to close the bead or surface a blocker."
+    "Do not print anything after this line in that message. The harbor daemon "
+    "polls the pane for the most recent HARBOR-DONE line and uses it to decide "
+    "whether to close the bead.\n\n"
+    "If you emit a `blocked` sentinel, harbor leaves you running so a human can "
+    "attach to the pane and reply directly. After they respond, address their "
+    "guidance and emit a fresh HARBOR-DONE line — harbor only acts on the most "
+    "recent one, so re-emission is the supported way to recover from a blocker."
 )
 
 

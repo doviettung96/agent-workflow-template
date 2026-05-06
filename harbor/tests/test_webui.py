@@ -59,6 +59,31 @@ def test_dashboard_status_partial(app_client):
     assert "Workers" in r.text
 
 
+def test_dashboard_renders_stuck_panel_when_bead_is_stuck(app_client, tmp_path: Path):
+    """When StateStore has a stuck bead-run, the dashboard's red 'needs your
+    help' panel must surface it. Drives awt-zmq.14 acceptance."""
+    from harbor.state import StateStore
+
+    client, _, _ = app_client
+    store = StateStore(tmp_path)
+    run_id = store.start_run(mode="single", epic_id=None, pid=42)
+    store.record_bead_start(
+        run_id=run_id, bead_id="awt-stuck.1", profile="balanced",
+        model="m", effort="medium", window_name="awt-stuck.1",
+    )
+    store.record_bead_stuck(
+        run_id=run_id, bead_id="awt-stuck.1",
+        sentinel_status="blocked", blocker_class="clarify",
+    )
+
+    r = client.get("/_partials/dashboard-status")
+    assert r.status_code == 200
+    assert "Stuck" in r.text
+    assert "needs your help" in r.text
+    assert "awt-stuck.1" in r.text
+    assert "clarify" in r.text
+
+
 def test_bead_detail_shows_attach_command(app_client):
     client, _, _ = app_client
     r = client.get("/bead/awt-test.1")

@@ -109,3 +109,43 @@ def test_config_get_unknown_raises():
     cfg = load_config()
     with pytest.raises(KeyError):
         cfg.get("does-not-exist")
+
+
+def test_prompt_injection_defaults_to_file_ref():
+    """Built-in profiles should default to file_ref since codex/claude both
+    support `@<path>` to load a prompt from disk."""
+    cfg = load_config()
+    for name in ("fast", "balanced", "thorough", "claude-opus"):
+        assert cfg.profiles[name].prompt_injection == "file_ref", (
+            f"profile {name} should default to file_ref"
+        )
+
+
+def test_prompt_injection_override_from_yaml(tmp_path: Path):
+    yml = tmp_path / "harbor.yml"
+    yml.write_text(
+        "profiles:\n"
+        "  paste:\n"
+        "    agent_kind: custom\n"
+        "    command: [my-cli]\n"
+        "    args_template: []\n"
+        "    prompt_injection: send_keys\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(yml)
+    assert cfg.profiles["paste"].prompt_injection == "send_keys"
+
+
+def test_prompt_injection_invalid_value_rejected(tmp_path: Path):
+    yml = tmp_path / "harbor.yml"
+    yml.write_text(
+        "profiles:\n"
+        "  bad:\n"
+        "    agent_kind: custom\n"
+        "    command: [x]\n"
+        "    args_template: []\n"
+        "    prompt_injection: nonsense\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="prompt_injection"):
+        load_config(yml)

@@ -151,8 +151,9 @@ def test_capture_pane_passes_history_size():
     assert "-50" in captured[0]
 
 
-def test_kill_window_uses_session_window_target():
-    t = Tmux()
+def test_kill_window_uses_session_window_target_on_real_tmux():
+    """Real tmux: `kill-window -t session:window` is the supported form."""
+    t = Tmux(_is_psmux_cache=False)  # bypass `tmux -V` detection
     captured: list[list[str]] = []
 
     def fake_run(argv, **kwargs):
@@ -166,12 +167,97 @@ def test_kill_window_uses_session_window_target():
     assert captured[0][5] == "s:bead-3"
 
 
+def test_kill_window_on_psmux_selects_then_kills():
+    """psmux ignores `-t` on kill-window. We compensate by selecting the target
+    first, then kill the (now-current) window. Regression for awt-zmq.12."""
+    t = Tmux(_is_psmux_cache=True)
+    captured: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        captured.append(argv)
+        return _completed()
+
+    with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
+        t.kill_window("s", "bead-3")
+
+    # First: select-window -t s:bead-3
+    assert captured[0][3] == "select-window"
+    assert captured[0][5] == "s:bead-3"
+    # Second: kill-window (NO -t)
+    assert captured[1][3] == "kill-window"
+    assert "-t" not in captured[1]
+
+
+def test_is_psmux_detects_alternative_marker():
+    t = Tmux()
+
+    def fake_run(argv, **kwargs):
+        # Anywhere `tmux -V` is asked, return the psmux banner.
+        if argv == ["tmux", "-V"]:
+            return _completed(stdout="tmux v3.3.1 — Terminal multiplexer for Windows (tmux alternative)")
+        return _completed()
+
+    with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
+        assert t.is_psmux() is True
+
+
+def test_is_psmux_returns_false_for_real_tmux():
+    t = Tmux()
+
+    def fake_run(argv, **kwargs):
+        if argv == ["tmux", "-V"]:
+            return _completed(stdout="tmux 3.4")
+        return _completed()
+
+    with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
+        assert t.is_psmux() is False
+
+
 def test_attach_command_quotes_server_and_target():
     t = Tmux(server="my server")
     cmd = t.attach_command("epic-1", "bead-3")
     # shlex.quote should wrap the whitespace-containing server name in quotes
     assert "'my server'" in cmd
     assert "epic-1:bead-3" in cmd
+
+
+def test_send_keys_literal_uses_dash_l_and_appends_enter():
+    t = Tmux()
+    captured: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        captured.append(argv)
+        return _completed()
+
+    with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
+        t.send_keys_literal("s", "w", "@/repo/prompt.md")
+
+    # send-keys -l <text>, then send-keys Enter
+    assert captured[0][3] == "send-keys"
+    assert "-l" in captured[0]
+    assert "@/repo/prompt.md" in captured[0]
+    assert captured[-1][-1] == "Enter"
+
+
+def test_send_keys_literal_handles_multiline():
+    """Literal multi-line text must split across send-keys calls so the REPL
+    sees each line followed by a key-name Enter, not a raw \\n character."""
+    t = Tmux()
+    captured: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        captured.append(argv)
+        return _completed()
+
+    with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
+        t.send_keys_literal("s", "w", "line1\nline2\nline3")
+
+    # Expect: [-l line1] [Enter] [-l line2] [Enter] [-l line3] [Enter]
+    bodies = [a[-1] for a in captured]
+    assert "line1" in bodies
+    assert "line2" in bodies
+    assert "line3" in bodies
+    assert bodies.count("Enter") >= 3  # 2 between, 1 trailing
 
 
 def test_run_raises_tmux_error_on_failure():
