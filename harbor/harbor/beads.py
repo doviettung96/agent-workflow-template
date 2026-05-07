@@ -6,13 +6,27 @@ just shells out and parses the JSON it returns.
 Note: every command runs with `--no-db` to keep the JSONL the canonical store
 (see `templates/BEADS_WORKFLOW.md`). The daemon uses these wrappers, not the
 worker — workers must not mutate bead state.
+
+Concurrency note (awt-zmq.107): `br update`/`br close` write the
+`.beads/issues.jsonl` non-atomically. When N worker threads call them at
+once — typical for a parallel epic run — we observed lost writes (Run 2 of
+the Phase 2 smoke saw 2-of-3 closes land in JSONL even though all three
+exited 0). Until br fixes its own concurrency, the harbor side defends
+itself with a process-wide `_WRITE_LOCK` that serializes every write
+invocation. Reads (`info`, `show`, `ready`) are unaffected.
 """
 from __future__ import annotations
 
 import json
 import subprocess
+import threading
 from dataclasses import dataclass
 from typing import Any
+
+# Serializes all `br` write invocations across this process. See module
+# docstring for the underlying race. Acquired by `update_status`, `close`,
+# and any future write helpers.
+_WRITE_LOCK = threading.Lock()
 
 
 class BeadsError(RuntimeError):
@@ -82,10 +96,33 @@ class Beads:
     # ---- write ----
 
     def update_status(self, bead_id: str, status: str) -> None:
-        self._run("update", bead_id, "--status", status, "--no-db")
+        # Serialized via `_WRITE_LOCK` — see module docstring (awt-zmq.107).
+        with _WRITE_LOCK:
+            self._run("update", bead_id, "--status", status, "--no-db")
 
     def close(self, bead_id: str, reason: str | None = None) -> None:
         args = ["close", bead_id, "--no-db"]
         if reason:
             args += ["--reason", reason]
-        self._run(*args)
+        # Serialized via `_WRITE_LOCK` — see module docstring (awt-zmq.107).
+        with _WRITE_LOCK:
+            self._run(*args)
+
+    def close_batch(self, bead_ids: list[str], reason: str | None = None) -> None:
+        """Close multiple beads in a single `br close <id1> <id2> ...` call.
+
+        Faster than N sequential `close()` calls (one fork+exec instead of N)
+        and bypasses the lock-induced serialization. Use this from places
+        that already collect a batch of completed bead-ids — e.g. the epic
+        reaper at end-of-tick — to avoid contending with worker threads
+        still finishing other beads.
+
+        No-op when `bead_ids` is empty.
+        """
+        if not bead_ids:
+            return
+        args = ["close", *bead_ids, "--no-db"]
+        if reason:
+            args += ["--reason", reason]
+        with _WRITE_LOCK:
+            self._run(*args)
