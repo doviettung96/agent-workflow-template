@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import threading
 import uuid
 from contextlib import closing
 from dataclasses import dataclass
@@ -97,14 +98,22 @@ class WorkerSnapshot:
 
 
 class StateStore:
-    """Wraps a sqlite3 connection plus the derived state.json / STATE.md writers."""
+    """Wraps a sqlite3 connection plus the derived state.json / STATE.md writers.
+
+    Thread-safety: the parallel epic runner (P2.2) submits `run_bead` calls into
+    a `ThreadPoolExecutor`; each worker calls `record_bead_*` from its own
+    thread. The connection is opened with `check_same_thread=False` and every
+    public mutator + writer acquires `self._lock` so SQLite calls and the
+    state.json/STATE.md regeneration cannot interleave.
+    """
 
     def __init__(self, repo_root: str | os.PathLike[str]):
         self.repo_root = Path(repo_root).resolve()
         self.workflow_dir = self.repo_root / WORKFLOW_DIRNAME
         self.workflow_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = self.workflow_dir / DB_FILENAME
-        self._conn = sqlite3.connect(str(self.db_path))
+        self._lock = threading.RLock()
+        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         with closing(self._conn.cursor()) as cur:
             cur.executescript(_SCHEMA)
@@ -123,25 +132,27 @@ class StateStore:
             raise ValueError(f"mode must be 'single' or 'epic', got {mode!r}")
         run_id = uuid.uuid4().hex[:12]
         now = _now()
-        self._conn.execute(
-            "INSERT INTO runs (run_id, mode, epic_id, pid, started_at, status) "
-            "VALUES (?, ?, ?, ?, ?, 'active')",
-            (run_id, mode, epic_id, pid if pid is not None else os.getpid(), now),
-        )
-        self._conn.commit()
-        self.record_event(run_id=run_id, type="run_started", payload={"mode": mode, "epic_id": epic_id})
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO runs (run_id, mode, epic_id, pid, started_at, status) "
+                "VALUES (?, ?, ?, ?, ?, 'active')",
+                (run_id, mode, epic_id, pid if pid is not None else os.getpid(), now),
+            )
+            self._conn.commit()
+            self.record_event(run_id=run_id, type="run_started", payload={"mode": mode, "epic_id": epic_id})
         return run_id
 
     def end_run(self, run_id: str, *, status: str = "finished") -> None:
         if status not in {"finished", "aborted"}:
             raise ValueError("status must be 'finished' or 'aborted'")
-        self._conn.execute(
-            "UPDATE runs SET ended_at = ?, status = ? WHERE run_id = ?",
-            (_now(), status, run_id),
-        )
-        self._conn.commit()
-        self.record_event(run_id=run_id, type="run_ended", payload={"status": status})
-        self.write_state_files()
+        with self._lock:
+            self._conn.execute(
+                "UPDATE runs SET ended_at = ?, status = ? WHERE run_id = ?",
+                (_now(), status, run_id),
+            )
+            self._conn.commit()
+            self.record_event(run_id=run_id, type="run_ended", payload={"status": status})
+            self.write_state_files()
 
     # ---- bead lifecycle ----
 
@@ -155,21 +166,22 @@ class StateStore:
         effort: str,
         window_name: str,
     ) -> int:
-        cur = self._conn.execute(
-            "INSERT INTO bead_runs "
-            "(run_id, bead_id, profile, model, effort, window_name, status, started_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, 'running', ?)",
-            (run_id, bead_id, profile, model, effort, window_name, _now()),
-        )
-        self._conn.commit()
-        bead_run_id = int(cur.lastrowid)
-        self.record_event(
-            run_id=run_id,
-            bead_id=bead_id,
-            type="bead_started",
-            payload={"profile": profile, "window_name": window_name},
-        )
-        self.write_state_files()
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO bead_runs "
+                "(run_id, bead_id, profile, model, effort, window_name, status, started_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, 'running', ?)",
+                (run_id, bead_id, profile, model, effort, window_name, _now()),
+            )
+            self._conn.commit()
+            bead_run_id = int(cur.lastrowid)
+            self.record_event(
+                run_id=run_id,
+                bead_id=bead_id,
+                type="bead_started",
+                payload={"profile": profile, "window_name": window_name},
+            )
+            self.write_state_files()
         return bead_run_id
 
     def record_bead_finish(
@@ -182,24 +194,25 @@ class StateStore:
         blocker_class: str | None,
     ) -> None:
         final_status = "finished" if (sentinel_status == "ok" and exit_code == 0) else "failed"
-        self._conn.execute(
-            "UPDATE bead_runs SET ended_at = ?, exit_code = ?, sentinel_status = ?, "
-            "blocker_class = ?, status = ? "
-            "WHERE run_id = ? AND bead_id = ? AND ended_at IS NULL",
-            (_now(), exit_code, sentinel_status, blocker_class, final_status, run_id, bead_id),
-        )
-        self._conn.commit()
-        self.record_event(
-            run_id=run_id,
-            bead_id=bead_id,
-            type="bead_finished",
-            payload={
-                "exit_code": exit_code,
-                "sentinel_status": sentinel_status,
-                "blocker_class": blocker_class,
-            },
-        )
-        self.write_state_files()
+        with self._lock:
+            self._conn.execute(
+                "UPDATE bead_runs SET ended_at = ?, exit_code = ?, sentinel_status = ?, "
+                "blocker_class = ?, status = ? "
+                "WHERE run_id = ? AND bead_id = ? AND ended_at IS NULL",
+                (_now(), exit_code, sentinel_status, blocker_class, final_status, run_id, bead_id),
+            )
+            self._conn.commit()
+            self.record_event(
+                run_id=run_id,
+                bead_id=bead_id,
+                type="bead_finished",
+                payload={
+                    "exit_code": exit_code,
+                    "sentinel_status": sentinel_status,
+                    "blocker_class": blocker_class,
+                },
+            )
+            self.write_state_files()
 
     def record_bead_stuck(
         self,
@@ -213,20 +226,21 @@ class StateStore:
         the pane is still alive so a human can intervene. The row stays open
         (`ended_at` NULL) so a follow-up `status=ok` emission flips it to finished.
         """
-        self._conn.execute(
-            "UPDATE bead_runs SET status = 'stuck', last_sentinel_at = ?, "
-            "last_sentinel_status = ?, blocker_class = ? "
-            "WHERE run_id = ? AND bead_id = ? AND ended_at IS NULL",
-            (_now(), sentinel_status, blocker_class, run_id, bead_id),
-        )
-        self._conn.commit()
-        self.record_event(
-            run_id=run_id,
-            bead_id=bead_id,
-            type="bead_stuck",
-            payload={"sentinel_status": sentinel_status, "blocker_class": blocker_class},
-        )
-        self.write_state_files()
+        with self._lock:
+            self._conn.execute(
+                "UPDATE bead_runs SET status = 'stuck', last_sentinel_at = ?, "
+                "last_sentinel_status = ?, blocker_class = ? "
+                "WHERE run_id = ? AND bead_id = ? AND ended_at IS NULL",
+                (_now(), sentinel_status, blocker_class, run_id, bead_id),
+            )
+            self._conn.commit()
+            self.record_event(
+                run_id=run_id,
+                bead_id=bead_id,
+                type="bead_stuck",
+                payload={"sentinel_status": sentinel_status, "blocker_class": blocker_class},
+            )
+            self.write_state_files()
 
     def record_bead_resumed(
         self,
@@ -236,14 +250,15 @@ class StateStore:
     ) -> None:
         """Flip a `stuck` bead-run back to `running` (e.g. after a human pasted
         guidance into the pane and the daemon detected fresh activity)."""
-        self._conn.execute(
-            "UPDATE bead_runs SET status = 'running' "
-            "WHERE run_id = ? AND bead_id = ? AND status = 'stuck' AND ended_at IS NULL",
-            (run_id, bead_id),
-        )
-        self._conn.commit()
-        self.record_event(run_id=run_id, bead_id=bead_id, type="bead_resumed")
-        self.write_state_files()
+        with self._lock:
+            self._conn.execute(
+                "UPDATE bead_runs SET status = 'running' "
+                "WHERE run_id = ? AND bead_id = ? AND status = 'stuck' AND ended_at IS NULL",
+                (run_id, bead_id),
+            )
+            self._conn.commit()
+            self.record_event(run_id=run_id, bead_id=bead_id, type="bead_resumed")
+            self.write_state_files()
 
     # ---- events ----
 
@@ -255,11 +270,12 @@ class StateStore:
         bead_id: str | None = None,
         payload: dict[str, Any] | None = None,
     ) -> None:
-        self._conn.execute(
-            "INSERT INTO events (run_id, bead_id, ts, type, payload) VALUES (?, ?, ?, ?, ?)",
-            (run_id, bead_id, _now(), type, json.dumps(payload or {})),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO events (run_id, bead_id, ts, type, payload) VALUES (?, ?, ?, ?, ?)",
+                (run_id, bead_id, _now(), type, json.dumps(payload or {})),
+            )
+            self._conn.commit()
 
     # ---- queries ----
 
@@ -397,9 +413,10 @@ class StateStore:
         }
 
     def write_state_files(self) -> None:
-        snap = self.snapshot()
-        self._write_json(self.workflow_dir / STATE_JSON_FILENAME, snap)
-        self._write_md(self.workflow_dir / STATE_MD_FILENAME, snap)
+        with self._lock:
+            snap = self.snapshot()
+            self._write_json(self.workflow_dir / STATE_JSON_FILENAME, snap)
+            self._write_md(self.workflow_dir / STATE_MD_FILENAME, snap)
 
     @staticmethod
     def _write_json(path: Path, data: dict[str, Any]) -> None:

@@ -70,8 +70,9 @@ def test_run_epic_exits_immediately_on_empty_ready(tmp_path: Path):
 
 
 def test_run_epic_runs_each_ready_bead_in_order(tmp_path: Path):
-    """Three ready beads, sequential: each runs exactly once, in the order
-    Beads.ready returns them. The loop drains on the fourth tick."""
+    """Three ready beads, sequential (max_concurrency=1): each runs exactly
+    once, in the order Beads.ready returns them. The loop drains on the
+    fourth tick."""
     fake_beads, fake_run_bead = _patch_epic(
         _ready_responses(
             ["awt-zmq.1", "awt-zmq.2", "awt-zmq.3"],
@@ -86,7 +87,7 @@ def test_run_epic_runs_each_ready_bead_in_order(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"
@@ -157,7 +158,8 @@ def test_run_epic_max_iterations_caps_loop(tmp_path: Path):
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
         opts = RunEpicOptions(
-            epic_id="awt-zmq", repo_root=tmp_path, max_iterations=2
+            epic_id="awt-zmq", repo_root=tmp_path, max_iterations=2,
+            max_concurrency=1,
         )
         result = run_epic(opts, log=lambda *a, **k: None)
 
@@ -178,7 +180,7 @@ def test_run_epic_filters_epic_id_from_ready_list(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"
@@ -204,7 +206,7 @@ def test_run_epic_does_not_reattempt_failed_bead(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "all_attempted"
@@ -260,7 +262,7 @@ def test_run_epic_handles_run_bead_crash_and_continues(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"

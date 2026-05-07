@@ -36,6 +36,7 @@ def cmd_run_epic(args: argparse.Namespace) -> int:
         model=args.model,
         effort=args.effort,
         repo_root=Path(args.repo_root or Path.cwd()).resolve(),
+        max_concurrency=args.max_concurrency,
         interval_s=args.interval,
         max_iterations=args.max_iterations,
         bead_timeout_s=args.bead_timeout,
@@ -84,7 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
     re.add_argument("--model", default=None, help="Override model (else profile default).")
     re.add_argument("--effort", default=None, help="Override reasoning effort.")
     re.add_argument("--repo-root", default=None, help="Repo root (default: cwd).")
-    re.add_argument("--interval", type=float, default=30.0, help="Poll interval seconds (used on transient br errors).")
+    re.add_argument("--max-concurrency", type=int, default=3, help="Max concurrent run_bead workers (default 3, 1 = sequential).")
+    re.add_argument("--interval", type=float, default=30.0, help="Poll interval seconds (timeout per outer loop tick).")
     re.add_argument("--max-iterations", type=int, default=None, help="Stop after N tick iterations (default: unlimited).")
     re.add_argument("--bead-timeout", type=int, default=60 * 60 * 6, help="Per-bead timeout seconds (default 6h).")
     re.set_defaults(func=cmd_run_epic)
