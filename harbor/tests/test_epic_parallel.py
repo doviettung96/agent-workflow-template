@@ -47,7 +47,7 @@ class _ConcurrencyTracker:
         self.max_observed = 0
         self.calls: list[str] = []
 
-    def __call__(self, opts, *, log=None, parent_run=None):  # noqa: D401
+    def __call__(self, opts, *, log=None, parent_run=None, **_kwargs):  # noqa: D401
         with self._lock:
             self._in_flight += 1
             self.calls.append(opts.bead_id)
@@ -160,7 +160,7 @@ def test_parallel_runner_records_workers_under_one_epic_run(tmp_path: Path):
     captured_parent_run = []
     captured_lock = threading.Lock()
 
-    def fake_run_bead(opts, *, log=None, parent_run=None):
+    def fake_run_bead(opts, *, log=None, parent_run=None, **_kwargs):
         with captured_lock:
             captured_parent_run.append(parent_run)
         return _ok_result(opts.bead_id)

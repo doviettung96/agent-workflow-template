@@ -123,6 +123,58 @@ def parse_files_section(description: str) -> list[str]:
     return paths
 
 
+@dataclass(frozen=True)
+class ReservationOutcome:
+    """Result of `try_reserve_for_bead`. `available=False` means the Agent
+    Mail module isn't installed (downstream repos that haven't scaffolded
+    `scripts/shared/agent_mail.py`). `ok=False` with `available=True` means
+    a real reservation conflict — `conflict_with` lists the holding owners
+    so the caller can defer or message the operator.
+    """
+    ok: bool
+    available: bool
+    conflict_with: tuple[str, ...] = ()
+
+
+def try_reserve_for_bead(
+    mail: "Mail | None",
+    *,
+    owner: str,
+    files: list[str],
+    bead_id: str,
+    epic_id: str | None = None,
+) -> ReservationOutcome:
+    """Attempt `mail.reserve` and translate Agent Mail's raise-on-conflict
+    contract into a pre-checkable outcome. Used by both `run_bead` (single
+    mode) and `epic.run_epic` (parallel mode) so reservation conflicts are
+    handled the same way regardless of how the bead was launched.
+
+    A None mail or empty files list is treated as success — there is nothing
+    to check. Errors that aren't conflicts (network, FK, etc.) propagate so
+    the caller can decide; only AgentMailError code 12 / `details.conflicts`
+    is mapped to `ok=False`.
+    """
+    if mail is None:
+        return ReservationOutcome(ok=True, available=False)
+    if not files:
+        return ReservationOutcome(ok=True, available=True)
+    try:
+        mail.reserve(owner=owner, paths=files, bead_id=bead_id, epic_id=epic_id)
+    except Exception as e:  # noqa: BLE001
+        details = getattr(e, "details", None)
+        if isinstance(details, dict) and details.get("conflicts"):
+            holders = tuple(sorted({
+                str(c.get("owner") or "?") for c in details["conflicts"]
+            }))
+            return ReservationOutcome(
+                ok=False, available=True, conflict_with=holders,
+            )
+        # Not a conflict — re-raise so the caller can decide (in practice
+        # `run_bead` falls back to "log + continue without reservations").
+        raise
+    return ReservationOutcome(ok=True, available=True)
+
+
 @dataclass
 class RunBeadResult:
     bead_id: str
@@ -262,6 +314,7 @@ def run_bead(
     *,
     log: Callable[..., None] = print,
     parent_run: tuple[StateStore, str] | None = None,
+    pre_reserved_owner: str | None = None,
 ) -> RunBeadResult:
     """Spawn one bead in a tmux session and wait for it to finish.
 
@@ -269,6 +322,13 @@ def run_bead(
     orchestrator (e.g. `harbor.epic.run_epic`). In that mode this function
     records bead events against the parent run and does NOT call
     `start_run`/`end_run` itself — the caller owns the run lifecycle.
+
+    `pre_reserved_owner`, when set, signals that the caller already
+    registered + reserved Files: paths under that owner. `run_bead` skips
+    its own register/reserve/release and trusts the caller to do the
+    cleanup once the future completes. Used by the parallel epic runner
+    so reservation conflicts are detected once at submission time, not
+    redundantly inside each worker thread.
     """
     repo_root = Path(opts.repo_root).resolve()
     beads = Beads()
@@ -293,19 +353,55 @@ def run_bead(
         run_id = store.start_run(mode="single", epic_id=None)
         owns_run = True
 
-    owner = f"harbor/{run_id}"
+    owner = pre_reserved_owner or f"harbor/{run_id}/{opts.bead_id}"
     files = parse_files_section(bead.get("description") or "")
     reservation_ok = False
     mail: Mail | None = None
-    try:
-        mail = Mail(repo_root)
-        mail.register(name=owner, role="coordinator", bead_id=opts.bead_id)
-        if files:
-            mail.reserve(owner=owner, paths=files, bead_id=opts.bead_id)
-            reservation_ok = True
-            log(f"[harbor] reserved {len(files)} path(s) for {opts.bead_id}")
-    except Exception as e:  # noqa: BLE001
-        log(f"[harbor] mail unavailable ({e!r}); continuing without reservations")
+
+    if pre_reserved_owner is not None:
+        # Caller (epic.run_epic) already registered + reserved under this owner.
+        # We still want a Mail handle for thread/post operations later, but we
+        # must NOT touch register/reserve/release — that's the caller's job.
+        try:
+            mail = Mail(repo_root)
+        except Exception as e:  # noqa: BLE001
+            log(f"[harbor] mail handle unavailable ({e!r}); pre-reserved owner is best-effort only")
+            mail = None
+    else:
+        try:
+            mail = Mail(repo_root)
+            mail.register(name=owner, role="coordinator", bead_id=opts.bead_id)
+            if files:
+                outcome = try_reserve_for_bead(
+                    mail, owner=owner, files=files, bead_id=opts.bead_id,
+                )
+                if not outcome.ok:
+                    holders = ", ".join(outcome.conflict_with) or "<unknown>"
+                    log(
+                        f"[harbor] reservation conflict for {opts.bead_id}: "
+                        f"held by {holders}; aborting before tmux spawn"
+                    )
+                    store.record_bead_finish(
+                        run_id=run_id, bead_id=opts.bead_id, exit_code=124,
+                        sentinel_status="reservation_conflict",
+                        blocker_class="reservation",
+                    )
+                    if owns_run:
+                        store.end_run(run_id, status="aborted")
+                    return RunBeadResult(
+                        bead_id=opts.bead_id,
+                        sentinel_status="reservation_conflict",
+                        blocker_class="reservation",
+                        exit_code=124, verify=None, closed=False,
+                    )
+                reservation_ok = True
+                log(f"[harbor] reserved {len(files)} path(s) for {opts.bead_id}")
+        except FileNotFoundError as e:
+            log(f"[harbor] mail unavailable ({e}); continuing without reservations")
+            mail = None
+        except Exception as e:  # noqa: BLE001
+            log(f"[harbor] mail error ({e!r}); continuing without reservations")
+            mail = None
 
     upd_ok, upd_err = _safe_br_update(beads, opts.bead_id, "in_progress")
     if not upd_ok:
