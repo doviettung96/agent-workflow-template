@@ -44,6 +44,8 @@ def cmd_run_epic(args: argparse.Namespace) -> int:
     result = run_epic(opts)
     print()
     print(result.render_summary())
+    if result.exit_reason == "lock_held":
+        return 2
     return 0 if not result.failed else 1
 
 

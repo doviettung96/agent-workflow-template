@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Callable
 
 from .beads import Beads, BeadsError
+from .mail import Mail
 from .orchestrator import RunBeadOptions, RunBeadResult, run_bead
 from .state import StateStore
 
@@ -105,10 +106,46 @@ def run_epic(opts: RunEpicOptions, *, log: Callable[..., None] = print) -> RunEp
 
     store = StateStore(repo_root)
     run_id = store.start_run(mode="epic", epic_id=opts.epic_id)
+    owner = f"harbor/{run_id}"
     log(
         f"[harbor.epic] run {run_id} started for epic {opts.epic_id} "
         f"(max_concurrency={opts.max_concurrency})"
     )
+
+    # Acquire the Agent Mail epic-lock so a parallel `swarm-epic` chat session
+    # (the legacy coordinator) can't try to drive the same epic concurrently.
+    # Mail unavailable (`scripts/shared/agent_mail.py` missing) is non-fatal —
+    # downstream repos that haven't scaffolded Agent Mail still get harbor.
+    mail: Mail | None = None
+    lock_held = False
+    try:
+        mail = Mail(repo_root)
+        mail.acquire_epic(epic_id=opts.epic_id, owner=owner)
+        lock_held = True
+        log(f"[harbor.epic] acquired epic-lock for {opts.epic_id} as {owner}")
+    except FileNotFoundError as e:
+        log(f"[harbor.epic] epic-lock unavailable ({e}); continuing without it")
+        mail = None
+    except Exception as e:  # noqa: BLE001
+        # Most commonly AgentMailError code=10 — lock held by another owner.
+        details = getattr(e, "details", None) or {}
+        existing_owner = details.get("owner") if isinstance(details, dict) else None
+        msg = (
+            f"epic {opts.epic_id} is already locked"
+            + (f" by {existing_owner}" if existing_owner else "")
+            + f": {e}"
+        )
+        log(f"[harbor.epic] {msg}")
+        store.end_run(run_id, status="aborted")
+        store.close()
+        return RunEpicResult(
+            epic_id=opts.epic_id,
+            run_id=run_id,
+            iterations=0,
+            closed=[],
+            failed=[],
+            exit_reason="lock_held",
+        )
 
     attempted: set[str] = set()
     closed: list[str] = []
@@ -211,6 +248,12 @@ def run_epic(opts: RunEpicOptions, *, log: Callable[..., None] = print) -> RunEp
                 except Exception as e:  # noqa: BLE001
                     log(f"[harbor.epic] drain {bid}: {e!r}")
         pool.shutdown(wait=True, cancel_futures=False)
+        if lock_held and mail is not None:
+            try:
+                mail.release_epic(epic_id=opts.epic_id, owner=owner)
+                log(f"[harbor.epic] released epic-lock for {opts.epic_id}")
+            except Exception as e:  # noqa: BLE001
+                log(f"[harbor.epic] release_epic failed: {e!r}")
         store.end_run(run_id, status="finished")
         store.close()
 

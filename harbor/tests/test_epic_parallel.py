@@ -92,16 +92,23 @@ def test_parallel_runner_spawns_up_to_max_concurrency_in_one_tick(tmp_path: Path
 
 def test_parallel_runner_respects_max_concurrency_cap(tmp_path: Path):
     """Five ready beads, cap=2 → at most 2 in-flight at any moment."""
-    tracker = _ConcurrencyTracker(hold_s=0.05)
-    fake_beads = MagicMock()
-    # Re-yield the same set each tick; the loop tracks attempted to avoid
-    # double-spawn, so each unique id only runs once.
     bead_ids = [f"awt.{i}" for i in range(1, 6)]
-    fake_beads.ready.side_effect = _ready_mock(
-        [{"id": b} for b in bead_ids],
-        [{"id": b} for b in bead_ids[2:]],
-        [{"id": b} for b in bead_ids[4:]],
-    )
+    finished: set[str] = set()
+    finished_lock = threading.Lock()
+    tracker_inner = _ConcurrencyTracker(hold_s=0.05)
+
+    def tracker(opts, **kwargs):
+        result = tracker_inner(opts, **kwargs)
+        with finished_lock:
+            finished.add(opts.bead_id)
+        return result
+
+    fake_beads = MagicMock()
+    # Mimic br's behavior: closed beads disappear from `ready` once the
+    # tracker marks them done.
+    fake_beads.ready.side_effect = lambda parent=None: [
+        {"id": b} for b in bead_ids if b not in finished
+    ]
 
     with (
         patch("harbor.epic.Beads", return_value=fake_beads),
@@ -115,8 +122,8 @@ def test_parallel_runner_respects_max_concurrency_cap(tmp_path: Path):
 
     assert result.exit_reason == "drained"
     assert sorted(result.closed) == sorted(bead_ids)
-    assert tracker.max_observed <= 2, (
-        f"max_concurrency=2 violated; max_observed={tracker.max_observed}"
+    assert tracker_inner.max_observed <= 2, (
+        f"max_concurrency=2 violated; max_observed={tracker_inner.max_observed}"
     )
 
 
