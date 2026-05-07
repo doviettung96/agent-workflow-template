@@ -149,6 +149,7 @@ def test_reservation_conflict_defers_bead_and_retries(tmp_path: Path):
         opts = RunEpicOptions(
             epic_id="awt", repo_root=tmp_path, max_concurrency=2,
             interval_s=0.05,  # short tick so the second iteration fires fast
+            skip_finalize=True,
         )
         result = run_epic(opts, log=log)
 
@@ -193,8 +194,7 @@ def test_permanent_reservation_conflict_exits_deferred_out(tmp_path: Path):
     ):
         opts = RunEpicOptions(
             epic_id="awt", repo_root=tmp_path, max_concurrency=2,
-            interval_s=0.05, max_iterations=1,
-        )
+            interval_s=0.05, max_iterations=1, skip_finalize=True,)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "deferred_out"
@@ -265,8 +265,7 @@ def test_two_beads_with_overlapping_files_serialize_through_reservation(tmp_path
     ):
         opts = RunEpicOptions(
             epic_id="awt", repo_root=tmp_path, max_concurrency=2,
-            interval_s=0.02,
-        )
+            interval_s=0.02, skip_finalize=True,)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"

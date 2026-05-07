@@ -61,6 +61,10 @@ class RunEpicOptions:
     bead_timeout_s: float = 60 * 60 * 6
     # Leave panes alive after each bead finishes (matches single-bead default).
     keep_pane_after_finish: bool = True
+    # When True, skip the build-and-test + review-epic finalize pipeline that
+    # normally runs after a successful drain. Tests use this to keep the run
+    # focused on the loop's behavior; the CLI defaults to running finalize.
+    skip_finalize: bool = False
 
 
 @dataclass
@@ -71,6 +75,7 @@ class RunEpicResult:
     closed: list[str]
     failed: list[tuple[str, str]]
     exit_reason: str
+    finalize: "object | None" = None  # FinalizeResult — typed loosely to avoid circular imports
 
     def render_summary(self) -> str:
         lines = [
@@ -81,6 +86,10 @@ class RunEpicResult:
             f"  closed     : {self.closed}",
             f"  failed     : {self.failed}",
         ]
+        if self.finalize is not None:
+            lines.append("  finalize   :")
+            for fline in self.finalize.render_summary().splitlines():
+                lines.append(f"    {fline}")
         return "\n".join(lines)
 
 
@@ -171,6 +180,7 @@ def run_epic(opts: RunEpicOptions, *, log: Callable[..., None] = print) -> RunEp
     in_flight: dict[str, Future] = {}
 
     pool = ThreadPoolExecutor(max_workers=opts.max_concurrency, thread_name_prefix="harbor-bead")
+    finalize_result = None
     try:
         while True:
             iterations += 1
@@ -330,6 +340,32 @@ def run_epic(opts: RunEpicOptions, *, log: Callable[..., None] = print) -> RunEp
                         mail.release_reservations(owner=bead_owner, bead_id=bid)
                     except Exception as e:  # noqa: BLE001
                         log(f"[harbor.epic] release_reservations({bead_owner}) failed: {e!r}")
+
+        # Finalize step — runs only when the loop drained cleanly with no
+        # bead-level failures. A broken build/test shouldn't get a sign-off
+        # review, so build-and-test gates review-epic inside run_finalize.
+        if exit_reason == "drained" and not failed and not opts.skip_finalize:
+            from .finalize import run_finalize
+            log(f"[harbor.epic] all beads drained; running finalize for {opts.epic_id}")
+            finalize_result = run_finalize(
+                epic_id=opts.epic_id,
+                store=store,
+                run_id=run_id,
+                repo_root=repo_root,
+                profile=opts.profile,
+                model=opts.model,
+                effort=opts.effort,
+                bead_timeout_s=opts.bead_timeout_s,
+                keep_pane_after_finish=opts.keep_pane_after_finish,
+                log=log,
+            )
+            if not finalize_result.all_passed:
+                exit_reason = "finalize_failed"
+                log(
+                    f"[harbor.epic] finalize failed: "
+                    f"failed={finalize_result.steps_failed} "
+                    f"skipped={finalize_result.skipped}"
+                )
     finally:
         # Best-effort: wait for any still-in-flight workers so we don't leave
         # half-finished bead state behind. They should be a small set.
@@ -369,4 +405,5 @@ def run_epic(opts: RunEpicOptions, *, log: Callable[..., None] = print) -> RunEp
         closed=closed,
         failed=failed,
         exit_reason=exit_reason,
+        finalize=finalize_result,
     )

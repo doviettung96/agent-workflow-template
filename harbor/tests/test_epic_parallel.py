@@ -77,8 +77,7 @@ def test_parallel_runner_spawns_up_to_max_concurrency_in_one_tick(tmp_path: Path
     ):
         opts = RunEpicOptions(
             epic_id="awt", repo_root=tmp_path, max_concurrency=3,
-            interval_s=1.0,
-        )
+            interval_s=1.0, skip_finalize=True,)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"
@@ -116,8 +115,7 @@ def test_parallel_runner_respects_max_concurrency_cap(tmp_path: Path):
     ):
         opts = RunEpicOptions(
             epic_id="awt", repo_root=tmp_path, max_concurrency=2,
-            interval_s=1.0,
-        )
+            interval_s=1.0, skip_finalize=True,)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"
@@ -145,6 +143,7 @@ def test_parallel_runner_does_not_double_spawn_in_flight(tmp_path: Path):
         opts = RunEpicOptions(
             epic_id="awt", repo_root=tmp_path, max_concurrency=3,
             interval_s=0.02,  # short so tick #2 fires before run_bead returns
+            skip_finalize=True,
         )
         result = run_epic(opts, log=lambda *a, **k: None)
 
@@ -176,8 +175,7 @@ def test_parallel_runner_records_workers_under_one_epic_run(tmp_path: Path):
     ):
         opts = RunEpicOptions(
             epic_id="awt", repo_root=tmp_path, max_concurrency=2,
-            interval_s=1.0,
-        )
+            interval_s=1.0, skip_finalize=True,)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"

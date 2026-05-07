@@ -40,6 +40,7 @@ def cmd_run_epic(args: argparse.Namespace) -> int:
         interval_s=args.interval,
         max_iterations=args.max_iterations,
         bead_timeout_s=args.bead_timeout,
+        skip_finalize=args.skip_finalize,
     )
     result = run_epic(opts)
     print()
@@ -91,6 +92,7 @@ def build_parser() -> argparse.ArgumentParser:
     re.add_argument("--interval", type=float, default=30.0, help="Poll interval seconds (timeout per outer loop tick).")
     re.add_argument("--max-iterations", type=int, default=None, help="Stop after N tick iterations (default: unlimited).")
     re.add_argument("--bead-timeout", type=int, default=60 * 60 * 6, help="Per-bead timeout seconds (default 6h).")
+    re.add_argument("--skip-finalize", action="store_true", help="Skip the build-and-test + review-epic finalize pipeline.")
     re.set_defaults(func=cmd_run_epic)
 
     d = sub.add_parser("daemon", help="Run the long-lived orchestrator + webview server.")

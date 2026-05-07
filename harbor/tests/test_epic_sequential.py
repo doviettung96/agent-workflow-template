@@ -59,7 +59,7 @@ def test_run_epic_exits_immediately_on_empty_ready(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"
@@ -87,7 +87,7 @@ def test_run_epic_runs_each_ready_bead_in_order(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"
@@ -105,7 +105,7 @@ def test_run_epic_records_state_with_mode_epic(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     state_path = tmp_path / ".beads" / "workflow" / "state.json"
@@ -130,7 +130,7 @@ def test_run_epic_logs_tick_with_ready_set(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, skip_finalize=True)
         run_epic(opts, log=log)
 
     tick_lines = [line for line in captured if "tick #" in line]
@@ -159,8 +159,7 @@ def test_run_epic_max_iterations_caps_loop(tmp_path: Path):
     ):
         opts = RunEpicOptions(
             epic_id="awt-zmq", repo_root=tmp_path, max_iterations=2,
-            max_concurrency=1,
-        )
+            max_concurrency=1, skip_finalize=True,)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "max_iterations"
@@ -180,7 +179,7 @@ def test_run_epic_filters_epic_id_from_ready_list(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"
@@ -206,7 +205,7 @@ def test_run_epic_does_not_reattempt_failed_bead(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "all_attempted"
@@ -228,7 +227,7 @@ def test_run_epic_propagates_parent_run_to_run_bead(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert fake_run_bead.call_count == 1
@@ -262,7 +261,7 @@ def test_run_epic_handles_run_bead_crash_and_continues(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"

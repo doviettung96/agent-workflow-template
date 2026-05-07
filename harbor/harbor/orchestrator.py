@@ -315,6 +315,7 @@ def run_bead(
     log: Callable[..., None] = print,
     parent_run: tuple[StateStore, str] | None = None,
     pre_reserved_owner: str | None = None,
+    synthetic_bead: dict | None = None,
 ) -> RunBeadResult:
     """Spawn one bead in a tmux session and wait for it to finish.
 
@@ -329,10 +330,23 @@ def run_bead(
     cleanup once the future completes. Used by the parallel epic runner
     so reservation conflicts are detected once at submission time, not
     redundantly inside each worker thread.
+
+    `synthetic_bead`, when set, is a pre-resolved bead-shaped dict (id,
+    description, status keys at minimum). `run_bead` uses it instead of
+    calling `beads.show`, and skips all `br update`/`br close` calls
+    since there is no real bead in the database. Used by `harbor.finalize`
+    to drive the build-and-test + review-epic finalize steps through the
+    same tmux pane infrastructure as a normal bead.
     """
     repo_root = Path(opts.repo_root).resolve()
+    is_synthetic = synthetic_bead is not None
     beads = Beads()
-    bead = beads.show(opts.bead_id)
+    if is_synthetic:
+        bead = dict(synthetic_bead)
+        bead.setdefault("id", opts.bead_id)
+        bead.setdefault("status", "open")
+    else:
+        bead = beads.show(opts.bead_id)
 
     if bead.get("status") not in {"open", "in_progress"}:
         raise RuntimeError(
@@ -403,9 +417,12 @@ def run_bead(
             log(f"[harbor] mail error ({e!r}); continuing without reservations")
             mail = None
 
-    upd_ok, upd_err = _safe_br_update(beads, opts.bead_id, "in_progress")
-    if not upd_ok:
-        log(f"[harbor] WARNING br update failed: {upd_err}; continuing (JSONL is source of truth)")
+    if is_synthetic:
+        log(f"[harbor] synthetic bead {opts.bead_id} — skipping br update/close")
+    else:
+        upd_ok, upd_err = _safe_br_update(beads, opts.bead_id, "in_progress")
+        if not upd_ok:
+            log(f"[harbor] WARNING br update failed: {upd_err}; continuing (JSONL is source of truth)")
 
     # 1. Render and persist the prompt — file_ref mode reads it back via @<path>;
     #    send_keys mode pastes it directly. Either way, having it on disk is a
@@ -552,12 +569,19 @@ def run_bead(
 
     # 6. Finalize.
     if final_status == "ok":
-        ok, err = _safe_br_close(beads, opts.bead_id)
-        if ok:
+        if is_synthetic:
+            # Synthetic beads have no row in the bead db — there is nothing
+            # to close. We still treat success as "closed" for the result
+            # so callers can short-circuit on .closed.
             closed = True
-            log(f"[harbor] closed {opts.bead_id}")
+            log(f"[harbor] synthetic bead {opts.bead_id} verified (no br close)")
         else:
-            log(f"[harbor] WARNING br close failed: {err}; mark closed manually in JSONL")
+            ok, err = _safe_br_close(beads, opts.bead_id)
+            if ok:
+                closed = True
+                log(f"[harbor] closed {opts.bead_id}")
+            else:
+                log(f"[harbor] WARNING br close failed: {err}; mark closed manually in JSONL")
         store.record_bead_finish(
             run_id=run_id,
             bead_id=opts.bead_id,

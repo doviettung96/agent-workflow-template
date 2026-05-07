@@ -55,7 +55,7 @@ def test_run_epic_acquires_and_releases_lock(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead"),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"
@@ -90,7 +90,7 @@ def test_run_epic_refuses_to_start_when_lock_held(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", fake_run_bead),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, skip_finalize=True)
         result = run_epic(opts, log=log)
 
     assert result.exit_reason == "lock_held"
@@ -115,7 +115,7 @@ def test_run_epic_releases_lock_when_loop_raises(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead"),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, skip_finalize=True)
         with pytest.raises(RuntimeError):
             run_epic(opts, log=lambda *a, **k: None)
 
@@ -138,7 +138,7 @@ def test_run_epic_continues_when_mail_unavailable(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead"),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.exit_reason == "drained"
@@ -164,7 +164,7 @@ def test_run_epic_releases_lock_after_running_beads(tmp_path: Path):
         patch("harbor.epic.Beads", return_value=fake_beads),
         patch("harbor.epic.run_bead", side_effect=lambda opts, **k: _ok_result(opts.bead_id)),
     ):
-        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1)
+        opts = RunEpicOptions(epic_id="awt-zmq", repo_root=tmp_path, max_concurrency=1, skip_finalize=True)
         result = run_epic(opts, log=lambda *a, **k: None)
 
     assert result.closed == ["awt-zmq.1"]
