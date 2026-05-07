@@ -97,28 +97,92 @@ tmux -L harbor attach -t harbor-<digest>-<bead-id>
       `harbor-<digest>-finalize-build-and-test`, runs to completion
 - [ ] Total wallclock under 10 minutes for trivial beads (codex `fast` profile)
 
-## Run log — fill these in
+## Run log — completed 2026-05-08
 
-```
-Run 1 (parallel beads, --skip-finalize):
-  Started:  YYYY-MM-DDThh:mm:ssZ
-  Sessions observed:
-    -
-    -
-    -
-  Sentinels detected (timestamp + status):
-    -
-  Exit reason / total wallclock:
-  Notes:
+### Run 1 (parallel beads, `--skip-finalize`) — initial attempt 23:47 UTC
 
-Run 2 (with finalize):
-  Started:  YYYY-MM-DDThh:mm:ssZ
-  Build-and-test session:
-  Build-and-test sentinel:
-  Review-epic session (if reached):
-  Review-epic sentinel:
-  Notes:
-```
+Smoke epic `awt-1qg` with three independent ready beads (`awt-1qg.1/2/3`),
+each writing to a distinct `harbor/SMOKE_<X>.md`. Run id `7782835adee7`.
+
+- 3 sessions spawned within 8s ✓
+  - `harbor-6ee962d1-awt-1qg_1/2/3`
+- Codex agents created the SMOKE files and emitted HARBOR-DONE: status=ok
+- Harbor's polling crashed: `'NoneType' object has no attribute 'splitlines'`
+- Root cause: Windows subprocess defaulted to cp1252 text mode, choked on
+  the em-dash (`—` / 0xE2 0x80 0x94) codex echoed from the bead description.
+  `subprocess.run(..., text=True)` silently swallowed the UnicodeDecodeError
+  inside its reader thread and returned None for stdout.
+- Fix: commit 7fc4627 — pass `encoding="utf-8", errors="replace"` to every
+  subprocess call in `harbor.tmux`, `harbor.beads`, and `harbor.verify`.
+
+### Run 2 (parallel beads, `--skip-finalize`) — re-run with fix 23:51 UTC
+
+Run id `3c257f04563a`. Same epic, beads reset to open.
+
+- 3 sessions spawned in tick #1 ✓
+- All 3 codex agents emitted HARBOR-DONE: status=ok ✓
+- Harbor parsed all 3 sentinels, ran verify, called `br close` ✓
+- Result: `closed=['awt-1qg.2', 'awt-1qg.3', 'awt-1qg.1']`, `failed=[]` ✓
+- 1 of 3 close calls didn't persist to JSONL (concurrent-write race in br
+  CLI — orthogonal to harbor; recovered manually via JSONL edit + `br sync`)
+
+### Run 3 (finalize pipeline) — initial attempt 23:54 UTC
+
+Run id `ad3811e6e034`. Empty ready set, finalize triggered immediately.
+
+- `finalize-build-and-test` session spawned + codex ran fallback prompt ✓
+- Sentinel `status=ok` parsed ✓
+- `finalize-review-epic` session spawned ✓
+- Sentinel `status=blocked classification=contract` — codex correctly
+  refused: `skills/review-epic/SKILL.md` doesn't include `Files:`/`Verify:`
+  sections, which harbor's worker-prompt hard rules require.
+- Fix: commit pending — `harbor.finalize._ensure_contract_sections` now
+  wraps loaded SKILL.md prompts with default Files/Verify if missing.
+
+### Run 4 (finalize pipeline) — re-run with contract-sections fix 23:59 UTC
+
+Run id `aee013cd6885`.
+
+- `finalize-build-and-test` ran tests, emitted HARBOR-DONE: status=ok in 30s ✓
+- `finalize-review-epic` did real review work — read closed beads, ran
+  pytest (153 passed), inspected git diffs, analyzed changes ✓
+- Codex finished its review summary but forgot the formatted HARBOR-DONE
+  line — sat at the prompt waiting. Sent `tmux send-keys` nudge
+  ("Please emit the final HARBOR-DONE sentinel line now: HARBOR-DONE:
+  finalize-review-epic status=ok classification=none") — this is the
+  awt-zmq.14 human-recovery flow. Codex emitted the sentinel; harbor
+  parsed it and finalized. ✓
+- Final result: `exit_reason=drained`,
+  `steps_passed=['finalize-build-and-test', 'finalize-review-epic']`,
+  `failed=[]`, `skipped=[]` ✓
+
+### Acceptance summary
+
+- [x] 3 sessions appear within 10 seconds of `run-epic` starting (8s)
+- [x] All three beads close (sentinel `status=ok`)
+- [x] After all three close, `run_epic` exits cleanly
+- [x] Re-run WITHOUT `--skip-finalize`: harbor spawns finalize sessions,
+      runs to completion
+- [x] Total wallclock under 10 minutes — Run 2 was ~30s, Run 4 was ~3 min
+- [x] human-recovery via `tmux send-keys` works for forgotten sentinels
+
+### Bugs found and fixed during the smoke
+
+1. cp1252 encoding crash on em-dash → commit 7fc4627
+2. SKILL.md loaded for finalize lacked Files/Verify sections → fix in
+   `harbor.finalize._ensure_contract_sections`
+
+### Known follow-ups (not blockers)
+
+- `br close` under N-thread concurrent calls sometimes loses one write to
+  JSONL (saw 2 of 3 close calls land). br-side reliability issue; out of
+  harbor's scope. Workaround: idempotent `br sync --import-only --force`
+  pulls JSONL into shape.
+- Codex sometimes ends review-style prompts without the formatted sentinel
+  line. The interactive-pane recovery flow handles this, but it's friction
+  worth filing as a future improvement (e.g. inject a "WAS THE SENTINEL
+  PRINTED?" check into the prompt's tail).
+
 
 ## If something goes wrong
 

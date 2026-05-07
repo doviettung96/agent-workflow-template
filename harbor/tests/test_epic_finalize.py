@@ -16,6 +16,7 @@ from harbor.epic import RunEpicOptions, run_epic
 from harbor.finalize import (
     FinalizeResult,
     _build_steps,
+    _ensure_contract_sections,
     _load_skill_prompt,
     run_finalize,
 )
@@ -52,6 +53,60 @@ def test_load_skill_prompt_uses_repo_skill_when_present(tmp_path: Path):
 def test_load_skill_prompt_falls_back_when_skill_missing(tmp_path: Path):
     out = _load_skill_prompt(tmp_path, "build-and-test", "FALLBACK BODY")
     assert out == "FALLBACK BODY"
+
+
+def test_ensure_contract_sections_appends_when_missing():
+    body = "# Review Epic\n\nDo a review.\n"
+    out = _ensure_contract_sections(
+        body,
+        default_files="- (no files)",
+        default_verify="- echo ok",
+    )
+    assert "Files:\n- (no files)" in out
+    assert "Verify:\n- echo ok" in out
+    assert "# Review Epic" in out  # original content preserved
+
+
+def test_ensure_contract_sections_skips_when_present():
+    body = "Files:\n- harbor/x.py\n\nVerify:\n- echo done\n"
+    out = _ensure_contract_sections(
+        body,
+        default_files="- (no files)",
+        default_verify="- echo ok",
+    )
+    # No second pair of headings appended.
+    assert out.count("Files:") == 1
+    assert out.count("Verify:") == 1
+
+
+def test_build_steps_descriptions_include_contract_sections(tmp_path: Path):
+    """The synthetic finalize beads must always have Files: and Verify: in
+    their description, otherwise harbor's worker-prompt hard rules force the
+    agent to emit `blocked classification=contract` and refuse the step.
+    Surfaced live during the awt-zmq.104 smoke (commit 7fc4627 followup)."""
+    # No skills/ directory in tmp_path → fallback prompts. Both must include
+    # contract sections after `_build_steps` wraps them.
+    steps = _build_steps(tmp_path, "awt-zmq")
+    for step in steps:
+        assert "Files:" in step.description, step.bead_id
+        assert "Verify:" in step.description, step.bead_id
+
+
+def test_build_steps_with_real_review_epic_skill_gets_wrapped(tmp_path: Path):
+    """A real `skills/review-epic/SKILL.md` (the one shipped with this
+    template) doesn't have the harbor `Files:`/`Verify:` headings — the
+    wrapper must still inject defaults so codex doesn't refuse the step."""
+    skill_dir = tmp_path / "skills" / "review-epic"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: review-epic\n---\n# Review Epic\n\nDo a review.\n",
+        encoding="utf-8",
+    )
+    steps = _build_steps(tmp_path, "awt-zmq")
+    review = next(s for s in steps if s.bead_id == "finalize-review-epic")
+    assert "Files:" in review.description
+    assert "Verify:" in review.description
+    assert "# Review Epic" in review.description  # original skill preserved
 
 
 def test_build_steps_yields_two_steps_in_correct_order(tmp_path: Path):
