@@ -29,7 +29,12 @@ SENTINEL_INSTRUCTION = (
     "If you emit a `blocked` line, harbor leaves you running so a human can attach "
     "to the pane and reply directly. After they respond, address their guidance and "
     "emit a fresh HARBOR-DONE line — harbor only acts on the most recent one, so "
-    "re-emission is the supported way to recover from a blocker."
+    "re-emission is the supported way to recover from a blocker.\n\n"
+    "Self-check before you stop typing: scan the bottom of your reply. If the "
+    "very last line is NOT the literal HARBOR-DONE line above, write it now. "
+    "Forgetting it leaves harbor polling an idle pane until --bead-timeout fires "
+    "(6 hours by default). A trailing summary paragraph is the most common cause "
+    "of this — append the HARBOR-DONE line as the final line if anything follows it."
 )
 
 
@@ -86,6 +91,17 @@ def render_worker_prompt(bead: dict[str, Any]) -> str:
                 "3. Run each `Verify:` command and fix any failures (within scope).\n"
                 "4. Print a short summary of what changed and the verify results.\n"
                 "5. Print the `HARBOR-DONE` sentinel line as the very last line."
+            ),
+        )
+    )
+
+    parts.append(
+        _section(
+            "Final check (do not skip)",
+            (
+                f"Re-read the very last line of your reply before you stop. If it is not "
+                f"`HARBOR-DONE: {bead_id} status=... classification=...`, type that line "
+                f"now. Anything written after a sentinel hides it from harbor's parser."
             ),
         )
     )

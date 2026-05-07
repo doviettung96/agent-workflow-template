@@ -59,6 +59,15 @@ class RunBeadOptions:
     # How many lines of pane scrollback to scan for the sentinel each poll.
     # 2000 is plenty for normal use and well within capture-pane's limits.
     capture_lines: int = 2000
+    # If the pane goes idle (no new content) for this many seconds without any
+    # HARBOR-DONE sentinel arriving, harbor sends ONE one-line reminder into
+    # the REPL so the agent can self-recover. Codex sometimes wraps a
+    # review-style task with a summary paragraph and stops at the prompt
+    # without emitting the sentinel; without this nudge harbor would wait the
+    # full --bead-timeout (6h default). Skipped once any sentinel arrives —
+    # `blocked` sentinels hand off to the human-recovery flow. Set to 0 to
+    # disable. Tracked at awt-zmq.106.
+    nudge_idle_threshold_s: float = 90.0
 
 
 def session_name_for(repo_root: Path, bead_id: str | None = None) -> str:
@@ -496,6 +505,14 @@ def run_bead(
     final_classification: str | None = None
     verify_result: VerifyResult | None = None
     closed = False
+    # Sentinel-nudge bookkeeping (awt-zmq.106). `pane_last_change_ts` tracks
+    # when the captured pane content last differed from the previous capture;
+    # if nothing changes for `nudge_idle_threshold_s` AND no sentinel has
+    # arrived, harbor sends ONE reminder. `nudge_sent` then latches True so
+    # we never spam the pane.
+    nudge_sent = False
+    last_pane_content: str | None = None
+    pane_last_change_ts = time.monotonic()
 
     while time.monotonic() < deadline:
         # External kill signal? (webview /actions/kill writes the legacy fallback file)
@@ -518,6 +535,11 @@ def run_bead(
         except TmuxError:
             time.sleep(opts.poll_interval_s)
             continue
+
+        # Track pane-content stability for the sentinel-nudge logic below.
+        if pane != last_pane_content:
+            pane_last_change_ts = time.monotonic()
+            last_pane_content = pane
 
         emissions = _count_sentinels(pane, opts.bead_id)
         if emissions > seen_emissions:
@@ -560,6 +582,36 @@ def run_bead(
                     f"[harbor] {opts.bead_id} stuck ({classification}); "
                     f"pane left alive at: {tmux.attach_command(session)}"
                 )
+
+        # Sentinel nudge (awt-zmq.106): if the pane has been idle for
+        # `nudge_idle_threshold_s` AND no sentinel has arrived yet, send ONE
+        # one-line reminder into the REPL. Skipped after any sentinel — a
+        # `blocked` line means the human-recovery flow has taken over and
+        # another reminder would be noise.
+        if (
+            not nudge_sent
+            and seen_emissions == 0
+            and opts.nudge_idle_threshold_s > 0
+            and (time.monotonic() - pane_last_change_ts) >= opts.nudge_idle_threshold_s
+        ):
+            nudge_msg = (
+                f"Reminder from harbor: please end your reply with the literal "
+                f"sentinel line, e.g. HARBOR-DONE: {opts.bead_id} status=ok "
+                f"classification=none (or status=blocked classification="
+                f"clarify|env|contract|scope)."
+            )
+            try:
+                tmux.send_keys_literal(session, "", nudge_msg, enter=True)
+                log(
+                    f"[harbor] sent sentinel-nudge for {opts.bead_id} after "
+                    f"pane idle ≥ {opts.nudge_idle_threshold_s}s"
+                )
+            except TmuxError as e:
+                log(f"[harbor] sentinel-nudge send failed: {e!r}; continuing")
+            nudge_sent = True
+            # Reset the idle clock so an immediate same-pane re-capture does
+            # not look like the agent ignored us.
+            pane_last_change_ts = time.monotonic()
 
         time.sleep(opts.poll_interval_s)
     else:
