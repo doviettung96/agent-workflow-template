@@ -28,7 +28,22 @@ def cmd_run_bead(args: argparse.Namespace) -> int:
 
 
 def cmd_run_epic(args: argparse.Namespace) -> int:
-    return _not_implemented(f"run-epic {args.epic_id}")
+    from .epic import RunEpicOptions, run_epic
+
+    opts = RunEpicOptions(
+        epic_id=args.epic_id,
+        profile=args.profile,
+        model=args.model,
+        effort=args.effort,
+        repo_root=Path(args.repo_root or Path.cwd()).resolve(),
+        interval_s=args.interval,
+        max_iterations=args.max_iterations,
+        bead_timeout_s=args.bead_timeout,
+    )
+    result = run_epic(opts)
+    print()
+    print(result.render_summary())
+    return 0 if not result.failed else 1
 
 
 def cmd_daemon(args: argparse.Namespace) -> int:
@@ -65,8 +80,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     re = sub.add_parser("run-epic", help="Run all ready descendants of an epic, polling for new ones.")
     re.add_argument("epic_id")
-    re.add_argument("--profile", default=None)
-    re.add_argument("--interval", type=int, default=30, help="Poll interval in seconds.")
+    re.add_argument("--profile", default=None, help="Agent profile from harbor.yml.")
+    re.add_argument("--model", default=None, help="Override model (else profile default).")
+    re.add_argument("--effort", default=None, help="Override reasoning effort.")
+    re.add_argument("--repo-root", default=None, help="Repo root (default: cwd).")
+    re.add_argument("--interval", type=float, default=30.0, help="Poll interval seconds (used on transient br errors).")
+    re.add_argument("--max-iterations", type=int, default=None, help="Stop after N tick iterations (default: unlimited).")
+    re.add_argument("--bead-timeout", type=int, default=60 * 60 * 6, help="Per-bead timeout seconds (default 6h).")
     re.set_defaults(func=cmd_run_epic)
 
     d = sub.add_parser("daemon", help="Run the long-lived orchestrator + webview server.")

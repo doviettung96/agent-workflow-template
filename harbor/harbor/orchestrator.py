@@ -257,7 +257,19 @@ def _count_sentinels(pane: str, bead_id: str) -> int:
     return sum(1 for line in pane.splitlines() if line.strip().startswith(needle))
 
 
-def run_bead(opts: RunBeadOptions, *, log: Callable[..., None] = print) -> RunBeadResult:
+def run_bead(
+    opts: RunBeadOptions,
+    *,
+    log: Callable[..., None] = print,
+    parent_run: tuple[StateStore, str] | None = None,
+) -> RunBeadResult:
+    """Spawn one bead in a tmux session and wait for it to finish.
+
+    `parent_run`, when supplied, is `(store, run_id)` from a higher-level
+    orchestrator (e.g. `harbor.epic.run_epic`). In that mode this function
+    records bead events against the parent run and does NOT call
+    `start_run`/`end_run` itself — the caller owns the run lifecycle.
+    """
     repo_root = Path(opts.repo_root).resolve()
     beads = Beads()
     bead = beads.show(opts.bead_id)
@@ -273,8 +285,13 @@ def run_bead(opts: RunBeadOptions, *, log: Callable[..., None] = print) -> RunBe
     )
     profile = cfg.get(opts.profile)
 
-    store = StateStore(repo_root)
-    run_id = store.start_run(mode="single", epic_id=None)
+    if parent_run is not None:
+        store, run_id = parent_run
+        owns_run = False
+    else:
+        store = StateStore(repo_root)
+        run_id = store.start_run(mode="single", epic_id=None)
+        owns_run = True
 
     owner = f"harbor/{run_id}"
     files = parse_files_section(bead.get("description") or "")
@@ -351,7 +368,8 @@ def run_bead(opts: RunBeadOptions, *, log: Callable[..., None] = print) -> RunBe
             run_id=run_id, bead_id=opts.bead_id, exit_code=1,
             sentinel_status=None, blocker_class="env",
         )
-        store.end_run(run_id, status="aborted")
+        if owns_run:
+            store.end_run(run_id, status="aborted")
         return RunBeadResult(
             bead_id=opts.bead_id, sentinel_status=None, blocker_class="env",
             exit_code=1, verify=None, closed=False,
@@ -468,7 +486,8 @@ def run_bead(opts: RunBeadOptions, *, log: Callable[..., None] = print) -> RunBe
         except Exception as e:  # noqa: BLE001
             log(f"[harbor] release_reservations failed: {e!r}")
 
-    store.end_run(run_id, status="finished" if closed else "aborted")
+    if owns_run:
+        store.end_run(run_id, status="finished" if closed else "aborted")
     return RunBeadResult(
         bead_id=opts.bead_id,
         sentinel_status=final_status,
