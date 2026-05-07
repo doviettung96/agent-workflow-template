@@ -103,6 +103,8 @@ def _route_command(repo_root: Path, command: str) -> VerifyCommandResult:
             text=True,
             check=False,
             shell=True,
+            encoding="utf-8",
+            errors="replace",
         )
         return VerifyCommandResult(
             command=command,
@@ -117,6 +119,8 @@ def _route_command(repo_root: Path, command: str) -> VerifyCommandResult:
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
+        errors="replace",
     )
     return VerifyCommandResult(
         command=command,

@@ -55,11 +55,19 @@ class Tmux:
         if self.config_path:
             argv += ["-f", self.config_path]
         argv += list(args)
+        # `encoding="utf-8", errors="replace"` is critical on Windows: the
+        # default subprocess text mode uses cp1252, which raises
+        # UnicodeDecodeError the moment a captured pane contains a non-ASCII
+        # byte (em-dash from a bead description, codex's "•" bullet, etc.).
+        # Replace mode keeps the polling loop alive — at worst a glyph turns
+        # into U+FFFD, which never matches the HARBOR-DONE sentinel format.
         cp = subprocess.run(
             argv,
             check=False,
             capture_output=capture,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         if check and cp.returncode != 0:
             raise TmuxError(argv, cp.returncode, cp.stdout or "", cp.stderr or "")
@@ -72,7 +80,8 @@ class Tmux:
             return self._is_psmux_cache
         try:
             cp = subprocess.run(
-                ["tmux", "-V"], capture_output=True, text=True, check=False
+                ["tmux", "-V"], capture_output=True, text=True,
+                encoding="utf-8", errors="replace", check=False,
             )
             out = (cp.stdout or "") + (cp.stderr or "")
         except (FileNotFoundError, OSError):

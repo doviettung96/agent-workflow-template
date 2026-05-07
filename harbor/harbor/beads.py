@@ -36,7 +36,12 @@ class Beads:
 
     def _run(self, *args: str) -> str:
         argv = [self.binary, *args]
-        cp = subprocess.run(argv, capture_output=True, text=True, check=False)
+        # encoding="utf-8" + errors="replace" defends against Windows cp1252
+        # decode errors when br output contains non-ASCII (em-dashes etc).
+        cp = subprocess.run(
+            argv, capture_output=True, text=True, check=False,
+            encoding="utf-8", errors="replace",
+        )
         if cp.returncode != 0:
             raise BeadsError(argv, cp.returncode, cp.stdout or "", cp.stderr or "")
         return cp.stdout
