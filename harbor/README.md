@@ -7,7 +7,7 @@ See `C:\Users\Admin\.claude\plans\the-current-workflow-has-cozy-harbor.md` for t
 ## Prerequisites
 
 - Python 3.10+
-- `tmux` on PATH (Git Bash / MSYS2 / WSL on Windows)
+- `tmux` on PATH — macOS/Linux: stock `brew install tmux` / `apt install tmux`. Windows: see [`docs/WINDOWS_TMUX.md`](docs/WINDOWS_TMUX.md) (`marlocarlo.psmux` has a broken `attach`; install `arndawg.tmux-windows` instead).
 - `br` (the beads tracker) on PATH
 - An agent CLI: `codex` or `claude`
 

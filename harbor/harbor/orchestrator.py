@@ -457,6 +457,14 @@ def run_bead(
     workflow_dir = repo_root / ".beads" / "workflow"
     conf_path = write_tmux_config(workflow_dir, cfg.default_shell)
     tmux = Tmux(config_path=str(conf_path) if conf_path else None)
+    # `is True` (not just truthiness) so MagicMock'd Tmux in tests does not trip
+    # this warning — only a real bool from a real subprocess does.
+    if tmux.is_psmux() is True:
+        log(
+            "[harbor] WARNING resident tmux is psmux — `tmux attach` is broken "
+            "on this port; interactive recovery requires arndawg.tmux-windows. "
+            "See harbor/docs/WINDOWS_TMUX.md."
+        )
     session = session_name_for(repo_root, opts.bead_id)
     tmux.ensure_session(session, str(repo_root), default_shell=cfg.default_shell)
     log(f"[harbor] spawned tmux session: {tmux.attach_command(session)}")
