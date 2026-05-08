@@ -31,11 +31,18 @@ def test_ensure_session_creates_when_missing():
     with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
         t.ensure_session("s1", "/tmp/repo")
 
+    # Order: has-session, new-session (no -c), send-keys cd
+    # `-c <cwd>` is deliberately NOT used — arndawg.tmux-windows rejects it.
+    # Instead we cd into cwd via send-keys so it works on every tmux variant.
     assert calls[0][:4] == ["tmux", "-L", "harbor", "has-session"]
     assert calls[1][:4] == ["tmux", "-L", "harbor", "new-session"]
     assert "-d" in calls[1] and "-A" in calls[1]
     assert "-s" in calls[1] and "s1" in calls[1]
-    assert "-c" in calls[1] and "/tmp/repo" in calls[1]
+    assert "-c" not in calls[1]
+    assert calls[2][:4] == ["tmux", "-L", "harbor", "send-keys"]
+    # Path is shlex-quoted; cwd appears verbatim
+    cd_argv = " ".join(calls[2])
+    assert "cd" in cd_argv and "/tmp/repo" in cd_argv
 
 
 def test_ensure_session_sets_default_shell_when_provided():
@@ -53,12 +60,13 @@ def test_ensure_session_sets_default_shell_when_provided():
     with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
         t.ensure_session("s1", "/tmp/repo", default_shell="C:/Program Files/Git/bin/bash.exe")
 
-    # Order: has-session, new-session, set-option default-shell
+    # Order: has-session, new-session, set-option default-shell, send-keys cd
     assert calls[0][3] == "has-session"
     assert calls[1][3] == "new-session"
     assert calls[2][3] == "set-option"
     assert "default-shell" in calls[2]
     assert "C:/Program Files/Git/bin/bash.exe" in calls[2]
+    assert calls[3][3] == "send-keys"
 
 
 def test_ensure_session_no_default_shell_skips_set_option():
@@ -74,9 +82,10 @@ def test_ensure_session_no_default_shell_skips_set_option():
     with patch("harbor.tmux.subprocess.run", side_effect=fake_run):
         t.ensure_session("s1", "/tmp/repo")  # no default_shell
 
-    # Only has-session and new-session — no set-option
-    assert len(calls) == 2
+    # has-session, new-session, send-keys cd — no set-option
+    assert len(calls) == 3
     assert calls[1][3] == "new-session"
+    assert calls[2][3] == "send-keys"
 
 
 def test_ensure_session_skips_when_exists():

@@ -108,12 +108,34 @@ class Tmux:
              very first session's default window already uses `default_shell`.
           2. `set-option -t <session> default-shell` — set after creation as a
              fallback for cases where the server already exists.
+
+        Note on `cwd`: we deliberately do NOT pass `new-session -c <cwd>`
+        because `arndawg.tmux-windows` (the recommended Windows tmux port —
+        see harbor/docs/WINDOWS_TMUX.md) rejects any `-c` value with
+        `create window failed: spawn failed`. Instead we let the new session
+        inherit the tmux server's cwd, then `cd <cwd>` via send-keys so the
+        agent pane lands in the right directory regardless of where the
+        daemon process was started. This works on every tmux variant we
+        target (psmux, arndawg, real tmux) because `cd` is a builtin in
+        every shell harbor supports (Git Bash, PowerShell, cmd.exe, bash,
+        zsh).
         """
         if self.has_session(session):
             return
-        self._run("new-session", "-d", "-A", "-s", session, "-c", cwd)
+        self._run("new-session", "-d", "-A", "-s", session)
         if default_shell:
             self._run("set-option", "-t", session, "default-shell", default_shell, check=False)
+        # Use forward-slash form so the cd command works in Git Bash and is
+        # also accepted by PowerShell and modern cmd.exe.
+        cd_cmd = f"cd {shlex.quote(cwd.replace(chr(92), '/'))}"
+        try:
+            self.send_keys(session, "", cd_cmd)
+        except TmuxError:
+            # Non-fatal — the agent may already be in the right cwd, and
+            # callers (e.g. launch_agent) will set their own working dir
+            # via the launch_template. Worst case the agent emits a
+            # blocked sentinel pointing at the wrong cwd.
+            pass
 
     def kill_session(self, session: str) -> None:
         self._run("kill-session", "-t", session, check=False)

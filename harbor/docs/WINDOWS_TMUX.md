@@ -137,6 +137,32 @@ tmux -L harbor attach -t harbor-<digest>-<id>
 #    codex responds. Press Ctrl-b d to detach without killing the pane.
 ```
 
+## arndawg.tmux-windows quirks discovered in use
+
+One CLI divergence from upstream tmux turned up after we shipped the
+install (awt-zmq.112 incident, 2026-05-09):
+
+- **`new-session -c <cwd>` always fails** with `create window failed:
+  spawn failed`, regardless of cwd value (forward-slash, backslash, simple
+  path, path with spaces, anything). Reproduced with a one-shell control
+  test:
+
+  ```bash
+  $ tmux -L test new-session -d -A -s s1 -c 'D:/'
+  create window failed: spawn failed
+  ```
+
+  Without `-c`, the session creates fine. So the workaround is: drop
+  `-c <cwd>` from `harbor.tmux.ensure_session`'s argv and instead
+  `cd <cwd>` via `send-keys` immediately after creation. That works on
+  every tmux variant we target — `cd` is a builtin in Git Bash,
+  PowerShell, cmd.exe, and any POSIX shell. See `harbor/harbor/tmux.py`'s
+  `ensure_session` for the implementation.
+
+  The behavior on real tmux 3.x is `-c <cwd>` works as documented; on
+  arndawg it does not. We don't conditionally branch — the universal
+  `cd` workaround is correct on every platform.
+
 ## Harbor code consequences
 
 For the investigation step, no harbor code needs to change:
