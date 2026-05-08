@@ -27,7 +27,7 @@
           <td><a href="/bead/{{ s.bead_id }}"><code>{{ s.bead_id }}</code></a></td>
           <td><span class="pill err">{{ s.classification or 'unknown' }}</span></td>
           <td><code>{{ s.window_name }}</code></td>
-          <td class="muted">{{ s.last_sentinel_at or s.started_at }}</td>
+          <td class="muted">{% set ts = s.last_sentinel_at or s.started_at %}<time data-utc="{{ ts }}">{{ ts }}</time></td>
         </tr>
       {% endfor %}
       </tbody>
@@ -47,7 +47,7 @@
           <td><span class="pill">{{ w.profile }}</span></td>
           <td><code>{{ w.model or '—' }}</code></td>
           <td>{{ w.effort or '—' }}</td>
-          <td class="muted">{{ w.started_at }}</td>
+          <td class="muted"><time data-utc="{{ w.started_at }}">{{ w.started_at }}</time></td>
           <td><code class="mono" style="font-size: 11px;">{{ w.attach_command }}</code></td>
           <td>
             <form class="inline" method="post" action="/actions/kill/{{ w.bead_id }}">

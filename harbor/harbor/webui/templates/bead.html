@@ -21,7 +21,7 @@
   <h2>⚠ Last run failed</h2>
   <div class="panel-body">
     <p class="muted" style="margin: 0 0 8px;">
-      <small>{{ last_error.ts }}</small>
+      <small><time data-utc="{{ last_error.ts }}">{{ last_error.ts }}</time></small>
     </p>
     <pre class="pane-capture" style="background: #2b1414; color: #ffb4b4; max-height: 200px;">{{ last_error.payload.error or last_error.payload }}</pre>
     <p class="muted" style="margin: 8px 0 0;">
@@ -112,7 +112,7 @@
       <tbody>
         {% for e in recent_events %}
           <tr>
-            <td><small>{{ e.ts }}</small></td>
+            <td><small><time data-utc="{{ e.ts }}">{{ e.ts }}</time></small></td>
             <td>
               {% if e.type == 'webui_run_error' or e.type == 'bead_stuck' %}
                 <span class="pill warn">{{ e.type }}</span>

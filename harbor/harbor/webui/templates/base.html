@@ -95,5 +95,37 @@
     <span class="crumbs">{% block crumbs %}<a href="/">dashboard</a>{% endblock %}</span>
   </header>
   <main>{% block content %}{% endblock %}</main>
+  <script>
+    // Render any <time data-utc="2026-...Z"> as local time + a relative hint.
+    // Server stores UTC; user reads in browser timezone. Re-runs after every
+    // htmx swap so partials updated by hx-trigger also get formatted.
+    function harborFormatTimes(root) {
+      (root || document).querySelectorAll('time[data-utc]').forEach(function (el) {
+        if (el.dataset.formatted === '1') return;
+        var iso = el.getAttribute('data-utc');
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return;
+        var local = d.toLocaleString(undefined, {
+          year: 'numeric', month: 'short', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+        });
+        var diffMs = Date.now() - d.getTime();
+        var rel;
+        var s = Math.round(diffMs / 1000);
+        if (s < 60)        rel = s + 's ago';
+        else if (s < 3600) rel = Math.round(s / 60) + 'm ago';
+        else if (s < 86400) rel = Math.round(s / 3600) + 'h ago';
+        else                rel = Math.round(s / 86400) + 'd ago';
+        if (diffMs < 0) rel = 'in the future?';
+        el.textContent = local + ' (' + rel + ')';
+        el.title = iso;  // hover to see the raw UTC ISO timestamp
+        el.dataset.formatted = '1';
+      });
+    }
+    harborFormatTimes();
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+      harborFormatTimes(e.target);
+    });
+  </script>
 </body>
 </html>
