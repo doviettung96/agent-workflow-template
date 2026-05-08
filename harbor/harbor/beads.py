@@ -76,6 +76,23 @@ class Beads:
             return data[0]
         return data
 
+    def list_in_progress(self) -> list[dict[str, Any]]:
+        """Return all in_progress beads (any prefix). Used by the webview to
+        surface beads stuck in_progress without a live worker — typically the
+        residue of a failed harbor run that crashed before completion."""
+        out = self._run(
+            "list", "--status", "in_progress", "--json", "--no-db", "--limit", "200"
+        )
+        out = out.strip()
+        if not out:
+            return []
+        data = json.loads(out)
+        if isinstance(data, dict) and "issues" in data:
+            return list(data["issues"])
+        if isinstance(data, list):
+            return data
+        return []
+
     def ready(self, parent: str | None = None) -> list[dict[str, Any]]:
         args = ["ready", "--json", "--no-db"]
         if parent is not None:

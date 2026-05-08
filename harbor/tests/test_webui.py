@@ -28,6 +28,7 @@ def app_client(tmp_path: Path):
         {"id": "awt-test.1", "title": "Sample bead", "issue_type": "task", "priority": 2},
         {"id": "awt-test.epic", "title": "epic", "issue_type": "epic", "priority": 1},
     ]
+    fake_beads.list_in_progress.return_value = []
 
     fake_tmux = MagicMock()
     fake_tmux.attach_command.return_value = "tmux -L harbor attach -t harbor-XX:awt-test.1"
@@ -374,6 +375,49 @@ def test_run_bead_action_rejects_closed_bead(tmp_path: Path):
     assert r.status_code == 409
     assert "closed" in r.text
     assert not mock_run_bead.called
+
+
+def test_dashboard_renders_in_progress_orphan_panel(tmp_path: Path):
+    """In-progress beads with no live worker must surface in the dashboard
+    so a user can see beads stranded by a failed run (the awt-zmq.112
+    incident: tmux missing on PATH, run crashed, bead stuck in_progress,
+    no UI surface)."""
+    fake_beads = MagicMock()
+    fake_beads.ready.return_value = []
+    fake_beads.list_in_progress.return_value = [
+        {
+            "id": "awt-test.99",
+            "title": "Stranded by tmux failure",
+            "status": "in_progress",
+            "issue_type": "task",
+            "priority": 2,
+        },
+    ]
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=MagicMock()):
+        client = TestClient(create_app(tmp_path))
+        r = client.get("/?prefix=all")
+
+    assert r.status_code == 200
+    assert "In-progress beads" in r.text
+    assert "no live worker" in r.text
+    assert "awt-test.99" in r.text
+    assert "Stranded by tmux failure" in r.text
+
+
+def test_dashboard_omits_in_progress_panel_when_none(tmp_path: Path):
+    fake_beads = MagicMock()
+    fake_beads.ready.return_value = []
+    fake_beads.list_in_progress.return_value = []
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=MagicMock()):
+        client = TestClient(create_app(tmp_path))
+        r = client.get("/?prefix=all")
+
+    assert r.status_code == 200
+    assert "In-progress beads" not in r.text
 
 
 def test_bead_detail_renders_blockers_panel(tmp_path: Path):

@@ -426,12 +426,40 @@ def run_bead(
             log(f"[harbor] mail error ({e!r}); continuing without reservations")
             mail = None
 
+    # If we successfully flipped the bead from `open` to `in_progress`, we own
+    # that flag for the duration of this run. On any non-success exit (timeout,
+    # blocked sentinel, raised exception, prompt-injection abort), we revert
+    # to `open` so the bead does NOT get stranded in_progress (which would
+    # hide it from `br ready`). If the bead was already in_progress before we
+    # started (a resume), we don't touch the flag and don't revert — that's
+    # the user's flag, not ours. The revert happens via `_revert_if_needed`
+    # which is called from every non-OK exit point AND from a top-level
+    # try/except below for unhandled exceptions.
+    status_should_revert = False
+    prior_status = bead.get("status")
     if is_synthetic:
         log(f"[harbor] synthetic bead {opts.bead_id} — skipping br update/close")
     else:
-        upd_ok, upd_err = _safe_br_update(beads, opts.bead_id, "in_progress")
-        if not upd_ok:
-            log(f"[harbor] WARNING br update failed: {upd_err}; continuing (JSONL is source of truth)")
+        if prior_status == "open":
+            upd_ok, upd_err = _safe_br_update(beads, opts.bead_id, "in_progress")
+            if upd_ok:
+                status_should_revert = True
+            else:
+                log(f"[harbor] WARNING br update failed: {upd_err}; continuing (JSONL is source of truth)")
+        else:
+            log(f"[harbor] {opts.bead_id} already status={prior_status!r}; not flipping (will not revert on failure)")
+
+    def _revert_if_needed() -> None:
+        """Revert bead status to `open` when this run owns the in_progress
+        flag and did not close the bead. No-op otherwise. Idempotent — safe
+        to call from multiple exit points."""
+        if not status_should_revert:
+            return
+        ok, err = _safe_br_update(beads, opts.bead_id, "open")
+        if ok:
+            log(f"[harbor] reverted {opts.bead_id} status to 'open' (run did not close it)")
+        else:
+            log(f"[harbor] WARNING failed to revert {opts.bead_id} status: {err}")
 
     # 1. Render and persist the prompt — file_ref mode reads it back via @<path>;
     #    send_keys mode pastes it directly. Either way, having it on disk is a
@@ -466,7 +494,28 @@ def run_bead(
             "See harbor/docs/WINDOWS_TMUX.md."
         )
     session = session_name_for(repo_root, opts.bead_id)
-    tmux.ensure_session(session, str(repo_root), default_shell=cfg.default_shell)
+    try:
+        tmux.ensure_session(session, str(repo_root), default_shell=cfg.default_shell)
+    except (OSError, TmuxError) as e:
+        # Most common cause on Windows: `tmux` not on PATH (FileNotFoundError /
+        # WinError 2). Surface a clear breadcrumb in state.json, revert the
+        # in_progress flag we just set, then bail out so the bead is runnable
+        # again from the dashboard. The pane was never created, so there's
+        # nothing to keep alive.
+        log(f"[harbor] failed to spawn tmux session for {opts.bead_id}: {e!r}")
+        store.record_bead_finish(
+            run_id=run_id, bead_id=opts.bead_id, exit_code=1,
+            sentinel_status="blocked", blocker_class="env",
+        )
+        if owns_run:
+            store.end_run(run_id, status="aborted")
+        _revert_if_needed()
+        return RunBeadResult(
+            bead_id=opts.bead_id,
+            sentinel_status="blocked",
+            blocker_class="env",
+            exit_code=1, verify=None, closed=False,
+        )
     log(f"[harbor] spawned tmux session: {tmux.attach_command(session)}")
 
     store.record_bead_start(
@@ -500,6 +549,7 @@ def run_bead(
         )
         if owns_run:
             store.end_run(run_id, status="aborted")
+        _revert_if_needed()
         return RunBeadResult(
             bead_id=opts.bead_id, sentinel_status=None, blocker_class="env",
             exit_code=1, verify=None, closed=False,
@@ -659,6 +709,9 @@ def run_bead(
             sentinel_status=final_status,
             blocker_class=final_classification or "env",
         )
+        # Bead did not close — revert in_progress so it shows up as runnable
+        # again on the dashboard. (closed==True path already calls br close.)
+        _revert_if_needed()
 
     if reservation_ok and mail is not None:
         try:

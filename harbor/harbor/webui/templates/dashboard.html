@@ -63,6 +63,41 @@
   </div>
 </div>
 
+{% if in_progress %}
+<div class="panel">
+  <h2>⚠ In-progress beads ({{ in_progress|length }}) — no live worker</h2>
+  <div class="panel-body">
+    <p class="muted" style="margin: 0 0 12px;">
+      These beads are flagged <code>in_progress</code> in beads, but no harbor
+      session is currently running them. Usually the residue of a previous run
+      that crashed before completion (for example, <code>tmux</code> not on the
+      daemon's PATH). Click in to inspect the last pane capture, then re-run
+      from the bead detail page.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>bead</th>
+          <th>title</th>
+          <th>type</th>
+          <th>priority</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for b in in_progress %}
+        <tr>
+          <td><a href="/bead/{{ b.id }}"><code>{{ b.id }}</code></a></td>
+          <td>{{ b.title }}</td>
+          <td><span class="pill">{{ b.issue_type or 'task' }}</span></td>
+          <td>P{{ b.priority }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <p class="muted" style="font-size: 12px;">
   Tip: clicking a bead opens its detail page with a live tmux capture and the exact attach command. Paste the attach command into Git Bash to interact with the agent.
 </p>

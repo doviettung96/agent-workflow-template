@@ -176,19 +176,35 @@ def create_app(repo_root: str | Path) -> FastAPI:
             w["attach_command"] = tmux.attach_command(w["window_name"])
 
         # Ready beads (top-level, no parent filter — Phase 2 will add epic scoping)
+        beads = _beads()
         try:
-            ready = _beads().ready()
+            ready = beads.ready()
         except Exception as e:  # noqa: BLE001
             ready = []
             snap.setdefault("errors", []).append(f"br ready failed: {e!r}")
 
+        # In-progress beads with no live worker — surface them so a user can see
+        # beads stranded by a failed run (e.g. tmux not on PATH). The workers
+        # panel covers the actively-running ones; this panel only shows the
+        # leftovers.
+        try:
+            in_progress = beads.list_in_progress()
+        except Exception as e:  # noqa: BLE001
+            in_progress = []
+            snap.setdefault("errors", []).append(f"br list (in_progress) failed: {e!r}")
+
         # Strip beads that are already in our active set
         active_ids = {w["bead_id"] for w in snap["workers"]}
         ready = [b for b in ready if b.get("id") not in active_ids and b.get("issue_type") != "epic"]
+        in_progress = [b for b in in_progress if b.get("id") not in active_ids]
 
         prefix_filter = None if prefix == "all" else state.issue_prefix
         if prefix_filter:
             ready = [b for b in ready if str(b.get("id", "")).startswith(f"{prefix_filter}-")]
+            in_progress = [
+                b for b in in_progress
+                if str(b.get("id", "")).startswith(f"{prefix_filter}-")
+            ]
         ready_scope = {
             "mode": "all" if prefix == "all" or not state.issue_prefix else "prefix",
             "prefix": state.issue_prefix,
@@ -202,6 +218,7 @@ def create_app(repo_root: str | Path) -> FastAPI:
                 "request": request,
                 "snap": snap,
                 "ready": ready[:50],
+                "in_progress": in_progress[:50],
                 "ready_scope": ready_scope,
                 "profiles": sorted(state.cfg.profiles.keys()),
                 "default_profile": state.cfg.default_profile,

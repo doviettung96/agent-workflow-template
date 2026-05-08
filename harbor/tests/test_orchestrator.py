@@ -480,3 +480,176 @@ def test_run_bead_rejects_already_closed_bead(tmp_path: Path):
         opts = RunBeadOptions(bead_id="x", repo_root=tmp_path)
         with pytest.raises(RuntimeError, match="status=closed"):
             run_bead(opts, log=lambda *a, **k: None)
+
+
+def test_run_bead_reverts_in_progress_to_open_when_tmux_spawn_fails(
+    tmp_path: Path, bead_payload, monkeypatch
+):
+    """Regression for the awt-zmq.112 incident: the daemon's PATH lost `tmux`
+    after a winget install, so `tmux.ensure_session` raised FileNotFoundError.
+    The bead was left flagged in_progress and disappeared from `br ready`.
+    Now the orchestrator must catch the spawn failure, record bead_finish,
+    and revert the status flag we set at start."""
+    monkeypatch.chdir(tmp_path)
+
+    fake_beads = MagicMock()
+    fake_beads.show.return_value = bead_payload  # status='open'
+    fake_beads.update_status.return_value = None
+    fake_beads.close.return_value = None
+
+    fake_tmux_instance = MagicMock()
+    fake_tmux_instance.is_psmux.return_value = False
+    fake_tmux_instance.ensure_session.side_effect = FileNotFoundError(
+        2, "The system cannot find the file specified"
+    )
+
+    with (
+        patch("harbor.orchestrator.Beads", return_value=fake_beads),
+        patch("harbor.orchestrator.Mail", MagicMock()),
+        patch("harbor.orchestrator.Tmux", return_value=fake_tmux_instance),
+    ):
+        opts = RunBeadOptions(
+            bead_id="awt-test.5",
+            repo_root=tmp_path,
+            poll_interval_s=0.01,
+            timeout_s=2.0,
+            agent_startup_delay_s=0.0,
+        )
+        result = run_bead(opts, log=lambda *a, **k: None)
+
+    assert result.sentinel_status == "blocked"
+    assert result.blocker_class == "env"
+    assert result.exit_code == 1
+    assert result.closed is False
+
+    # Status flow: in_progress at start, open at finish (revert).
+    statuses = [c.args[1] for c in fake_beads.update_status.call_args_list]
+    assert statuses == ["in_progress", "open"], (
+        f"expected ['in_progress', 'open'], got {statuses}"
+    )
+    fake_beads.close.assert_not_called()
+
+
+def test_run_bead_reverts_to_open_on_blocked_sentinel(
+    tmp_path: Path, bead_payload, monkeypatch
+):
+    """When the agent emits status=blocked, harbor must NOT close the bead
+    (awt-zmq.108 was closed by the agent itself; harbor's own contract says
+    the bead stays open so the human can attach and resume). This test pins
+    that contract: status flips to in_progress at start, reverts to open on
+    the blocked exit path."""
+    monkeypatch.chdir(tmp_path)
+
+    fake_beads = MagicMock()
+    fake_beads.show.return_value = bead_payload
+    fake_beads.update_status.return_value = None
+    fake_beads.close.return_value = None
+
+    fake_tmux_instance = MagicMock()
+    fake_tmux_instance.is_psmux.return_value = False
+    fake_tmux_instance.attach_command.return_value = "tmux -L harbor attach -t s"
+    fake_tmux_instance.has_session.return_value = True
+    fake_tmux_instance.capture_pane.side_effect = _capture_pane_sequence(
+        _make_pane_with_sentinel("awt-test.5", "blocked", "env"),
+    )
+
+    with (
+        patch("harbor.orchestrator.Beads", return_value=fake_beads),
+        patch("harbor.orchestrator.Mail", MagicMock()),
+        patch("harbor.orchestrator.Tmux", return_value=fake_tmux_instance),
+    ):
+        opts = RunBeadOptions(
+            bead_id="awt-test.5",
+            repo_root=tmp_path,
+            poll_interval_s=0.01,
+            timeout_s=0.5,
+            agent_startup_delay_s=0.0,
+        )
+        result = run_bead(opts, log=lambda *a, **k: None)
+
+    assert result.closed is False
+    statuses = [c.args[1] for c in fake_beads.update_status.call_args_list]
+    assert statuses == ["in_progress", "open"], (
+        f"expected ['in_progress', 'open'], got {statuses}"
+    )
+    fake_beads.close.assert_not_called()
+
+
+def test_run_bead_does_not_revert_when_run_succeeds(
+    tmp_path: Path, bead_payload, monkeypatch
+):
+    """Success path closes the bead; revert must NOT be called."""
+    monkeypatch.chdir(tmp_path)
+
+    fake_beads = MagicMock()
+    fake_beads.show.return_value = bead_payload
+    fake_beads.update_status.return_value = None
+    fake_beads.close.return_value = None
+
+    fake_tmux_instance = MagicMock()
+    fake_tmux_instance.is_psmux.return_value = False
+    fake_tmux_instance.attach_command.return_value = "tmux -L harbor attach -t s"
+    fake_tmux_instance.has_session.return_value = True
+    fake_tmux_instance.capture_pane.side_effect = _capture_pane_sequence(
+        _make_pane_with_sentinel("awt-test.5", "ok", "none"),
+    )
+
+    with (
+        patch("harbor.orchestrator.Beads", return_value=fake_beads),
+        patch("harbor.orchestrator.Mail", MagicMock()),
+        patch("harbor.orchestrator.Tmux", return_value=fake_tmux_instance),
+        patch("harbor.orchestrator.run_verify") as fake_verify,
+    ):
+        fake_verify.return_value = MagicMock(success=True, skipped=False, render_summary=lambda: "ok")
+        opts = RunBeadOptions(
+            bead_id="awt-test.5",
+            repo_root=tmp_path,
+            poll_interval_s=0.01,
+            timeout_s=2.0,
+            agent_startup_delay_s=0.0,
+        )
+        result = run_bead(opts, log=lambda *a, **k: None)
+
+    assert result.closed is True
+    statuses = [c.args[1] for c in fake_beads.update_status.call_args_list]
+    # Only the initial flip, no revert
+    assert statuses == ["in_progress"], f"expected ['in_progress'], got {statuses}"
+    fake_beads.close.assert_called_once_with("awt-test.5")
+
+
+def test_run_bead_does_not_flip_or_revert_when_already_in_progress(
+    tmp_path: Path, bead_payload, monkeypatch
+):
+    """If the bead is already in_progress before harbor starts (e.g. a resume
+    after the daemon was restarted mid-run), harbor must NOT touch the flag
+    on either side — that's the user's flag, not ours."""
+    monkeypatch.chdir(tmp_path)
+
+    fake_beads = MagicMock()
+    fake_beads.show.return_value = {**bead_payload, "status": "in_progress"}
+    fake_beads.update_status.return_value = None
+
+    fake_tmux_instance = MagicMock()
+    fake_tmux_instance.is_psmux.return_value = False
+    fake_tmux_instance.ensure_session.side_effect = FileNotFoundError(
+        2, "The system cannot find the file specified"
+    )
+
+    with (
+        patch("harbor.orchestrator.Beads", return_value=fake_beads),
+        patch("harbor.orchestrator.Mail", MagicMock()),
+        patch("harbor.orchestrator.Tmux", return_value=fake_tmux_instance),
+    ):
+        opts = RunBeadOptions(
+            bead_id="awt-test.5",
+            repo_root=tmp_path,
+            poll_interval_s=0.01,
+            timeout_s=0.5,
+            agent_startup_delay_s=0.0,
+        )
+        result = run_bead(opts, log=lambda *a, **k: None)
+
+    # Spawn failed → blocked exit, no close.
+    assert result.closed is False
+    # Bead was already in_progress; harbor must have made zero status changes.
+    fake_beads.update_status.assert_not_called()
