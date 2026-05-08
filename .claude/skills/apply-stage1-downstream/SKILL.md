@@ -9,6 +9,10 @@ description: "Apply this template repo's stage-1 workflow scaffold to one downst
 
 Run this skill from the template repo to bootstrap or refresh one downstream repo with the shared Beads workflow scaffold, while leaving standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`.
 
+Stage-1 also ships the bundled `harbor/` runner, root `harbor.yml`, and the root `skills/build-and-test` + `skills/review-epic` prompts that `harbor.finalize` reads.
+
+Stage-1 now treats scaffolded workflow docs, skills, and helper scripts as local-only in the downstream repo's Git history. They stay on disk in the checkout and sync to the separate backup repo through `sync-workflow-backup` / `finishing-a-development-branch`.
+
 This skill is template-private. It belongs only in this repo's local agent skill folders and must not be added to the top-level `skills/` tree that gets copied downstream.
 
 ## Hard Gates
@@ -24,6 +28,9 @@ Before mutating anything, confirm the template sources exist:
 - `scripts/windows/bootstrap-new-repo.ps1`
 - `scripts/windows/update-skills.ps1`
 - `scripts/shared/ensure_stage1_beads.py`
+- `harbor/pyproject.toml`
+- `harbor.yml`
+- `skills/review-epic/SKILL.md`
 
 If those files are missing, stop and report that the current repo does not look like the template source of truth.
 
@@ -44,6 +51,10 @@ Optional:
 - Beads prefix for bootstrap
 - Profile: `generic` (default) or `game-re`. The `game-re` profile additionally installs the `game-action-harness` skill + `scripts/shared/harness.py` and creates a stage-2 "Populate action catalog" follow-up bead. Non-RE repos should stay on `generic`.
 
+Post-run:
+
+- install the bundled Harbor CLI from the downstream repo with `python -m pip install -e harbor/`
+
 If the target repo needs bootstrap and the user did not provide a prefix, inspect the downstream folder name, propose that as the default prefix, and ask for confirmation before proceeding.
 
 If the user has not mentioned a profile, ask once whether this repo is a game reverse-engineering project. If yes, use `game-re`; otherwise use `generic`. Do not silently default to `game-re` for downstream repos that are clearly not game-RE targets.
@@ -61,7 +72,7 @@ If the user has not mentioned a profile, ask once whether this repo is a game re
 Run from the downstream repo root:
 
 ```bash
-bd where
+br where --no-db
 ```
 
 Interpret the result this way:
@@ -71,13 +82,30 @@ Interpret the result this way:
 
 Do not guess based only on file names or the presence of `.beads/`.
 
+### 3. Install or refresh the Harbor CLI after scaffolding
+
+After either bootstrap or update, run from the downstream repo root:
+
+```bash
+python -m pip install -e harbor/
+```
+
+Then verify the CLI is available:
+
+```bash
+harbor --help
+```
+
+The scaffold copies `harbor/`, preserves an existing `harbor.yml`, and seeds root `skills/build-and-test` plus `skills/review-epic` only when missing so downstream specializations are not overwritten.
+
 ## Update Flow
 
-Use this when `bd where` succeeds.
+Use this when `br where --no-db` succeeds.
 
 1. Run the template's platform-appropriate update script against the downstream repo.
 2. Run `scripts/shared/ensure_stage1_beads.py <repo>` from the template repo afterward.
 3. Rely on the scaffold behavior that preserves an existing downstream `build-and-test` specialization and does not overwrite an existing checkout-local `runtime-target.json`.
+4. Existing repos that still track workflow scaffold files in their Git history need the one-time `migrate-downstream-to-workflow-backup` helper after this refresh.
 
 Platform commands (pass `-Profile game-re` / `game-re` to opt this existing repo into the harness; omit to preserve whatever profile is already persisted in `.beads/workflow/profile.json`, defaulting to `generic`):
 
@@ -97,7 +125,7 @@ bash ./scripts/posix/update-skills.sh "<downstream-repo>" [game-re]
 
 ## Bootstrap Flow
 
-Use this when `bd where` fails.
+Use this when `br where --no-db` fails.
 
 1. Determine the Beads prefix.
 2. If the prefix was omitted, propose the downstream folder name as the default and ask before continuing.
@@ -122,9 +150,10 @@ bash ./scripts/posix/bootstrap-new-repo.sh "<downstream-repo>" "<prefix>" [game-
 The bootstrap script already:
 
 - initializes git when needed
-- runs `bd init`
-- runs `bd setup codex`
+- runs `br init --prefix <prefix> --no-db`
+- runs `br agents --add --force --no-db`
 - scaffolds shared docs, skills, and scripts
+- copies `harbor/`, `harbor.yml`, and root harbor-readable finalize skills
 - creates the standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`
 
 ## Post-Run Verification
@@ -132,9 +161,9 @@ The bootstrap script already:
 After either flow completes, verify the downstream repo with:
 
 ```bash
-bd where
-bd ready --json
-bd list --json
+br where --no-db
+br ready --json --no-db
+br list --json --no-db
 ```
 
 Check for exactly one bead titled:
@@ -164,6 +193,8 @@ Report all of the following:
 - whether the skill chose bootstrap or update
 - the downstream repo path
 - the prefix used, if bootstrap ran
+- that the managed downstream `.gitignore` workflow block and backup-sync helper were refreshed
+- whether the Harbor install command and `harbor --help` passed
 - whether each stage-2 bead was created or already existed
 - whether verification passed
 

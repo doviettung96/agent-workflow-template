@@ -32,6 +32,7 @@ PY
 fi
 effective_profile="${effective_profile:-generic}"
 profile_gated_skills=(game-action-harness)
+top_level_harbor_skills=(build-and-test review-epic)
 
 skill_is_profile_gated() {
   local name="$1"
@@ -64,6 +65,20 @@ printf 'Copied .beads/PRIME.md\n'
 printf 'Copied .beads/.gitignore\n'
 printf 'Copied .beads/README.md\n'
 
+rm -rf "${repo_path}/harbor"
+cp -R "${template_root}/harbor" "${repo_path}/harbor"
+rm -rf "${repo_path}/harbor/.pytest_cache" "${repo_path}/harbor/harbor.egg-info"
+find "${repo_path}/harbor" -type d -name __pycache__ -prune -exec rm -rf {} +
+find "${repo_path}/harbor" -type f -name '*.pyc' -delete
+printf 'Copied harbor/\n'
+
+if [[ ! -f "${repo_path}/harbor.yml" ]]; then
+  cp "${template_root}/harbor.yml" "${repo_path}/harbor.yml"
+  printf 'Copied harbor.yml\n'
+else
+  printf 'Preserved existing harbor.yml\n'
+fi
+
 mkdir -p "${repo_path}/.beads/workflow"
 if [[ -d "${template_root}/templates/.beads/workflow" ]]; then
   find "${template_root}/templates/.beads/workflow" -maxdepth 1 -type f | while read -r src; do
@@ -88,6 +103,10 @@ fi
 
 find "${template_root}/skills" -mindepth 1 -maxdepth 1 -type d | while read -r src; do
   name="$(basename "${src}")"
+  if [[ "${name}" == "build-and-test" ]]; then
+    printf 'Skipped Codex skill managed by provider template: %s\n' "${name}"
+    continue
+  fi
   if skill_is_profile_gated "${name}" && [[ "${effective_profile}" != "game-re" ]]; then
     printf 'Skipped Codex skill (profile=%s): %s\n' "${effective_profile}" "${name}"
     continue
@@ -121,6 +140,10 @@ fi
 
 find "${template_root}/skills" -mindepth 1 -maxdepth 1 -type d | while read -r src; do
   name="$(basename "${src}")"
+  if [[ "${name}" == "build-and-test" ]]; then
+    printf 'Skipped Claude skill managed by provider template: %s\n' "${name}"
+    continue
+  fi
   if skill_is_profile_gated "${name}" && [[ "${effective_profile}" != "game-re" ]]; then
     printf 'Skipped Claude skill (profile=%s): %s\n' "${effective_profile}" "${name}"
     continue
@@ -144,6 +167,19 @@ if [[ -d "${template_root}/templates/.claude/skills" ]]; then
     printf 'Copied Claude provider skill: %s\n' "${name}"
   done
 fi
+
+mkdir -p "${repo_path}/skills"
+for name in "${top_level_harbor_skills[@]}"; do
+  src="${template_root}/skills/${name}"
+  dst="${repo_path}/skills/${name}"
+  if [[ ! -d "${dst}" ]]; then
+    cp -R "${src}" "${dst}"
+    printf 'Copied harbor skill: %s\n' "${name}"
+  else
+    printf 'Preserved existing harbor skill: %s\n' "${name}"
+  fi
+done
+
 mkdir -p "${repo_path}/scripts/windows" "${repo_path}/scripts/posix" "${repo_path}/scripts/shared"
 cp "${template_root}/scripts/windows/workflow-status.ps1" "${repo_path}/scripts/windows/workflow-status.ps1"
 cp "${template_root}/scripts/windows/agent-mail.ps1" "${repo_path}/scripts/windows/agent-mail.ps1"

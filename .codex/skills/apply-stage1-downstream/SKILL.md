@@ -9,6 +9,8 @@ description: "Apply this template repo's stage-1 workflow scaffold to one downst
 
 Run this skill from the template repo to bootstrap or refresh one downstream repo with the shared Beads workflow scaffold, while leaving standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`.
 
+Stage-1 also ships the bundled `harbor/` runner, root `harbor.yml`, and the root `skills/build-and-test` + `skills/review-epic` prompts that `harbor.finalize` reads.
+
 Stage-1 now treats scaffolded workflow docs, skills, and helper scripts as local-only in the downstream repo's Git history. They stay on disk in the checkout and sync to the separate backup repo through `sync-workflow-backup` / `finishing-a-development-branch`.
 
 This skill is template-private. It belongs only in this repo's local agent skill folders and must not be added to the top-level `skills/` tree that gets copied downstream.
@@ -26,6 +28,9 @@ Before mutating anything, confirm the template sources exist:
 - `scripts/windows/bootstrap-new-repo.ps1`
 - `scripts/windows/update-skills.ps1`
 - `scripts/shared/ensure_stage1_beads.py`
+- `harbor/pyproject.toml`
+- `harbor.yml`
+- `skills/review-epic/SKILL.md`
 
 If those files are missing, stop and report that the current repo does not look like the template source of truth.
 
@@ -45,6 +50,10 @@ Optional:
 
 - Beads prefix for bootstrap
 - Profile: `generic` (default) or `game-re`. The `game-re` profile additionally installs the `game-action-harness` skill + `scripts/shared/harness.py` and creates a stage-2 "Populate action catalog" follow-up bead. Non-RE repos should stay on `generic`.
+
+Post-run:
+
+- install the bundled Harbor CLI from the downstream repo with `python -m pip install -e harbor/`
 
 If the target repo needs bootstrap and the user did not provide a prefix, inspect the downstream folder name, propose that as the default prefix, and ask for confirmation before proceeding.
 
@@ -72,6 +81,22 @@ Interpret the result this way:
 - failure: the repo is not ready for stage 1 yet; use the bootstrap flow
 
 Do not guess based only on file names or the presence of `.beads/`.
+
+### 3. Install or refresh the Harbor CLI after scaffolding
+
+After either bootstrap or update, run from the downstream repo root:
+
+```bash
+python -m pip install -e harbor/
+```
+
+Then verify the CLI is available:
+
+```bash
+harbor --help
+```
+
+The scaffold copies `harbor/`, preserves an existing `harbor.yml`, and seeds root `skills/build-and-test` plus `skills/review-epic` only when missing so downstream specializations are not overwritten.
 
 ## Update Flow
 
@@ -128,6 +153,7 @@ The bootstrap script already:
 - runs `br init --prefix <prefix> --no-db`
 - runs `br agents --add --force --no-db`
 - scaffolds shared docs, skills, and scripts
+- copies `harbor/`, `harbor.yml`, and root harbor-readable finalize skills
 - creates the standalone stage-2 beads for configuring the target runtime and specializing `build-and-test`
 
 ## Post-Run Verification
@@ -168,6 +194,7 @@ Report all of the following:
 - the downstream repo path
 - the prefix used, if bootstrap ran
 - that the managed downstream `.gitignore` workflow block and backup-sync helper were refreshed
+- whether the Harbor install command and `harbor --help` passed
 - whether each stage-2 bead was created or already existed
 - whether verification passed
 

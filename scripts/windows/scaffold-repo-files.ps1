@@ -2,10 +2,14 @@ param(
     [Parameter(Mandatory = $true)][string]$RepoPath,
     [string]$Prefix,
     [ValidateSet("", "generic", "game-re")][string]$Profile = "",
-    [string]$TemplateRoot = (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent)
+    [string]$TemplateRoot = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not $TemplateRoot) {
+    $TemplateRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+}
 
 if (-not (Test-Path $RepoPath)) {
     throw "RepoPath does not exist: $RepoPath"
@@ -29,10 +33,20 @@ if (-not $effectiveProfile) { $effectiveProfile = "generic" }
 $profileGatedSkills = @("game-action-harness")
 
 function Get-PythonCommand {
-    foreach ($cmd in @("py", "python", "python3")) {
+    foreach ($cmd in @("python", "python3")) {
         $resolved = Get-Command $cmd -ErrorAction SilentlyContinue
         if ($resolved) {
-            return $cmd
+            & $cmd --version *> $null
+            if ($LASTEXITCODE -eq 0) {
+                return $cmd
+            }
+        }
+    }
+    $pyLauncher = Get-Command "py" -ErrorAction SilentlyContinue
+    if ($pyLauncher) {
+        & cmd /c "py -3 --version >NUL 2>NUL"
+        if ($LASTEXITCODE -eq 0) {
+            return "py"
         }
     }
     throw "Python is required for scaffold-repo-files.ps1"
@@ -44,8 +58,11 @@ $workflowStateSource = Join-Path $TemplateRoot "templates\.beads\workflow"
 $troubleshootingSource = Join-Path $TemplateRoot "docs\TROUBLESHOOTING.md"
 $codexBuildSkillSource = Join-Path $TemplateRoot "templates\.codex\skills\build-and-test"
 $skillsSource = Join-Path $TemplateRoot "skills"
+$topLevelHarborSkills = @("build-and-test", "review-epic")
 $agentsSnippet = Join-Path $TemplateRoot "templates\AGENTS.snippet.md"
 $claudeSnippet = Join-Path $TemplateRoot "templates\CLAUDE.snippet.md"
+$harborSource = Join-Path $TemplateRoot "harbor"
+$harborYmlSource = Join-Path $TemplateRoot "harbor.yml"
 $windowsStatusScript = Join-Path $TemplateRoot "scripts\windows\workflow-status.ps1"
 $windowsAgentMailScript = Join-Path $TemplateRoot "scripts\windows\agent-mail.ps1"
 $windowsStartEpicWorktreeScript = Join-Path $TemplateRoot "scripts\windows\start-epic-worktree.ps1"
@@ -68,6 +85,23 @@ Copy-Item -Force (Join-Path $TemplateRoot "templates\.beads\README.md") (Join-Pa
 Write-Host "Copied .beads/PRIME.md"
 Write-Host "Copied .beads/.gitignore"
 Write-Host "Copied .beads/README.md"
+
+$harborDestination = Join-Path $RepoPath "harbor"
+Remove-Item -Recurse -Force $harborDestination -ErrorAction SilentlyContinue
+Copy-Item -Recurse -Force $harborSource $harborDestination
+Remove-Item -Recurse -Force (Join-Path $harborDestination ".pytest_cache") -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force (Join-Path $harborDestination "harbor.egg-info") -ErrorAction SilentlyContinue
+Get-ChildItem -Path $harborDestination -Recurse -Force -Directory -Filter "__pycache__" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+Get-ChildItem -Path $harborDestination -Recurse -Force -File -Filter "*.pyc" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+Write-Host "Copied harbor/"
+
+$harborYmlDestination = Join-Path $RepoPath "harbor.yml"
+if (-not (Test-Path $harborYmlDestination)) {
+    Copy-Item -Force $harborYmlSource $harborYmlDestination
+    Write-Host "Copied harbor.yml"
+} else {
+    Write-Host "Preserved existing harbor.yml"
+}
 
 $workflowDestination = Join-Path $beadsDir "workflow"
 New-Item -ItemType Directory -Force -Path $workflowDestination | Out-Null
@@ -92,6 +126,10 @@ if (-not (Test-Path (Join-Path $RepoPath ".codex\skills\build-and-test"))) {
 }
 
 Get-ChildItem $skillsSource -Directory | ForEach-Object {
+    if ($_.Name -eq "build-and-test") {
+        Write-Host "Skipped Codex skill managed by provider template: $($_.Name)"
+        return
+    }
     if ($profileGatedSkills -contains $_.Name -and $effectiveProfile -ne "game-re") {
         Write-Host "Skipped Codex skill (profile=$effectiveProfile): $($_.Name)"
         return
@@ -121,6 +159,10 @@ if (-not (Test-Path (Join-Path $RepoPath ".claude\skills\build-and-test"))) {
 }
 
 Get-ChildItem $skillsSource -Directory | ForEach-Object {
+    if ($_.Name -eq "build-and-test") {
+        Write-Host "Skipped Claude skill managed by provider template: $($_.Name)"
+        return
+    }
     if ($profileGatedSkills -contains $_.Name -and $effectiveProfile -ne "game-re") {
         Write-Host "Skipped Claude skill (profile=$effectiveProfile): $($_.Name)"
         return
@@ -138,6 +180,18 @@ Get-ChildItem (Join-Path $TemplateRoot "templates\.claude\skills") -Directory -E
         Remove-Item -Recurse -Force $destination -ErrorAction SilentlyContinue
         Copy-Item -Recurse -Force $_.FullName $destination
         Write-Host "Copied Claude provider skill: $($_.Name)"
+    }
+}
+
+New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath "skills") | Out-Null
+foreach ($skillName in $topLevelHarborSkills) {
+    $source = Join-Path $skillsSource $skillName
+    $destination = Join-Path $RepoPath "skills\$skillName"
+    if (-not (Test-Path $destination)) {
+        Copy-Item -Recurse -Force $source $destination
+        Write-Host "Copied harbor skill: $skillName"
+    } else {
+        Write-Host "Preserved existing harbor skill: $skillName"
     }
 }
 
