@@ -65,19 +65,7 @@ printf 'Copied .beads/PRIME.md\n'
 printf 'Copied .beads/.gitignore\n'
 printf 'Copied .beads/README.md\n'
 
-rm -rf "${repo_path}/harbor"
-cp -R "${template_root}/harbor" "${repo_path}/harbor"
-rm -rf "${repo_path}/harbor/.pytest_cache" "${repo_path}/harbor/harbor.egg-info"
-find "${repo_path}/harbor" -type d -name __pycache__ -prune -exec rm -rf {} +
-find "${repo_path}/harbor" -type f -name '*.pyc' -delete
-printf 'Copied harbor/\n'
-
-if [[ ! -f "${repo_path}/harbor.yml" ]]; then
-  cp "${template_root}/harbor.yml" "${repo_path}/harbor.yml"
-  printf 'Copied harbor.yml\n'
-else
-  printf 'Preserved existing harbor.yml\n'
-fi
+printf 'harbor not copied; ensure pip install -e <template>/harbor was run once\n'
 
 mkdir -p "${repo_path}/.beads/workflow"
 if [[ -d "${template_root}/templates/.beads/workflow" ]]; then

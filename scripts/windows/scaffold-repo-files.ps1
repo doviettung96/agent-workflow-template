@@ -61,8 +61,6 @@ $skillsSource = Join-Path $TemplateRoot "skills"
 $topLevelHarborSkills = @("build-and-test", "review-epic")
 $agentsSnippet = Join-Path $TemplateRoot "templates\AGENTS.snippet.md"
 $claudeSnippet = Join-Path $TemplateRoot "templates\CLAUDE.snippet.md"
-$harborSource = Join-Path $TemplateRoot "harbor"
-$harborYmlSource = Join-Path $TemplateRoot "harbor.yml"
 $windowsStatusScript = Join-Path $TemplateRoot "scripts\windows\workflow-status.ps1"
 $windowsAgentMailScript = Join-Path $TemplateRoot "scripts\windows\agent-mail.ps1"
 $windowsStartEpicWorktreeScript = Join-Path $TemplateRoot "scripts\windows\start-epic-worktree.ps1"
@@ -86,22 +84,7 @@ Write-Host "Copied .beads/PRIME.md"
 Write-Host "Copied .beads/.gitignore"
 Write-Host "Copied .beads/README.md"
 
-$harborDestination = Join-Path $RepoPath "harbor"
-Remove-Item -Recurse -Force $harborDestination -ErrorAction SilentlyContinue
-Copy-Item -Recurse -Force $harborSource $harborDestination
-Remove-Item -Recurse -Force (Join-Path $harborDestination ".pytest_cache") -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force (Join-Path $harborDestination "harbor.egg-info") -ErrorAction SilentlyContinue
-Get-ChildItem -Path $harborDestination -Recurse -Force -Directory -Filter "__pycache__" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-Get-ChildItem -Path $harborDestination -Recurse -Force -File -Filter "*.pyc" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-Write-Host "Copied harbor/"
-
-$harborYmlDestination = Join-Path $RepoPath "harbor.yml"
-if (-not (Test-Path $harborYmlDestination)) {
-    Copy-Item -Force $harborYmlSource $harborYmlDestination
-    Write-Host "Copied harbor.yml"
-} else {
-    Write-Host "Preserved existing harbor.yml"
-}
+Write-Host "harbor not copied; ensure pip install -e <template>/harbor was run once"
 
 $workflowDestination = Join-Path $beadsDir "workflow"
 New-Item -ItemType Directory -Force -Path $workflowDestination | Out-Null
