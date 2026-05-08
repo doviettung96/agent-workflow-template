@@ -452,8 +452,23 @@ def run_bead(
     def _revert_if_needed() -> None:
         """Revert bead status to `open` when this run owns the in_progress
         flag and did not close the bead. No-op otherwise. Idempotent — safe
-        to call from multiple exit points."""
+        to call from multiple exit points.
+
+        Re-checks current bead status before writing: if the user (or another
+        process) already closed the bead while this run was paused or
+        polling, we must NOT re-open it. This is the awt-zmq.112 escape
+        hatch: when harbor's poll loop misses a transition and the user
+        manually closes the bead, the lingering revert call would otherwise
+        reverse their close.
+        """
         if not status_should_revert:
+            return
+        try:
+            current = beads.show(opts.bead_id).get("status")
+        except Exception:  # noqa: BLE001
+            current = None
+        if current == "closed":
+            log(f"[harbor] {opts.bead_id} is already closed externally; skipping revert")
             return
         ok, err = _safe_br_update(beads, opts.bead_id, "open")
         if ok:
@@ -558,7 +573,18 @@ def run_bead(
     # 5. Poll loop — capture the pane until we see a HARBOR-DONE we haven't
     #    acted on yet, or someone kills the pane / drops the kill-signal file.
     deadline = time.monotonic() + opts.timeout_s
+    # Two complementary signals for "the agent emitted something I should act
+    # on":
+    #   1. count grew — a fresh HARBOR-DONE line arrived since last poll
+    #   2. content changed — the parsed (status, classification) tuple differs
+    #      from what we last acted on
+    # We trigger on EITHER, because count-alone misses transitions where the
+    # earlier sentinel scrolled out of the capture buffer (codex's TUI does
+    # this during long sessions: agent emits blocked, helps a human, emits ok,
+    # but only the ok line is left in the visible pane). Awt-zmq.112 hit
+    # exactly that path on 2026-05-09.
     seen_emissions = 0
+    last_processed_sentinel: tuple[str, str] | None = None
     final_status: str | None = None
     final_classification: str | None = None
     verify_result: VerifyResult | None = None
@@ -600,16 +626,16 @@ def run_bead(
             last_pane_content = pane
 
         emissions = _count_sentinels(pane, opts.bead_id)
-        if emissions > seen_emissions:
+        sent = parse_sentinel(pane, opts.bead_id)
+        count_grew = emissions > seen_emissions
+        content_changed = sent is not None and sent != last_processed_sentinel
+        if sent is not None and (count_grew or content_changed):
             seen_emissions = emissions
-            sent = parse_sentinel(pane, opts.bead_id)
-            if sent is None:
-                # Sentinel detected but unparsable — wait for the next emission.
-                time.sleep(opts.poll_interval_s)
-                continue
+            last_processed_sentinel = sent
             status, classification = sent
             log(
-                f"[harbor] sentinel #{emissions} for {opts.bead_id}: "
+                f"[harbor] sentinel for {opts.bead_id} "
+                f"(count={emissions}, content_changed={content_changed}): "
                 f"status={status} classification={classification}"
             )
 

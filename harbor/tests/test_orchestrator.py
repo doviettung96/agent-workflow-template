@@ -617,6 +617,104 @@ def test_run_bead_does_not_revert_when_run_succeeds(
     fake_beads.close.assert_called_once_with("awt-test.5")
 
 
+def test_run_bead_detects_blocked_to_ok_transition_when_blocked_scrolled_out(
+    tmp_path: Path, bead_payload, monkeypatch
+):
+    """Regression for the awt-zmq.112 incident: codex's TUI redrew the screen
+    between a `blocked` sentinel and a follow-up `ok` sentinel, so by the
+    time the agent emitted ok the blocked line had scrolled out of the
+    capture buffer. Old count-based detection saw count=1 both before and
+    after — never re-triggered. New detection compares the parsed
+    (status, classification) tuple AND count growth — so a content change
+    triggers processing even when count stays flat."""
+    monkeypatch.chdir(tmp_path)
+
+    fake_beads = MagicMock()
+    fake_beads.show.return_value = bead_payload
+    fake_beads.update_status.return_value = None
+    fake_beads.close.return_value = None
+
+    fake_tmux_instance = MagicMock()
+    fake_tmux_instance.is_psmux.return_value = False
+    fake_tmux_instance.attach_command.return_value = "tmux -L harbor attach -t s"
+    fake_tmux_instance.has_session.return_value = True
+    # First capture: only the blocked sentinel (count=1). Second capture:
+    # only the ok sentinel (count=1 — same). Old code missed this; new code
+    # detects the tuple change.
+    fake_tmux_instance.capture_pane.side_effect = _capture_pane_sequence(
+        _make_pane_with_sentinel("awt-test.5", "blocked", "env"),
+        _make_pane_with_sentinel("awt-test.5", "ok", "none"),
+    )
+
+    with (
+        patch("harbor.orchestrator.Beads", return_value=fake_beads),
+        patch("harbor.orchestrator.Mail", MagicMock()),
+        patch("harbor.orchestrator.Tmux", return_value=fake_tmux_instance),
+        patch("harbor.orchestrator.run_verify") as fake_verify,
+    ):
+        fake_verify.return_value = MagicMock(success=True, skipped=False, render_summary=lambda: "ok")
+        opts = RunBeadOptions(
+            bead_id="awt-test.5",
+            repo_root=tmp_path,
+            poll_interval_s=0.01,
+            timeout_s=2.0,
+            agent_startup_delay_s=0.0,
+        )
+        result = run_bead(opts, log=lambda *a, **k: None)
+
+    # Despite count-flat across the transition, harbor must process the ok
+    # sentinel, run verify, and close the bead.
+    assert result.sentinel_status == "ok"
+    assert result.exit_code == 0
+    assert result.closed is True
+    fake_beads.close.assert_called_once_with("awt-test.5")
+
+
+def test_revert_does_not_reopen_externally_closed_bead(
+    tmp_path: Path, bead_payload, monkeypatch
+):
+    """If the user manually closes the bead while harbor's run is still
+    polling (e.g. they got tired of waiting and ran `br close`), the
+    finally-time revert must NOT re-open it. Re-check status before
+    writing."""
+    monkeypatch.chdir(tmp_path)
+
+    fake_beads = MagicMock()
+    # First show: status=open (at run start). Second show: status=closed
+    # (the user closed it during the run). The third show is from
+    # _revert_if_needed verifying current state.
+    fake_beads.show.side_effect = [
+        bead_payload,                                       # at run_bead start
+        {**bead_payload, "status": "closed"},               # at _revert_if_needed re-check
+    ]
+    fake_beads.update_status.return_value = None
+    fake_beads.close.return_value = None
+
+    fake_tmux_instance = MagicMock()
+    fake_tmux_instance.is_psmux.return_value = False
+    fake_tmux_instance.ensure_session.side_effect = FileNotFoundError(
+        2, "The system cannot find the file specified"
+    )
+
+    with (
+        patch("harbor.orchestrator.Beads", return_value=fake_beads),
+        patch("harbor.orchestrator.Mail", MagicMock()),
+        patch("harbor.orchestrator.Tmux", return_value=fake_tmux_instance),
+    ):
+        opts = RunBeadOptions(
+            bead_id="awt-test.5",
+            repo_root=tmp_path,
+            poll_interval_s=0.01,
+            timeout_s=0.5,
+            agent_startup_delay_s=0.0,
+        )
+        run_bead(opts, log=lambda *a, **k: None)
+
+    statuses = [c.args[1] for c in fake_beads.update_status.call_args_list]
+    # in_progress at start, then NO revert because external close was detected.
+    assert statuses == ["in_progress"], f"expected only ['in_progress'], got {statuses}"
+
+
 def test_run_bead_does_not_flip_or_revert_when_already_in_progress(
     tmp_path: Path, bead_payload, monkeypatch
 ):
