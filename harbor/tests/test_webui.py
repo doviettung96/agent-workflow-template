@@ -52,6 +52,76 @@ def test_dashboard_renders_with_ready_beads(app_client):
     assert ">awt-test.epic<" not in r.text
 
 
+def test_dashboard_filters_ready_beads_by_local_issue_prefix(tmp_path: Path):
+    beads_dir = tmp_path / ".beads"
+    beads_dir.mkdir()
+    (beads_dir / "config.yaml").write_text("issue_prefix: awt\n", encoding="utf-8")
+
+    fake_beads = MagicMock()
+    fake_beads.ready.return_value = [
+        {"id": "awt-test.1", "title": "Local bead", "issue_type": "task", "priority": 2},
+        {"id": "vvn-test.1", "title": "Synced bead", "issue_type": "task", "priority": 2},
+        {"id": "awt-test.epic", "title": "Local epic", "issue_type": "epic", "priority": 1},
+    ]
+    fake_tmux = MagicMock()
+    fake_tmux.attach_command.return_value = "tmux -L harbor attach -t harbor-XX:awt-test.1"
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=fake_tmux):
+        client = TestClient(create_app(tmp_path))
+        r = client.get("/")
+
+    assert r.status_code == 200
+    assert "awt-test.1" in r.text
+    assert "Local bead" in r.text
+    assert "vvn-test.1" not in r.text
+    assert "showing 1 ready" in r.text
+    assert "awt-*" in r.text
+    assert "/?prefix=all" in r.text
+
+
+def test_dashboard_prefix_all_bypasses_local_issue_prefix(tmp_path: Path):
+    beads_dir = tmp_path / ".beads"
+    beads_dir.mkdir()
+    (beads_dir / "config.yaml").write_text("issue_prefix: awt\n", encoding="utf-8")
+
+    fake_beads = MagicMock()
+    fake_beads.ready.return_value = [
+        {"id": "awt-test.1", "title": "Local bead", "issue_type": "task", "priority": 2},
+        {"id": "vvn-test.1", "title": "Synced bead", "issue_type": "task", "priority": 2},
+    ]
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=MagicMock()):
+        client = TestClient(create_app(tmp_path))
+        r = client.get("/?prefix=all")
+
+    assert r.status_code == 200
+    assert "awt-test.1" in r.text
+    assert "vvn-test.1" in r.text
+    assert "showing all 2 ready beads" in r.text
+    assert "show awt-* only" in r.text
+
+
+def test_dashboard_missing_beads_config_shows_all_ready_beads(tmp_path: Path):
+    fake_beads = MagicMock()
+    fake_beads.ready.return_value = [
+        {"id": "awt-test.1", "title": "Local bead", "issue_type": "task", "priority": 2},
+        {"id": "vvn-test.1", "title": "Synced bead", "issue_type": "task", "priority": 2},
+    ]
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=MagicMock()):
+        client = TestClient(create_app(tmp_path))
+        r = client.get("/")
+
+    assert r.status_code == 200
+    assert "awt-test.1" in r.text
+    assert "vvn-test.1" in r.text
+    assert "showing all 2 ready beads" in r.text
+    assert "/?prefix=all" not in r.text
+
+
 def test_dashboard_status_partial(app_client):
     client, _, _ = app_client
     r = client.get("/_partials/dashboard-status")
@@ -158,6 +228,172 @@ def test_run_bead_action_rejects_unknown_profile(app_client):
         data={"profile": "no-such-profile"},
     )
     assert r.status_code == 400
+
+
+def _bead_with_dep(bead_id: str, dep_id: str, dep_status: str) -> tuple[dict, dict]:
+    """Build a (bead, blocker_target) pair where `bead_id` has a `blocks`
+    dependency on `dep_id` whose target has status=`dep_status`."""
+    bead = {
+        "id": bead_id,
+        "status": "open",
+        "title": "Blocked bead",
+        "description": "blocked",
+        "issue_type": "task",
+        "priority": 2,
+        "dependencies": [
+            {"depends_on_id": dep_id, "type": "blocks"},
+        ],
+    }
+    target = {
+        "id": dep_id,
+        "status": dep_status,
+        "title": "Prereq bead",
+        "issue_type": "task",
+        "priority": 2,
+    }
+    return bead, target
+
+
+def _show_router(beads_by_id: dict[str, dict]):
+    """Make fake_beads.show route by id, raising for unknown ids."""
+    def _show(bead_id: str) -> dict:
+        if bead_id not in beads_by_id:
+            raise RuntimeError(f"no such bead {bead_id!r}")
+        return beads_by_id[bead_id]
+    return _show
+
+
+def test_run_bead_action_rejects_blocked_bead_without_force(tmp_path: Path):
+    bead, target = _bead_with_dep("awt-test.5", "awt-test.4", "open")
+    fake_beads = MagicMock()
+    fake_beads.show.side_effect = _show_router({"awt-test.5": bead, "awt-test.4": target})
+    fake_beads.ready.return_value = []
+    fake_tmux = MagicMock()
+    fake_tmux.attach_command.return_value = "tmux -L harbor attach -t harbor-X-awt-test_5"
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=fake_tmux), \
+         patch.object(server_mod, "run_bead") as mock_run_bead:
+        client = TestClient(create_app(tmp_path))
+        r = client.post(
+            "/actions/run-bead/awt-test.5",
+            data={"profile": "balanced"},
+            follow_redirects=False,
+        )
+
+    assert r.status_code == 409
+    assert "blocked by" in r.text
+    assert "awt-test.4" in r.text
+    assert not mock_run_bead.called
+
+
+def test_run_bead_action_allows_blocked_bead_with_force(tmp_path: Path):
+    bead, target = _bead_with_dep("awt-test.5", "awt-test.4", "open")
+    fake_beads = MagicMock()
+    fake_beads.show.side_effect = _show_router({"awt-test.5": bead, "awt-test.4": target})
+    fake_beads.ready.return_value = []
+    fake_tmux = MagicMock()
+    fake_tmux.attach_command.return_value = "tmux -L harbor attach -t harbor-X-awt-test_5"
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=fake_tmux), \
+         patch.object(server_mod, "run_bead") as mock_run_bead:
+        import threading as _threading
+        mock_run_bead.side_effect = lambda opts, log=None: _threading.Event().wait(0.05)
+        client = TestClient(create_app(tmp_path))
+        r = client.post(
+            "/actions/run-bead/awt-test.5",
+            data={"profile": "balanced", "force": "1"},
+            follow_redirects=False,
+        )
+
+    assert r.status_code == 303
+    assert r.headers["location"] == "/bead/awt-test.5"
+    assert mock_run_bead.called
+
+
+def test_run_bead_action_skips_parent_child_when_checking_blockers(tmp_path: Path):
+    """parent-child deps are hierarchy, not runtime ordering — a child should
+    still be runnable while its epic parent is open."""
+    bead = {
+        "id": "awt-test.6",
+        "status": "open",
+        "title": "Child of open epic",
+        "description": "child",
+        "issue_type": "task",
+        "priority": 2,
+        "dependencies": [
+            {"depends_on_id": "awt-test.epic", "type": "parent-child"},
+        ],
+    }
+    epic = {"id": "awt-test.epic", "status": "open", "title": "Epic", "issue_type": "epic", "priority": 1}
+    fake_beads = MagicMock()
+    fake_beads.show.side_effect = _show_router({"awt-test.6": bead, "awt-test.epic": epic})
+    fake_beads.ready.return_value = []
+    fake_tmux = MagicMock()
+    fake_tmux.attach_command.return_value = "tmux -L harbor attach -t harbor-X-awt-test_6"
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=fake_tmux), \
+         patch.object(server_mod, "run_bead") as mock_run_bead:
+        import threading as _threading
+        mock_run_bead.side_effect = lambda opts, log=None: _threading.Event().wait(0.05)
+        client = TestClient(create_app(tmp_path))
+        r = client.post(
+            "/actions/run-bead/awt-test.6",
+            data={"profile": "balanced"},
+            follow_redirects=False,
+        )
+
+    assert r.status_code == 303
+    assert mock_run_bead.called
+
+
+def test_run_bead_action_rejects_closed_bead(tmp_path: Path):
+    bead = {
+        "id": "awt-test.7",
+        "status": "closed",
+        "title": "Already done",
+        "description": "done",
+        "issue_type": "task",
+        "priority": 2,
+    }
+    fake_beads = MagicMock()
+    fake_beads.show.return_value = bead
+    fake_beads.ready.return_value = []
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=MagicMock()), \
+         patch.object(server_mod, "run_bead") as mock_run_bead:
+        client = TestClient(create_app(tmp_path))
+        r = client.post(
+            "/actions/run-bead/awt-test.7",
+            data={"profile": "balanced"},
+        )
+
+    assert r.status_code == 409
+    assert "closed" in r.text
+    assert not mock_run_bead.called
+
+
+def test_bead_detail_renders_blockers_panel(tmp_path: Path):
+    bead, target = _bead_with_dep("awt-test.8", "awt-test.7", "in_progress")
+    fake_beads = MagicMock()
+    fake_beads.show.side_effect = _show_router({"awt-test.8": bead, "awt-test.7": target})
+    fake_tmux = MagicMock()
+    fake_tmux.attach_command.return_value = "tmux -L harbor attach -t harbor-X-awt-test_8"
+    fake_tmux.has_session.return_value = False
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=fake_tmux):
+        client = TestClient(create_app(tmp_path))
+        r = client.get("/bead/awt-test.8")
+
+    assert r.status_code == 200
+    assert "Blocked by unresolved dependencies" in r.text
+    assert "awt-test.7" in r.text
+    # Force checkbox is rendered
+    assert 'name="force"' in r.text
 
 
 def test_kill_writes_synthetic_fallback_and_kills_session(app_client, tmp_path: Path):

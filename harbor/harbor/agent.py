@@ -207,3 +207,17 @@ def load_config(path: str | os.PathLike[str] | None = None) -> Config:
         default_profile=default,
         default_shell=default_shell,
     )
+
+
+def load_issue_prefix(repo_root: str | os.PathLike[str]) -> str | None:
+    """Read Beads' local issue_prefix from .beads/config.yaml if configured."""
+    path = Path(repo_root) / ".beads" / "config.yaml"
+    if not path.exists():
+        return None
+    with open(path, "r", encoding="utf-8") as fh:
+        data = yaml.safe_load(fh) or {}
+    prefix = data.get("issue_prefix") if isinstance(data, dict) else None
+    if prefix is None:
+        return None
+    prefix_s = str(prefix).strip()
+    return prefix_s or None

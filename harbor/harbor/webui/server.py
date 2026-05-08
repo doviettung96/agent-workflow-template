@@ -24,7 +24,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from ..agent import Config, load_config
+from ..agent import Config, load_config, load_issue_prefix
 from ..beads import Beads
 from ..orchestrator import (
     FALLBACK_DIR,
@@ -53,6 +53,7 @@ class HarborApp:
 
     repo_root: Path
     cfg: Config
+    issue_prefix: str | None = None
     active_runs: dict[str, _ActiveRun] = field(default_factory=dict)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -62,7 +63,7 @@ def create_app(repo_root: str | Path) -> FastAPI:
     cfg_path = repo_root_p / "harbor.yml"
     cfg = load_config(cfg_path if cfg_path.exists() else None)
 
-    state = HarborApp(repo_root=repo_root_p, cfg=cfg)
+    state = HarborApp(repo_root=repo_root_p, cfg=cfg, issue_prefix=load_issue_prefix(repo_root_p))
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
     app = FastAPI(title="harbor", docs_url=None, redoc_url=None)
@@ -82,6 +83,31 @@ def create_app(repo_root: str | Path) -> FastAPI:
         with state.lock:
             run = state.active_runs.get(bead_id)
             return bool(run and run.thread.is_alive())
+
+    def _blockers_for(bead: dict[str, Any], beads: Beads) -> list[dict[str, Any]]:
+        """List of unresolved blockers for `bead` — dependencies whose target
+        is not closed. parent-child deps are hierarchy, not runtime ordering,
+        and are skipped (a child can run while its epic is still open)."""
+        deps = bead.get("dependencies") or []
+        out: list[dict[str, Any]] = []
+        for dep in deps:
+            if dep.get("type") == "parent-child":
+                continue
+            dep_id = dep.get("depends_on_id")
+            if not dep_id:
+                continue
+            try:
+                dep_bead = beads.show(dep_id)
+            except Exception:  # noqa: BLE001
+                out.append({"id": dep_id, "status": "unknown", "title": ""})
+                continue
+            if dep_bead.get("status") != "closed":
+                out.append({
+                    "id": dep_id,
+                    "status": dep_bead.get("status") or "?",
+                    "title": dep_bead.get("title") or "",
+                })
+        return out
 
     def _spawn_run(bead_id: str, profile: str, model: str | None, effort: str | None) -> None:
         opts = RunBeadOptions(
@@ -139,7 +165,7 @@ def create_app(repo_root: str | Path) -> FastAPI:
     # ----- read pages -----------------------------------------------------
 
     @app.get("/", response_class=HTMLResponse)
-    async def dashboard(request: Request) -> HTMLResponse:
+    async def dashboard(request: Request, prefix: str | None = None) -> HTMLResponse:
         store = _store()
         snap = store.snapshot()
 
@@ -160,12 +186,23 @@ def create_app(repo_root: str | Path) -> FastAPI:
         active_ids = {w["bead_id"] for w in snap["workers"]}
         ready = [b for b in ready if b.get("id") not in active_ids and b.get("issue_type") != "epic"]
 
+        prefix_filter = None if prefix == "all" else state.issue_prefix
+        if prefix_filter:
+            ready = [b for b in ready if str(b.get("id", "")).startswith(f"{prefix_filter}-")]
+        ready_scope = {
+            "mode": "all" if prefix == "all" or not state.issue_prefix else "prefix",
+            "prefix": state.issue_prefix,
+            "filtered_prefix": prefix_filter,
+            "count": len(ready),
+        }
+
         return templates.TemplateResponse(
             "dashboard.html",
             {
                 "request": request,
                 "snap": snap,
                 "ready": ready[:50],
+                "ready_scope": ready_scope,
                 "profiles": sorted(state.cfg.profiles.keys()),
                 "default_profile": state.cfg.default_profile,
             },
@@ -186,6 +223,8 @@ def create_app(repo_root: str | Path) -> FastAPI:
         except Exception:  # noqa: BLE001
             pane = ""
 
+        blockers = _blockers_for(bead, _beads()) if bead.get("status") in ("open", "in_progress") else []
+
         return templates.TemplateResponse(
             "bead.html",
             {
@@ -194,6 +233,7 @@ def create_app(repo_root: str | Path) -> FastAPI:
                 "attach_command": attach_cmd,
                 "pane_capture": pane,
                 "is_active": _is_active(bead_id),
+                "blockers": blockers,
                 "profiles": sorted(state.cfg.profiles.keys()),
                 "default_profile": state.cfg.default_profile,
             },
@@ -231,9 +271,29 @@ def create_app(repo_root: str | Path) -> FastAPI:
         profile: str = Form(""),
         model: str = Form(""),
         effort: str = Form(""),
+        force: str = Form(""),
     ) -> RedirectResponse:
         if _is_active(bead_id):
             raise HTTPException(409, f"bead {bead_id} already running")
+        beads = _beads()
+        try:
+            bead = beads.show(bead_id)
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(404, f"bead {bead_id!r} not found ({e})")
+        status = bead.get("status")
+        if status not in {"open", "in_progress"}:
+            raise HTTPException(
+                409, f"bead {bead_id} status={status!r} — only open/in_progress beads can run"
+            )
+        if not force:
+            blockers = _blockers_for(bead, beads)
+            if blockers:
+                ids = ", ".join(b["id"] for b in blockers)
+                raise HTTPException(
+                    409,
+                    f"bead {bead_id} is blocked by: {ids}. "
+                    "Pass force=1 to override (the agent will run, but its prerequisites are unmet).",
+                )
         prof = profile or state.cfg.default_profile
         if prof not in state.cfg.profiles:
             raise HTTPException(400, f"unknown profile {prof!r}")

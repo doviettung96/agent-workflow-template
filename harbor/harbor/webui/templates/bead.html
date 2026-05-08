@@ -16,6 +16,28 @@
   </div>
 </div>
 
+{% if not is_active and bead.status in ('open', 'in_progress') and blockers %}
+<div class="panel">
+  <h2>⚠ Blocked by unresolved dependencies</h2>
+  <div class="panel-body">
+    <ul style="margin: 0 0 8px 1.2em;">
+      {% for b in blockers %}
+        <li><a href="/bead/{{ b.id }}"><code>{{ b.id }}</code></a>
+          &mdash; <span class="pill">{{ b.status }}</span>
+          {% if b.title %}{{ b.title }}{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="muted" style="margin: 0;">
+      Close (or progress) the items above to unblock this bead. You can still
+      run it now by ticking <em>force</em> below — the agent will start, but
+      it may fail Verify or emit a <code>status=blocked</code> sentinel
+      pointing at the missing prerequisites.
+    </p>
+  </div>
+</div>
+{% endif %}
+
 {% if not is_active and bead.status in ('open', 'in_progress') %}
 <div class="panel">
   <h2>Run this bead</h2>
@@ -30,6 +52,11 @@
       </label>
       <label>model override&nbsp;<input type="text" name="model" placeholder="(profile default)"></label>
       <label>effort override&nbsp;<input type="text" name="effort" placeholder="(profile default)"></label>
+      {% if blockers %}
+        <label style="color: var(--warn, #b58900);">
+          <input type="checkbox" name="force" value="1"> force (override blockers)
+        </label>
+      {% endif %}
       <button type="submit">▶ run-bead</button>
     </form>
     <p class="muted" style="margin-top: 8px;">

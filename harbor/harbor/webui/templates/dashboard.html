@@ -12,6 +12,17 @@
 <div class="panel">
   <h2>Ready beads ({{ ready|length }})</h2>
   <div class="panel-body">
+    <p class="muted" style="margin: 0 0 12px;">
+      {% if ready_scope.mode == 'prefix' %}
+        showing {{ ready_scope.count }} ready <code>{{ ready_scope.filtered_prefix }}-*</code> beads
+        &middot; <a href="/?prefix=all">show all</a>
+      {% elif ready_scope.prefix %}
+        showing all {{ ready_scope.count }} ready beads
+        &middot; <a href="/">show {{ ready_scope.prefix }}-* only</a>
+      {% else %}
+        showing all {{ ready_scope.count }} ready beads
+      {% endif %}
+    </p>
     {% if ready %}
       <table>
         <thead>
