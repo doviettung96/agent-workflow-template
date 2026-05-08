@@ -377,6 +377,56 @@ def test_run_bead_action_rejects_closed_bead(tmp_path: Path):
     assert not mock_run_bead.called
 
 
+def test_bead_detail_surfaces_last_run_error(tmp_path: Path):
+    """A user clicking into an in-progress bead from the dashboard's orphan
+    panel must be able to see WHY the previous run failed. The error is in
+    state.json events as `webui_run_error` — surface its payload at the top
+    of the bead detail page."""
+    bead = {
+        "id": "awt-test.50",
+        "status": "in_progress",
+        "title": "Stranded after webui error",
+        "description": "stranded",
+        "issue_type": "task",
+        "priority": 2,
+    }
+
+    fake_beads = MagicMock()
+    fake_beads.show.return_value = bead
+
+    fake_tmux = MagicMock()
+    fake_tmux.attach_command.return_value = "tmux -L harbor attach -t harbor-X-awt-test_50"
+    fake_tmux.has_session.return_value = False
+
+    # Hand-roll a StateStore fake whose recent_events_for returns a webui_run_error
+    fake_store = MagicMock()
+    fake_store.recent_events_for.return_value = [
+        {
+            "ts": "2026-05-09T01:23:45Z",
+            "type": "webui_run_error",
+            "payload": {"error": "TmuxError(\"create window failed: spawn failed\")"},
+        },
+        {
+            "ts": "2026-05-09T01:23:44Z",
+            "type": "bead_started",
+            "payload": {"profile": "balanced", "window_name": "harbor-X-awt-test_50"},
+        },
+    ]
+
+    with patch.object(server_mod, "Beads", return_value=fake_beads), \
+         patch.object(server_mod, "Tmux", return_value=fake_tmux), \
+         patch.object(server_mod, "StateStore", return_value=fake_store):
+        client = TestClient(create_app(tmp_path))
+        r = client.get("/bead/awt-test.50")
+
+    assert r.status_code == 200
+    assert "Last run failed" in r.text
+    assert "create window failed: spawn failed" in r.text
+    assert "Recent activity" in r.text
+    assert "webui_run_error" in r.text
+    assert "bead_started" in r.text
+
+
 def test_dashboard_renders_in_progress_orphan_panel(tmp_path: Path):
     """In-progress beads with no live worker must surface in the dashboard
     so a user can see beads stranded by a failed run (the awt-zmq.112

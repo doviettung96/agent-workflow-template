@@ -242,6 +242,17 @@ def create_app(repo_root: str | Path) -> FastAPI:
 
         blockers = _blockers_for(bead, _beads()) if bead.get("status") in ("open", "in_progress") else []
 
+        # Recent events for this bead — surfaces the why behind a previously-
+        # failed run (otherwise the webui_run_error breadcrumb is invisible).
+        try:
+            recent_events = _store().recent_events_for(bead_id, limit=10)
+        except Exception:  # noqa: BLE001
+            recent_events = []
+        last_error = next(
+            (e for e in recent_events if e["type"] == "webui_run_error"),
+            None,
+        )
+
         return templates.TemplateResponse(
             "bead.html",
             {
@@ -251,6 +262,8 @@ def create_app(repo_root: str | Path) -> FastAPI:
                 "pane_capture": pane,
                 "is_active": _is_active(bead_id),
                 "blockers": blockers,
+                "recent_events": recent_events,
+                "last_error": last_error,
                 "profiles": sorted(state.cfg.profiles.keys()),
                 "default_profile": state.cfg.default_profile,
             },

@@ -329,6 +329,25 @@ class StateStore:
             for r in rows
         ]
 
+    def recent_events_for(self, bead_id: str, limit: int = 10) -> list[dict[str, Any]]:
+        """Recent events for a single bead, newest first. Used by the bead
+        detail page to surface why a previous run failed (notably the
+        webui_run_error event, which is otherwise invisible from the UI)."""
+        rows = self._conn.execute(
+            "SELECT ts, type, payload FROM events "
+            "WHERE bead_id = ? ORDER BY ts DESC LIMIT ?",
+            (bead_id, limit),
+        ).fetchall()
+        out: list[dict[str, Any]] = []
+        for r in rows:
+            payload_str = r["payload"]
+            try:
+                payload = json.loads(payload_str) if payload_str else {}
+            except json.JSONDecodeError:
+                payload = {"raw": payload_str}
+            out.append({"ts": r["ts"], "type": r["type"], "payload": payload})
+        return out
+
     def recent_blockers(self, limit: int = 10) -> list[dict[str, Any]]:
         """All historical (non-stuck) bead-runs that ended with a blocker, across
         every run. Phase-1 used to scope this to the active run, which made

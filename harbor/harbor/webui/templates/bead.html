@@ -16,6 +16,24 @@
   </div>
 </div>
 
+{% if last_error %}
+<div class="panel">
+  <h2>⚠ Last run failed</h2>
+  <div class="panel-body">
+    <p class="muted" style="margin: 0 0 8px;">
+      <small>{{ last_error.ts }}</small>
+    </p>
+    <pre class="pane-capture" style="background: #2b1414; color: #ffb4b4; max-height: 200px;">{{ last_error.payload.error or last_error.payload }}</pre>
+    <p class="muted" style="margin: 8px 0 0;">
+      The previous run did not start a tmux session — that's why "attach" shows
+      no live session. Fix the underlying cause (often: <code>tmux</code> or
+      Git Bash not on the daemon's PATH; restart the daemon from a fresh
+      shell), then click <strong>run-bead</strong> below to retry.
+    </p>
+  </div>
+</div>
+{% endif %}
+
 {% if not is_active and bead.status in ('open', 'in_progress') and blockers %}
 <div class="panel">
   <h2>⚠ Blocked by unresolved dependencies</h2>
@@ -84,6 +102,39 @@
     <pre class="pane-capture">{{ pane_capture or '(pane not active)' }}</pre>
   </div>
 </div>
+
+{% if recent_events %}
+<div class="panel">
+  <h2>Recent activity</h2>
+  <div class="panel-body">
+    <table>
+      <thead><tr><th>time</th><th>type</th><th>detail</th></tr></thead>
+      <tbody>
+        {% for e in recent_events %}
+          <tr>
+            <td><small>{{ e.ts }}</small></td>
+            <td>
+              {% if e.type == 'webui_run_error' or e.type == 'bead_stuck' %}
+                <span class="pill warn">{{ e.type }}</span>
+              {% elif e.type == 'bead_finished' and e.payload.exit_code == 0 %}
+                <span class="pill ok">{{ e.type }}</span>
+              {% else %}
+                <span class="pill">{{ e.type }}</span>
+              {% endif %}
+            </td>
+            <td><small><code>
+              {% if e.type == 'webui_run_error' %}{{ e.payload.error|truncate(120) }}
+              {% elif e.payload.profile %}profile={{ e.payload.profile }}
+              {% elif e.payload.sentinel_status %}status={{ e.payload.sentinel_status }} class={{ e.payload.blocker_class or 'none' }}
+              {% else %}&mdash;{% endif %}
+            </code></small></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 
 {% if is_active %}
 <div class="panel">
