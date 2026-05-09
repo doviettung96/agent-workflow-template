@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}harbor setup{% endblock %}
+{% block crumbs %}<a href="/">dashboard</a> / setup{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <h2>Config</h2>
+  <div class="panel-body">
+    {% if cfg_file_exists %}
+      <p class="muted" style="margin-top: 0;">Editing <code>harbor.yml</code>. Saves write <code>harbor.yml.bak</code> first.</p>
+    {% else %}
+      <p class="muted" style="margin-top: 0;">No <code>harbor.yml</code> exists. Built-in profiles are shown read-only until initialized.</p>
+      <form method="post" action="/actions/profile/init-from-builtins">
+        <button type="submit">Init from built-ins</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+<form method="post" action="/actions/profile/save">
+  <div class="panel">
+    <h2>Defaults</h2>
+    <div class="panel-body">
+      <label>
+        default_profile
+        <select name="default_profile" {% if not cfg_file_exists %}disabled{% endif %}>
+          {% for p in profiles %}
+            <option value="{{ p.name }}" {% if p.name == cfg.default_profile %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label style="display: block; margin-top: 10px;">
+        default_shell
+        <input type="text" name="default_shell" value="{{ cfg.default_shell or '' }}" style="width: min(100%, 520px);" {% if not cfg_file_exists %}disabled{% endif %}>
+      </label>
+    </div>
+  </div>
+
+  {% for p in profiles %}
+    <div class="panel">
+      <h2>{{ p.name }}</h2>
+      <div class="panel-body">
+        <input type="hidden" name="profile_name" value="{{ p.name }}">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+          <label>agent_kind
+            <input type="text" name="profile_{{ p.name }}_agent_kind" value="{{ p.agent_kind }}" {% if not cfg_file_exists %}disabled{% endif %}>
+          </label>
+          <label>command
+            <input type="text" name="profile_{{ p.name }}_command" value="{{ p.command | join(', ') }}" {% if not cfg_file_exists %}disabled{% endif %}>
+          </label>
+          <label>args_template
+            <input type="text" name="profile_{{ p.name }}_args_template" value="{{ p.args_template | join(', ') }}" {% if not cfg_file_exists %}disabled{% endif %}>
+          </label>
+          <label>model
+            <input type="text" name="profile_{{ p.name }}_model" value="{{ p.model }}" {% if not cfg_file_exists %}disabled{% endif %}>
+          </label>
+          <label>effort
+            <input type="text" name="profile_{{ p.name }}_effort" value="{{ p.effort }}" {% if not cfg_file_exists %}disabled{% endif %}>
+          </label>
+        </div>
+        <div style="margin-top: 12px;">
+          prompt_injection
+          {% for injection in prompt_injections %}
+            <label style="margin-left: 10px;">
+              <input type="radio" name="profile_{{ p.name }}_prompt_injection" value="{{ injection }}" {% if p.prompt_injection == injection %}checked{% endif %} {% if not cfg_file_exists %}disabled{% endif %}>
+              {{ injection }}
+            </label>
+          {% endfor %}
+        </div>
+        <label style="display: block; margin-top: 12px;">launch_template
+          <textarea name="profile_{{ p.name }}_launch_template" rows="4" style="width: 100%;" {% if not cfg_file_exists %}disabled{% endif %}>{{ p.launch_template }}</textarea>
+        </label>
+        {% if cfg_file_exists %}
+          <button class="danger" type="submit" name="_action" value="remove:{{ p.name }}" onclick="return confirm('Remove profile {{ p.name }}?')">Remove profile</button>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+
+  {% if cfg_file_exists %}
+    <div class="panel">
+      <h2>Add Profile</h2>
+      <div class="panel-body">
+        <input type="text" name="add_profile_name" placeholder="new-profile">
+        <button type="submit" name="_action" value="add">Add profile</button>
+        <button type="submit" name="_action" value="save">Save</button>
+      </div>
+    </div>
+  {% endif %}
+</form>
+
+{% endblock %}

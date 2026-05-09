@@ -55,7 +55,7 @@ def cmd_daemon(args: argparse.Namespace) -> int:
     from .webui.server import create_app
 
     repo_root = Path(args.repo_root or Path.cwd()).resolve()
-    app = create_app(repo_root)
+    app = create_app(repo_root, allow_config_edit=args.allow_config_edit)
     print(f"harbor daemon: serving http://{args.host}:{args.port}/ for repo {repo_root}")
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     return 0
@@ -99,6 +99,11 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--host", default="127.0.0.1")
     d.add_argument("--port", type=int, default=8765)
     d.add_argument("--repo-root", default=None, help="Repo root (default: cwd).")
+    d.add_argument(
+        "--allow-config-edit",
+        action="store_true",
+        help="Expose the web setup page and profile write actions.",
+    )
     d.set_defaults(func=cmd_daemon)
 
     st = sub.add_parser("status", help="Print current runner state.")

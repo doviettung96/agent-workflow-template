@@ -24,7 +24,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from ..agent import Config, load_config, load_issue_prefix
+from ..agent import AgentProfile, Config, load_config, load_issue_prefix, write_config
 from ..beads import Beads
 from ..orchestrator import (
     FALLBACK_DIR,
@@ -54,16 +54,22 @@ class HarborApp:
     repo_root: Path
     cfg: Config
     issue_prefix: str | None = None
+    allow_config_edit: bool = False
     active_runs: dict[str, _ActiveRun] = field(default_factory=dict)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
 
-def create_app(repo_root: str | Path) -> FastAPI:
+def create_app(repo_root: str | Path, *, allow_config_edit: bool = False) -> FastAPI:
     repo_root_p = Path(repo_root).resolve()
     cfg_path = repo_root_p / "harbor.yml"
     cfg = load_config(cfg_path if cfg_path.exists() else None)
 
-    state = HarborApp(repo_root=repo_root_p, cfg=cfg, issue_prefix=load_issue_prefix(repo_root_p))
+    state = HarborApp(
+        repo_root=repo_root_p,
+        cfg=cfg,
+        issue_prefix=load_issue_prefix(repo_root_p),
+        allow_config_edit=allow_config_edit,
+    )
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
     app = FastAPI(title="harbor", docs_url=None, redoc_url=None)
@@ -78,6 +84,13 @@ def create_app(repo_root: str | Path) -> FastAPI:
 
     def _tmux() -> Tmux:
         return Tmux()
+
+    def _cfg_path() -> Path:
+        return state.repo_root / "harbor.yml"
+
+    def _reload_cfg() -> None:
+        path = _cfg_path()
+        state.cfg = load_config(path if path.exists() else None)
 
     def _is_active(bead_id: str) -> bool:
         with state.lock:
@@ -222,6 +235,23 @@ def create_app(repo_root: str | Path) -> FastAPI:
                 "ready_scope": ready_scope,
                 "profiles": sorted(state.cfg.profiles.keys()),
                 "default_profile": state.cfg.default_profile,
+                "allow_config_edit": state.allow_config_edit,
+            },
+        )
+
+    @app.get("/setup", response_class=HTMLResponse)
+    async def setup(request: Request) -> HTMLResponse:
+        if not state.allow_config_edit:
+            raise HTTPException(404, "config editor is disabled")
+        cfg_file_exists = _cfg_path().exists()
+        return templates.TemplateResponse(
+            "setup.html",
+            {
+                "request": request,
+                "cfg": state.cfg,
+                "cfg_file_exists": cfg_file_exists,
+                "profiles": [state.cfg.profiles[name] for name in sorted(state.cfg.profiles)],
+                "prompt_injections": ["file_ref", "send_keys", "prompt_arg", "stdin"],
             },
         )
 
@@ -356,7 +386,97 @@ def create_app(repo_root: str | Path) -> FastAPI:
             )
         return RedirectResponse(f"/bead/{bead_id}", status_code=303)
 
+    @app.post("/actions/profile/init-from-builtins")
+    async def action_profile_init_from_builtins(request: Request) -> RedirectResponse:
+        if not state.allow_config_edit:
+            raise HTTPException(404, "config editor is disabled")
+        cfg_path = _cfg_path()
+        force = request.query_params.get("force") in {"1", "true", "yes"}
+        if cfg_path.exists() and not force:
+            raise HTTPException(409, "harbor.yml already exists")
+        write_config(cfg_path, load_config(None), backup=force)
+        _reload_cfg()
+        return RedirectResponse("/setup", status_code=303)
+
+    @app.post("/actions/profile/save")
+    async def action_profile_save(request: Request) -> RedirectResponse:
+        if not state.allow_config_edit:
+            raise HTTPException(404, "config editor is disabled")
+        form = await request.form()
+        cfg = _config_from_form(form)
+        write_config(_cfg_path(), cfg, backup=True)
+        _reload_cfg()
+        return RedirectResponse("/setup", status_code=303)
+
     return app
+
+
+def _parse_list(value: str) -> list[str]:
+    raw = value.strip()
+    if not raw:
+        return []
+    if raw.startswith("["):
+        parsed = json.loads(raw)
+        if not isinstance(parsed, list) or not all(isinstance(item, str) for item in parsed):
+            raise ValueError("expected a JSON string array")
+        return parsed
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+def _config_from_form(form: Any) -> Config:
+    names = [str(v).strip() for v in form.getlist("profile_name") if str(v).strip()]
+    action = str(form.get("_action") or "save")
+    add_name = str(form.get("add_profile_name") or "").strip()
+    if action == "add" and add_name and add_name not in names:
+        names.append(add_name)
+    if action.startswith("remove:"):
+        remove_name = action.split(":", 1)[1]
+        names = [name for name in names if name != remove_name]
+    if not names:
+        raise HTTPException(400, "at least one profile is required")
+
+    profiles: dict[str, AgentProfile] = {}
+    for name in names:
+        prefix = f"profile_{name}_"
+        try:
+            command = _parse_list(str(form.get(prefix + "command") or ""))
+            args_template = _parse_list(str(form.get(prefix + "args_template") or ""))
+        except (json.JSONDecodeError, ValueError) as e:
+            raise HTTPException(400, f"profile {name}: {e}") from e
+        if action == "add" and name == add_name and not command:
+            command = ["codex"]
+            args_template = ["-m", "{model}", "--reasoning-effort", "{effort}"]
+        if not command:
+            raise HTTPException(400, f"profile {name}: command is required")
+        injection = str(form.get(prefix + "prompt_injection") or "file_ref")
+        if injection not in {"file_ref", "send_keys", "prompt_arg", "stdin"}:
+            raise HTTPException(400, f"profile {name}: invalid prompt_injection")
+        launch_template = str(form.get(prefix + "launch_template") or "")
+        if injection == "prompt_arg" and "{prompt_path}" not in launch_template:
+            raise HTTPException(
+                400,
+                f"profile {name}: prompt_arg requires launch_template to contain {{prompt_path}}",
+            )
+        profiles[name] = AgentProfile(
+            name=name,
+            agent_kind=str(form.get(prefix + "agent_kind") or "codex"),
+            command=command,
+            args_template=args_template,
+            model=str(form.get(prefix + "model") or ""),
+            effort=str(form.get(prefix + "effort") or ""),
+            prompt_injection=injection,
+            launch_template=launch_template,
+        )
+
+    default_profile = str(form.get("default_profile") or "").strip()
+    if default_profile not in profiles:
+        default_profile = names[0]
+    default_shell_raw = str(form.get("default_shell") or "").strip()
+    return Config(
+        profiles=profiles,
+        default_profile=default_profile,
+        default_shell=default_shell_raw or None,
+    )
 
 
 def _escape(text: str) -> str:

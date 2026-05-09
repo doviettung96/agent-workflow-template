@@ -9,6 +9,12 @@
   </div>
 </div>
 
+{% if allow_config_edit %}
+<p class="muted" style="margin: -6px 0 14px;">
+  <a href="/setup">edit harbor.yml profiles</a>
+</p>
+{% endif %}
+
 <div class="panel">
   <h2>Ready beads ({{ ready|length }})</h2>
   <div class="panel-body">

@@ -28,6 +28,19 @@ def test_render_mentions_classification_options():
         assert c in text
 
 
+def test_render_instructs_successful_workers_to_commit_with_epic_prefix():
+    bead = {
+        "id": "awt-zmq.1",
+        "title": "Implement something",
+        "description": "Read:\n- README\n\nFiles:\n- harbor/x.py\n\nVerify:\n- pytest",
+    }
+    text = render_worker_prompt(bead)
+    assert "Before emitting `status=ok`, commit" in text
+    assert "subject starts exactly `awt-zmq:`" in text
+    assert 'git commit -m "awt-zmq: <short summary>"' in text
+    assert "Do NOT commit when emitting `status=blocked`" in text
+
+
 def test_parse_sentinel_ok():
     out = "doing things\n\nHARBOR-DONE: awt-zmq.1 status=ok classification=none\n"
     assert parse_sentinel(out, "awt-zmq.1") == ("ok", "none")

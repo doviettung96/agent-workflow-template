@@ -7,6 +7,7 @@ per-bead in the webview.
 from __future__ import annotations
 
 import os
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -207,6 +208,67 @@ def load_config(path: str | os.PathLike[str] | None = None) -> Config:
         default_profile=default,
         default_shell=default_shell,
     )
+
+
+def _profile_to_dict(profile: AgentProfile) -> dict[str, Any]:
+    data: dict[str, Any] = {
+        "agent_kind": profile.agent_kind,
+        "command": list(profile.command),
+        "args_template": list(profile.args_template),
+    }
+    if profile.model:
+        data["model"] = profile.model
+    if profile.effort:
+        data["effort"] = profile.effort
+    if profile.env:
+        data["env"] = dict(profile.env)
+    if profile.prompt_injection != "file_ref":
+        data["prompt_injection"] = profile.prompt_injection
+    if profile.launch_template:
+        data["launch_template"] = profile.launch_template
+    return data
+
+
+def config_to_dict(cfg: Config) -> dict[str, Any]:
+    """Serialize the editable harbor.yml surface.
+
+    `load_config` keeps built-in profiles available at runtime even when a
+    user file only overrides one profile. Writing intentionally emits the
+    current effective profile set so custom/user-only entries survive UI saves.
+    """
+    data: dict[str, Any] = {
+        "default_profile": cfg.default_profile,
+        "profiles": {
+            name: _profile_to_dict(profile)
+            for name, profile in sorted(cfg.profiles.items())
+        },
+    }
+    if cfg.default_shell is not None:
+        data["default_shell"] = cfg.default_shell
+    return data
+
+
+def write_config(path: str | os.PathLike[str], cfg: Config, *, backup: bool = True) -> None:
+    """Atomically write harbor.yml and validate that it round-trips."""
+    p = Path(path)
+    data = config_to_dict(cfg)
+    text = yaml.safe_dump(data, sort_keys=False, allow_unicode=False)
+
+    parent = p.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    if backup and p.exists():
+        (parent / f"{p.name}.bak").write_bytes(p.read_bytes())
+
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{p.name}.", suffix=".tmp", dir=parent)
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+        load_config(tmp)
+        os.replace(tmp, p)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
 
 
 def load_issue_prefix(repo_root: str | os.PathLike[str]) -> str | None:

@@ -42,9 +42,19 @@ def _section(title: str, body: str) -> str:
     return f"## {title}\n\n{body.strip()}\n"
 
 
+def _commit_prefix_for(bead_id: str) -> str:
+    """Best-effort epic prefix for commit subjects.
+
+    Harbor child bead ids use `<epic-id>.<child>`; finish-time PR
+    reconstruction selects commits by the epic prefix.
+    """
+    return bead_id.split(".", 1)[0] if "." in bead_id else bead_id
+
+
 def render_worker_prompt(bead: dict[str, Any]) -> str:
     """Build the prompt the agent sees when it spawns inside a tmux pane."""
     bead_id = bead.get("id", "<unknown>")
+    commit_prefix = _commit_prefix_for(str(bead_id))
     title = bead.get("title", "")
     description = (bead.get("description") or "").strip()
 
@@ -65,6 +75,11 @@ def render_worker_prompt(bead: dict[str, Any]) -> str:
                 "- Stay within the `Files:` scope declared in the description. Do not edit other files.\n"
                 "- Do NOT call `br update` or `br close` — the harbor daemon owns bead-state mutation.\n"
                 "- Run the `Verify:` commands listed in the description before you finish.\n"
+                "- Before emitting `status=ok`, commit the successful code changes with a Git commit "
+                f"whose subject starts exactly `{commit_prefix}:`. Stage only files you changed within "
+                "the declared `Files:` scope. If the bead is verification-only or produced no file "
+                "changes, state that no commit was needed.\n"
+                "- Do NOT commit when emitting `status=blocked`.\n"
                 "- If the bead description is missing `Files:` or `Verify:`, stop and emit a `blocked` "
                 "sentinel with classification=contract.\n"
                 "- If something in the environment is broken (missing tool, failing tmux, etc.), emit "
@@ -89,8 +104,13 @@ def render_worker_prompt(bead: dict[str, Any]) -> str:
                 "1. Read the `Read:` files listed in the description, plus any code those files reference.\n"
                 "2. Implement the change inside `Files:`.\n"
                 "3. Run each `Verify:` command and fix any failures (within scope).\n"
-                "4. Print a short summary of what changed and the verify results.\n"
-                "5. Print the `HARBOR-DONE` sentinel line as the very last line."
+                "4. Inspect `git status --short`, stage only your intended changes under `Files:`, "
+                f"and commit them with `git commit -m \"{commit_prefix}: <short summary>\"` before "
+                "reporting success. Skip this only when no files changed or the bead is "
+                "verification-only.\n"
+                "5. Print a short summary of what changed, the commit made or why no commit was needed, "
+                "and the verify results.\n"
+                "6. Print the `HARBOR-DONE` sentinel line as the very last line."
             ),
         )
     )
