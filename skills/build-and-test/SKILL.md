@@ -1,11 +1,11 @@
 ---
 name: build-and-test
-description: "Harbor finalize prompt for discovering and running a repository's build and test checks when no repo-specific top-level skill has been written yet."
+description: "Generic finalize prompt for discovering and running a repository's build and test checks when no repo-specific top-level skill has been written yet."
 ---
 
 # Build and Test
 
-Run the repository's normal build and test checks. This is a generic harbor-readable default for newly bootstrapped downstream repos; replace it with repo-specific commands once the project workflow is known.
+Run the repository's normal build and test checks. This is a generic finalize default for newly bootstrapped downstream repos; replace it with repo-specific commands once the project workflow is known.
 
 ## Discovery
 

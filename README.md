@@ -1,5 +1,7 @@
 # Agent Workflow Template
 
+> ⚠️ **Active development has moved to [`D:\Projects\harbor`](../../harbor/).** This template repo is now the **legacy bead workflow**, kept around for downstream repos that haven't migrated to the agtx-style task workflow. Do NOT add new features here. See `NEXT_STEPS.md` for the migration pointer.
+
 Reusable Beads workflow scaffold for Codex and Claude, standardized on local-only `br --no-db` plus checkout-local swarm execution, with optional hydrated Git worktrees for parallel epics and optional SSH-backed runtime execution for downstream repos.
 
 This template repo is intentionally self-contained:

@@ -1,3 +1,0 @@
-display_name: Harbor Bead Worker
-short_description: Execute one bead in a harbor tmux pane
-default_prompt: Implement one assigned bead inside a tmux pane and emit the HARBOR-DONE sentinel; the harbor daemon owns Beads state and verification.

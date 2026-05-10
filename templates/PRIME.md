@@ -32,7 +32,6 @@ git commit -m "<epic-id>: <description>"
 - `plan-beads` handles discuss -> optional research -> optional debate -> bead creation -> validation
 - `executor-once` is the worker-backed single-bead executor
 - `swarm-epic` is the epic-scoped composed executor
-- `harbor/` is the bundled tmux-pane-per-bead runner; after bootstrap or refresh, install it with `python -m pip install -e harbor/` and use `harbor --help` or `harbor run-epic --help` for current commands
 - `review-epic` runs before branch completion in swarm flow
 - Worker-ready beads must be fresh-session-safe: rely on the bead contract, persisted inputs, and local inspection rather than prior chat memory
 

@@ -32,7 +32,7 @@ PY
 fi
 effective_profile="${effective_profile:-generic}"
 profile_gated_skills=(game-action-harness)
-top_level_harbor_skills=(build-and-test review-epic)
+top_level_finalize_skills=(build-and-test review-epic)
 
 skill_is_profile_gated() {
   local name="$1"
@@ -64,8 +64,6 @@ cp "${template_root}/templates/.beads/README.md" "${repo_path}/.beads/README.md"
 printf 'Copied .beads/PRIME.md\n'
 printf 'Copied .beads/.gitignore\n'
 printf 'Copied .beads/README.md\n'
-
-printf 'harbor not copied; ensure pip install -e <template>/harbor was run once\n'
 
 mkdir -p "${repo_path}/.beads/workflow"
 if [[ -d "${template_root}/templates/.beads/workflow" ]]; then
@@ -157,14 +155,14 @@ if [[ -d "${template_root}/templates/.claude/skills" ]]; then
 fi
 
 mkdir -p "${repo_path}/skills"
-for name in "${top_level_harbor_skills[@]}"; do
+for name in "${top_level_finalize_skills[@]}"; do
   src="${template_root}/skills/${name}"
   dst="${repo_path}/skills/${name}"
   if [[ ! -d "${dst}" ]]; then
     cp -R "${src}" "${dst}"
-    printf 'Copied harbor skill: %s\n' "${name}"
+    printf 'Copied finalize skill: %s\n' "${name}"
   else
-    printf 'Preserved existing harbor skill: %s\n' "${name}"
+    printf 'Preserved existing finalize skill: %s\n' "${name}"
   fi
 done
 

@@ -58,7 +58,7 @@ $workflowStateSource = Join-Path $TemplateRoot "templates\.beads\workflow"
 $troubleshootingSource = Join-Path $TemplateRoot "docs\TROUBLESHOOTING.md"
 $codexBuildSkillSource = Join-Path $TemplateRoot "templates\.codex\skills\build-and-test"
 $skillsSource = Join-Path $TemplateRoot "skills"
-$topLevelHarborSkills = @("build-and-test", "review-epic")
+$topLevelFinalizeSkills = @("build-and-test", "review-epic")
 $agentsSnippet = Join-Path $TemplateRoot "templates\AGENTS.snippet.md"
 $claudeSnippet = Join-Path $TemplateRoot "templates\CLAUDE.snippet.md"
 $windowsStatusScript = Join-Path $TemplateRoot "scripts\windows\workflow-status.ps1"
@@ -83,8 +83,6 @@ Copy-Item -Force (Join-Path $TemplateRoot "templates\.beads\README.md") (Join-Pa
 Write-Host "Copied .beads/PRIME.md"
 Write-Host "Copied .beads/.gitignore"
 Write-Host "Copied .beads/README.md"
-
-Write-Host "harbor not copied; ensure pip install -e <template>/harbor was run once"
 
 $workflowDestination = Join-Path $beadsDir "workflow"
 New-Item -ItemType Directory -Force -Path $workflowDestination | Out-Null
@@ -167,14 +165,14 @@ Get-ChildItem (Join-Path $TemplateRoot "templates\.claude\skills") -Directory -E
 }
 
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoPath "skills") | Out-Null
-foreach ($skillName in $topLevelHarborSkills) {
+foreach ($skillName in $topLevelFinalizeSkills) {
     $source = Join-Path $skillsSource $skillName
     $destination = Join-Path $RepoPath "skills\$skillName"
     if (-not (Test-Path $destination)) {
         Copy-Item -Recurse -Force $source $destination
-        Write-Host "Copied harbor skill: $skillName"
+        Write-Host "Copied finalize skill: $skillName"
     } else {
-        Write-Host "Preserved existing harbor skill: $skillName"
+        Write-Host "Preserved existing finalize skill: $skillName"
     }
 }
 
