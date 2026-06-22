@@ -1,3 +1,0 @@
-display_name: Executor Once
-short_description: Run one worker-backed Beads executor cycle
-default_prompt: Claim one bead, assign a fresh execute-bead-worker subagent, review and verify the result, then close it.

@@ -1,3 +1,0 @@
-display_name: Execute Bead Worker
-short_description: Execute one assigned bead
-default_prompt: Implement one assigned bead for a coordinator and report verification evidence without mutating Beads state.

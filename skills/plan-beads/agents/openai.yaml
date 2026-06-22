@@ -1,3 +1,0 @@
-display_name: Plan Beads
-short_description: Planner-only Beads workflow
-default_prompt: Turn the current problem into a settled execution plan, resolve critique, pause once for bead-creation confirmation, and then turn it into Beads without implementing.

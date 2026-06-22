@@ -2,5 +2,5 @@
 Thumbs.db
 __pycache__/
 *.py[cod]
-/.beads/
+/.workflow/runtime-target.json
 /.claude/scheduled_tasks.lock

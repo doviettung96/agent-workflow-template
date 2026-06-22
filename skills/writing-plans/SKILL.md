@@ -1,11 +1,11 @@
 ---
 name: writing-plans
-description: "Use when you have a spec or requirements for a multi-step task, before touching code. This is an executor skill - use only when a bead has been claimed and you are in an executor session, NOT in a planner session."
+description: "Use when you have a spec or requirements for a multi-step task, before touching code. This is an executor skill - use only when a task has been picked up for implementation and you are in an executor session, NOT in a planner session."
 ---
 
 # Writing Plans
 
-**Workflow position:** Executor session, step 2 of 7 (after claiming bead). Next: implement -> `build-and-test` -> `verification-before-completion` or `requesting-code-review` -> `beads-close`. See BEADS_WORKFLOW.md.
+**Workflow position:** Executor session, after a task has been picked up for implementation. Next: implement -> `build-and-test` -> `verification-before-completion` or `requesting-code-review` -> close out the task.
 
 ## Overview
 
@@ -16,7 +16,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
 <HARD-GATE>
-This is an **executor skill**. It should only be invoked in a session where a bead has been claimed via `br update <id> --status in_progress --no-db`. Do NOT invoke this in a planner session that just ran `brainstorming`, `planner-research`, or `beads-planner`.
+This is an **executor skill**. It should only be invoked in a session where a task has been picked up for implementation. Do NOT invoke this in a planner session that just ran `brainstorming` or `planner-research`.
 </HARD-GATE>
 
 **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
@@ -127,7 +127,7 @@ That means:
 - include URLs, ports, endpoints, paths, and process names when relevant
 - name the expected output, status code, DOM text, screenshot cue, or log line
 - say when manual browser inspection is required and what to look for
-- state whether a missing optional dependency such as a live device should fail the bead or downgrade the check to a skipped optional smoke test
+- state whether a missing optional dependency such as a live device should fail the task or downgrade the check to a skipped optional smoke test
 
 Example:
 ````markdown
@@ -145,7 +145,7 @@ Example:
 **Success criteria:** All functional tests pass, no crashes in `adb logcat -s tgunmod:V`
 ````
 
-Without this section, `build-and-test` will not know what to verify. Make it specific to the bead.
+Without this section, `build-and-test` will not know what to verify. Make it specific to the task.
 
 ### Harness-first rule for in-game actions
 
@@ -153,14 +153,14 @@ If the repo has `.harness/actions.yaml` (profile=game-re), the plan's `## Verifi
 
 Run `python scripts/shared/harness.py list` before writing the verification section to see what is already catalogued. If the action you need is not catalogued:
 
-- if cataloguing it is in scope (small, no new game-specific knowledge needed beyond what the bead already assumes), include a step to add it to `.harness/actions.yaml`
-- otherwise, create a follow-up bead to catalogue it and mark the current bead as soft-blocked on that follow-up
+- if cataloguing it is in scope (small, no new game-specific knowledge needed beyond what the task already assumes), include a step to add it to `.harness/actions.yaml`
+- otherwise, create a follow-up task to catalogue it and mark the current task as soft-blocked on that follow-up
 
 Only ask the user to perform a manual in-game step when the harness genuinely cannot reach the scenario (e.g., the game process is not running and only the user can launch it). Even then, state it once and capture the action for future use.
 
 If the repo uses an SSH-backed runtime target, keep the verification commands stable across backends by pointing at repo-owned wrapper scripts instead of embedding brittle OS-specific shell logic in the plan.
 
-If you notice the same verification sequence repeating across multiple beads, that is a signal to specialize the repo-local `build-and-test` skill as stage 2 work.
+If you notice the same verification sequence repeating across multiple tasks, that is a signal to specialize the repo-local `build-and-test` skill as stage 2 work.
 
 ## Remember
 
@@ -189,8 +189,8 @@ After saving the plan:
 
 **"Plan complete and saved to `docs/plans/<filename>.md`. Ready to execute?"**
 
-- If this skill was invoked by `/executor-loop`, proceed to implementation automatically - do not wait for confirmation.
-- `executor-once` and `executor-loop-epic` normally dispatch `execute-bead-worker` directly after claim; do not insert this skill into those flows unless the coordinator explicitly asks for a local plan document.
+- If the workflow is configured to proceed automatically, proceed to implementation - do not wait for confirmation.
+- Some automated execution flows dispatch an implementation agent directly after a task is picked up; do not insert this skill into those flows unless the coordinator explicitly asks for a local plan document.
 - Otherwise, wait for user confirmation before proceeding.
 
 **When proceeding:** Use Codex subagents when they help, with code review (`requesting-code-review`) after each major task.

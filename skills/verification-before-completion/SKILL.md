@@ -130,12 +130,6 @@ From 24 failure memories:
 - Implications of success
 - ANY communication suggesting completion/correctness
 
-## Beads Runtime Gate
-
-- For local `br` repos, verified completion is not enough by itself.
-- Before commit, PR creation, or handoff, confirm the current checkout can still resolve the Beads workspace with `br where --no-db`.
-- If the checkout cannot resolve Beads, repair it with `br init --prefix <prefix> --no-db`.
-
 ## Harness-First Rule for In-Game Actions
 
 If the repo has `.harness/actions.yaml` (profile=game-re), **do NOT ask the user to "run a live session and click X" as verification**. You are the verification agent, not the user.

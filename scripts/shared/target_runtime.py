@@ -17,7 +17,7 @@ from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CONFIG_PATH = REPO_ROOT / ".beads" / "workflow" / "runtime-target.json"
+CONFIG_PATH = REPO_ROOT / ".workflow" / "runtime-target.json"
 DEFAULT_CONFIG = {
     "version": 1,
     "mode": "local",
@@ -29,7 +29,6 @@ DEFAULT_CONFIG = {
 }
 EXCLUDE_DIRS = {
     ".git",
-    ".beads",
     ".claude",
     ".codex",
     ".venv",
@@ -252,7 +251,6 @@ def sync_with_rsync(config: dict[str, Any]) -> None:
         rsync,
         "-az",
         "--exclude=.git/",
-        "--exclude=.beads/",
         "--exclude=.claude/",
         "--exclude=.codex/",
         "--exclude=.venv/",

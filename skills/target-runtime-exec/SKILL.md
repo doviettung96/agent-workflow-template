@@ -1,6 +1,6 @@
 ---
 name: target-runtime-exec
-description: "Use when project execution should follow the repo's selected runtime target instead of assuming the local machine. This covers build, test, run, deploy, migration, codegen, or environment-bootstrap commands that should route through `scripts/shared/target_runtime.py` when `.beads/workflow/runtime-target.json` selects SSH."
+description: "Use when project execution should follow the repo's selected runtime target instead of assuming the local machine. This covers build, test, run, deploy, migration, codegen, or environment-bootstrap commands that should route through `scripts/shared/target_runtime.py` when `.workflow/runtime-target.json` selects SSH."
 ---
 
 # Target Runtime Exec

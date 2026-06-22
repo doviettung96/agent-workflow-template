@@ -1,3 +1,0 @@
-display_name: Executor Loop
-short_description: Repeat Beads executor cycles
-default_prompt: Run the Beads executor workflow repeatedly until the queue is empty or a blocker needs input.

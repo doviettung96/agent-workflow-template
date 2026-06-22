@@ -1,3 +1,0 @@
-display_name: Executor Loop Epic
-short_description: Repeat worker-backed executor cycles within one epic
-default_prompt: Run one ready descendant bead at a time by assigning a fresh execute-bead-worker subagent, then close and continue within the epic.
