@@ -1,12 +1,14 @@
-#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
   Distribute the global agent guidelines (this repo's AGENTS.md) and init LESSONS.md.
 
+  Requires either Developer Mode ON or an elevated shell (symlink creation). With
+  Developer Mode on, run from a normal, non-elevated shell.
+
 .DESCRIPTION
   The repo's AGENTS.md is the single source of truth for general guidelines. This script
   symlinks the global instruction files to it and initializes lessons stores. It NEVER
-  creates or edits a project's own AGENTS.md — that is the project's responsibility.
+  creates or edits a project's own AGENTS.md - that is the project's responsibility.
 
   Symlinks need an elevated shell on Windows unless Developer Mode is on.
 
@@ -44,7 +46,7 @@ Format:
 - Date: YYYY-MM-DD
 - Symptom: what was observed (paste the actual error text)
 - Root cause: why it really happened
-- Rule: what to do — and what never to do again
+- Rule: what to do - and what never to do again
 - Tags: #build #windows #flaky #async ...
 ```
 
@@ -96,7 +98,7 @@ if ($ProjectPath) {
     finally { Pop-Location }
     Write-Host "  linked  $projClaude  ->  AGENTS.md"
   } else {
-    Write-Host "  SKIP CLAUDE.md — no project AGENTS.md yet. The project owns its AGENTS.md;"
+    Write-Host "  SKIP CLAUDE.md - no project AGENTS.md yet. The project owns its AGENTS.md;"
     Write-Host "       create it, then re-run with -ProjectPath to link CLAUDE.md."
   }
 }
