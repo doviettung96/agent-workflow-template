@@ -4,3 +4,8 @@ __pycache__/
 *.py[cod]
 /.workflow/runtime-target.json
 /.claude/scheduled_tasks.lock
+.codex/
+.claude/
+.harbor/
+.mcp.json
+harbor.yml
