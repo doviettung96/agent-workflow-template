@@ -77,7 +77,7 @@ def materialize(proj, want, prune):
             if ag == "codex":
                 os.symlink(os.path.join(SKILLS, s, "SKILL.md"), os.path.join(sk, s + ".md"))
             else:
-                os.symlink(os.path.join(SKILLS, s), os.path.join(sk, s))
+                os.symlink(os.path.join(SKILLS, s), os.path.join(sk, s), target_is_directory=True)
         for e in sorted(os.listdir(sk)):                 # non-template leftovers
             base = e[:-3] if e.endswith(".md") else e
             if base not in ALL:
