@@ -126,6 +126,21 @@ each as a first-class shared dependency, not a frozen blob.
   present it and ask whether to **bump the pin here, push upstream, both, or skip** — then
   act only where approved.
 
+## 8. Finishing a task — build the deliverable, commit, open a PR
+
+At the end of a task that produced committable changes, don't leave the work loose.
+
+- **Build the deliverable if your change alters it.** If the change affects a build artifact
+  (binary, bundle, package, `.so`/`.exe`), build it and live-verify (§3) *before* declaring
+  done — don't wait to be reminded. The concrete build command is project-specific and lives
+  in the project's own `AGENTS.md`, not here.
+- **Commit + open a PR.** Commit finished work on a branch (never straight to the default
+  branch), push, and open a PR — that's the review point, especially for shared repos and
+  submodules (§7). Scope each commit tightly: only the relevant files; keep unrelated WIP and
+  generated/reference data (dumps, build outputs) out.
+- One exception to "don't wait": a genuinely irreversible or broadly outward-facing push
+  (force-push, production deploy, a shared default branch) still deserves a heads-up first.
+
 ---
 
 ## Bootstrapping
