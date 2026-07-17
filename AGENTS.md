@@ -37,21 +37,37 @@ actually solves the problem.
 - Confirm the fix by **re-running the same end-to-end reproduction**, not just a unit
   test.
 
-## 3. UI — be picky, obsess over pixel perfection
+## 3. Verification — prove behavior, not just syntax
+
+Verification must exercise the behavior that changed. For any feature or fix, run at
+least one meaningful test or live check that would fail if the implementation were
+wrong. A syntax-only check such as `py_compile`, `compileall`, import smoke tests, or
+typechecking is useful as a supporting guard, but it is **not sufficient verification**
+for a behavior change.
+
+For reverse-engineering and automation projects, prefer evidence from the real runtime:
+build the latest code, run the current artifact, and validate the behavior through the
+same UI, API, device, emulator, game client, logs, or protocol path that the user would
+hit. If the changed function is too trivial or too tightly coupled to test in isolation,
+move up a level: add or run an integration test, build the project, and perform a live
+test against the latest build. When live verification is blocked, say exactly what was
+blocked and what lower-confidence checks were run instead.
+
+## 4. UI — be picky, obsess over pixel perfection
 
 When testing a product end-to-end, scrutinize every UI you see and be **obsessed with
 pixel perfection**. If something clearly looks off — misalignment, spacing, color,
 jitter, wrong state — get it fixed, **even if it is unrelated** to the task you came in
 for. Leave every screen you touch better than you found it.
 
-## 4. Engineering excellence — no broken windows
+## 5. Engineering excellence — no broken windows
 
 Hold the codebase to that same standard. If you see a **lint error, a failing test, or
 a flaky test**, fix it — even when it predates your change and is unrelated to what
 you're working on right now. Do not step around broken windows, and do not let them
 accumulate.
 
-## 5. Lessons learned — capture so we never trip twice
+## 6. Lessons learned — capture so we never trip twice
 
 When you hit a non-obvious error and resolve it, record the lesson so that no agent (or
 human) trips on it again.
@@ -74,7 +90,8 @@ or insight worth remembering, **do not save it silently.** Present the proposed 
 me in the entry format below and ask whether to save it to **project scope, global scope,
 both, or skip**. Write only where I approve. Suggest the scope by judgment: repo-specific
 → project; generalizes across projects → global; if unsure, suggest project and note it
-can be promoted to global later.
+can be promoted to global later. **In the same wrap-up, if the repo uses submodules, also
+raise any warranted submodule sync or upstream update (§7) — ask, don't do it silently.**
 
 **Entry format**
 ```
@@ -90,6 +107,24 @@ can be promoted to global later.
 - If a project lesson turns out to be general, move it up to `~/.agents/LESSONS.md`.
 - Periodically dedup, delete stale lessons, and fold any recurring rule into the
   relevant principle above.
+
+## 7. Submodules — keep shared dependencies in sync
+
+Only relevant if the repo actually uses git submodules (many don't). When it does, treat
+each as a first-class shared dependency, not a frozen blob.
+
+- **Notice drift.** When your work touches or depends on a submodule — or before you wrap
+  up — check its pin against upstream (`git submodule status`, then `git -C <sub> fetch`
+  and compare `HEAD` to the upstream branch). A submodule pinned far behind upstream is a
+  broken window (§5); flag it even if unrelated to your task.
+- **Reflect general work upstream.** If you build something in the superproject that a
+  shared submodule should own — so *every* consumer inherits it, not just this repo —
+  author the change in the submodule/upstream, never a local fork or copy-paste. Keep the
+  general design above the boundary; keep repo-specifics below it.
+- **Ask before moving pins or pushing.** A submodule is shared across projects, so bumping
+  its pin or pushing upstream affects all of them. Like lessons, never do it silently:
+  present it and ask whether to **bump the pin here, push upstream, both, or skip** — then
+  act only where approved.
 
 ---
 
