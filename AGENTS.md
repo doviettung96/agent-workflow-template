@@ -141,6 +141,17 @@ At the end of a task that produced committable changes, don't leave the work loo
 - One exception to "don't wait": a genuinely irreversible or broadly outward-facing push
   (force-push, production deploy, a shared default branch) still deserves a heads-up first.
 
+## 9. Agent-to-agent communication — herdr
+
+`herdr` is a CLI tool available on my machines that lets one agent talk to another —
+ask a question, hand off a subtask, or get a second opinion. Just be aware it exists; I
+decide when it's used and will invoke it when we need it. You don't need to reach for it
+on your own.
+
+- **When I do ask you to use it, discover first.** The exact commands and flags belong
+  with the tool, not this file — run `herdr --help` (or the relevant subcommand's
+  `--help`) for the current usage rather than assuming a syntax that may have drifted.
+
 ---
 
 ## Bootstrapping
