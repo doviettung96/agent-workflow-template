@@ -20,6 +20,20 @@ Format:
 
 <!-- Add lessons below this line -->
 
+### Repo-root helpers must be copied, not symlinked
+- Date: 2026-07-15
+- Symptom: `py -3.12 scripts\shared\target_runtime.py status` run from
+  `thienanh-novagate` reported
+  `Repo root: C:\Users\Tung\Projects\agentic-workflow-template` instead of the target
+  repo.
+- Root cause: `target_runtime.py` derives `REPO_ROOT` from
+  `Path(__file__).resolve().parents[2]`; resolving a symlink points back to the
+  template checkout.
+- Rule: For helper scripts that compute repo paths from `__file__`, copy the script
+  into the downstream repo or change the helper to use a runtime cwd/config root. Never
+  symlink those helpers unless symlink resolution has been tested.
+- Tags: #bootstrap #windows #symlink #runtime-target #python
+
 ### Windows PowerShell 5.1 parses BOM-less UTF-8 .ps1 as Windows-1252
 - Date: 2026-06-23
 - Symptom: A .ps1 with em-dashes (—) in string literals fails with "Unexpected token",
