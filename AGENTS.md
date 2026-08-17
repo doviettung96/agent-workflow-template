@@ -151,6 +151,27 @@ on your own.
 - **When I do ask you to use it, discover first.** The exact commands and flags belong
   with the tool, not this file — run `herdr --help` (or the relevant subcommand's
   `--help`) for the current usage rather than assuming a syntax that may have drifted.
+- **Never message a chat agent (claude/codex) with `herdr agent send`.** It is raw
+  keystroke injection into that agent's terminal and it does **not** submit — the Enter is
+  a separate command. So the text fuses with whatever I am half-typing in that pane, and
+  any time the follow-up Enter is skipped, errors on a stale pane id, or loses a race, the
+  message just sits in the input box. That box is never cleared, so every later message
+  piles onto the same stale draft and **none of them are ever sent** — the other agent sees
+  nothing and you wait forever on a reply that cannot come. Instead:
+  - Deliver with **`herdr pane run <pane_id> "<message>"`** — one atomic write
+    (bracketed-paste text *plus* the Enter), so nothing can land between them. Multi-line
+    messages are fine; an embedded `\n` sent as keystrokes would only insert a newline,
+    since both TUIs submit on `\r`.
+  - **Re-resolve the pane id on every send** (`herdr agent list` / `agent get`). Ids churn
+    as tabs and splits change, and a stale one either errors or presses Enter in whichever
+    agent inherited it.
+  - **Don't type over me.** `herdr pane read <pane_id>` first; if the input box already
+    holds text, wait for it to clear instead of fusing your message onto mine. (Both TUIs
+    render the empty-box placeholder dim, so dim text means the box is actually empty.)
+  - **A delivery you can't prove landed didn't land.** Check the exit code, then confirm
+    the target actually went `working`.
+  - If a repo ships a helper that does all of this (chief-of-staffs has
+    `scripts/herdr-send.py`), use it rather than re-deriving the sequence.
 
 ---
 
