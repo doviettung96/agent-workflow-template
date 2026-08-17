@@ -170,9 +170,15 @@ on your own.
     render the empty-box placeholder dim, so dim text means the box is actually empty.)
   - **A delivery you can't prove landed didn't land.** Check the exit code, then `pane
     read` again: a long message can absorb `pane run`'s own trailing Enter, leaving the
-    text sitting in the box. If it is still there, `pane send-keys <pane_id> Enter` and
-    re-check — safe only because you confirmed the box was empty first, so the leftover is
-    your own message. Then confirm the target actually went `working`.
+    text sitting in the box. **Compare what you find against what you sent** — never just
+    "the box is not empty, so press Enter":
+    - the box still holds **your message** → your Enter was swallowed → `pane send-keys
+      <pane_id> Enter` and re-check.
+    - the box holds **anything else** → your message already went through and I have
+      started typing in the meantime → leave it alone. Pressing Enter there submits my
+      half-written line for me.
+
+    Then confirm the target actually went `working`.
   - If a repo ships a helper that does all of this (chief-of-staffs has
     `scripts/herdr-send.py`), use it rather than re-deriving the sequence.
 
