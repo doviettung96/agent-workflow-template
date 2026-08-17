@@ -168,8 +168,11 @@ on your own.
   - **Don't type over me.** `herdr pane read <pane_id>` first; if the input box already
     holds text, wait for it to clear instead of fusing your message onto mine. (Both TUIs
     render the empty-box placeholder dim, so dim text means the box is actually empty.)
-  - **A delivery you can't prove landed didn't land.** Check the exit code, then confirm
-    the target actually went `working`.
+  - **A delivery you can't prove landed didn't land.** Check the exit code, then `pane
+    read` again: a long message can absorb `pane run`'s own trailing Enter, leaving the
+    text sitting in the box. If it is still there, `pane send-keys <pane_id> Enter` and
+    re-check — safe only because you confirmed the box was empty first, so the leftover is
+    your own message. Then confirm the target actually went `working`.
   - If a repo ships a helper that does all of this (chief-of-staffs has
     `scripts/herdr-send.py`), use it rather than re-deriving the sequence.
 
