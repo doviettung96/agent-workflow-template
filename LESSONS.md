@@ -20,6 +20,28 @@ Format:
 
 <!-- Add lessons below this line -->
 
+### Dim text in a Claude Code input box is a suggestion, not a draft
+- Date: 2026-08-19
+- Symptom: An agent read a peer's pane with `herdr pane read --format text`, saw
+  `❯ go ahead with electronic_books` in the input box, concluded the owner had a message
+  sitting unsubmitted, and refused to send its own — waiting indefinitely on a box that
+  was never occupied.
+- Root cause: Claude Code renders a *generated suggested-next-message* as dim (SGR 2)
+  ghost text in the empty box. It is contextual prose that reads exactly like a human
+  draft — it even echoed the recap line above it — and `--format text` discards the dim
+  attribute that is the only thing distinguishing them. The older "the placeholder is
+  dim" heuristic assumed the generic `Try "..."` placeholder and no longer covers this.
+  `herdr agent explain --json`'s `prompt_box_body` region does *not* strip dim either, so
+  it cannot make the call.
+- Rule: Never judge a peer's input box from plain text, and don't look for a herdr
+  command that does it — there isn't one. Read the styling:
+  `herdr pane read <pane> --format ansi | grep -a '❯' | tail -1 | cat -v`. Leading
+  `^[[2m` → suggestion, box is EMPTY, safe to send; no escape → real draft, wait. Only
+  the `❯` between the last two full-width `───` rules is the live box — menu cursors,
+  queued messages and transcript echoes all render `❯` too, and a modal removes the box
+  and its rules entirely, so check `herdr agent get` before trusting the last `❯`.
+- Tags: #herdr #agent-orchestration #ansi #sgr #claude-code #silent-failure
+
 ### Repo-root helpers must be copied, not symlinked
 - Date: 2026-07-15
 - Symptom: `py -3.12 scripts\shared\target_runtime.py status` run from

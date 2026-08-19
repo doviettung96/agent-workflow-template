@@ -151,6 +151,33 @@ on your own.
 - **When I do ask you to use it, discover first.** The exact commands and flags belong
   with the tool, not this file — run `herdr --help` (or the relevant subcommand's
   `--help`) for the current usage rather than assuming a syntax that may have drifted.
+- **Never judge the input box from `herdr pane read --format text`.** That format drops
+  the styling that carries the answer. Claude Code renders both its placeholder *and* a
+  generated *suggested next message* as **dim** (SGR `2`) ghost text — and that
+  suggestion is contextual prose that reads exactly like something I would have typed
+  (`go ahead with electronic_books`). In plain text it is indistinguishable from an
+  unsent draft, so an agent stalls forever waiting on a box that was never occupied.
+
+  There is no native herdr command for this, so don't go hunting for one: the socket API
+  has no input-box concept, `agent explain`'s `prompt_box_body` hands back the dim text
+  verbatim, and the agent-detection manifest matches plain text only. Read the styling
+  yourself — one line, no tooling:
+
+      herdr pane read <pane_id> --format ansi | grep -a '❯' | tail -1 | cat -v
+
+  - `^[[2m` right before the text → placeholder or suggestion. The box is **empty**. Send.
+  - no escape sequence at all → a real draft I am typing. Wait.
+  - white-on-grey and padded to full width → the transcript echo of an **already
+    submitted** message; indented `  ❯` → a **queued** message, also already sent.
+    Neither one is the input box.
+  - That one-liner takes the *last* `❯` on screen, which is the live box only while one
+    is open. A menu cursor (`❯ 1. Default`) and a permission prompt render `❯` too, and
+    when a modal is up claude removes the box and its framing rules together — so check
+    `herdr agent get` first and never send to an agent that is `blocked`. Strictly, the
+    box is the region between the last two full-width `───` rules.
+  - A single read can race the redraw and hand you the *previous* frame — I have watched
+    it report the old placeholder a beat after text was typed. Read twice before acting
+    on the answer.
 - **Never message a chat agent (claude/codex) with `herdr agent send`.** It is raw
   keystroke injection into that agent's terminal and it does **not** submit — the Enter is
   a separate command. So the text fuses with whatever I am half-typing in that pane, and
@@ -165,9 +192,9 @@ on your own.
   - **Re-resolve the pane id on every send** (`herdr agent list` / `agent get`). Ids churn
     as tabs and splits change, and a stale one either errors or presses Enter in whichever
     agent inherited it.
-  - **Don't type over me.** `herdr pane read <pane_id>` first; if the input box already
-    holds text, wait for it to clear instead of fusing your message onto mine. (Both TUIs
-    render the empty-box placeholder dim, so dim text means the box is actually empty.)
+  - **Don't type over me.** Check the box first; if it holds a real (undimmed) draft,
+    wait for it to clear instead of fusing your message onto mine. Dim text is not a
+    draft — see the classification above.
   - **A delivery you can't prove landed didn't land.** Check the exit code, then `pane
     read` again: a long message can absorb `pane run`'s own trailing Enter, leaving the
     text sitting in the box. **Compare what you find against what you sent** — never just
