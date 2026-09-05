@@ -209,6 +209,19 @@ on your own.
   - If a repo ships a helper that does all of this (chief-of-staffs has
     `scripts/herdr-send.py`), use it rather than re-deriving the sequence.
 
+## 10. Windows PowerShell — keep `.ps1` source ASCII (or BOM it)
+
+Windows PowerShell 5.1 decodes a `.ps1` that has **no BOM** as the legacy ANSI codepage,
+not UTF-8. Any raw multibyte Unicode in the source — em-dashes (`—`), box-drawing (`──`),
+smart quotes, arrows (`→`) — is mis-decoded, which can corrupt here-string / `<# … #>`
+tokenization and make the script fail in bizarre ways *far from the real line* (classic
+tell: a word from a **comment** gets executed as a command, e.g.
+`The term 'runnable' is not recognized as the name of a cmdlet`).
+
+**Rule:** author `.ps1` files with **ASCII-only punctuation** (`-`, `--`, `"`, `->`, `|`),
+or save them as **UTF-8 with BOM**. Same caution for any file 5.1 will parse. PowerShell 7+
+defaults to UTF-8 and is immune — but never assume the runner is 7+.
+
 ---
 
 ## Bootstrapping
