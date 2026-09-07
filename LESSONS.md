@@ -88,3 +88,28 @@ Format:
   not); check the exit code and confirm the target went `working` — a delivery you can't
   prove landed didn't land.
 - Tags: #herdr #agent-orchestration #tty #bracketed-paste #silent-failure
+
+### A TensorRT engine build can be deterministically wrong and still pass a spot check
+- Date: 2026-09-07
+- Symptom: two of ~15 `trtexec` builds in one study produced engines that were wrong but not
+  broken — no error, `&&&& PASSED`, correct file size, clean deserialisation. An fp32 engine
+  scored **26.67 AP** where a rebuild from the byte-identical ONNX scored **58.44**; another
+  scored 39.42 where its own fp16 sibling scored 55.27. Re-running the bad engine reproduced its
+  wrong score exactly, so it read as a finding, not a flake. Worse, the 26.67 engine **agreed
+  with a good one to three decimals on a 4-image spot check** (same top-5 queries, same scores)
+  and only diverged over 192 images.
+- Root cause: TensorRT selects kernels by timing them at build time, so a contended machine
+  perturbs the choice. Both bad builds happened while another `trtexec` was building on a
+  *neighbouring GPU of the same box*. A separate incident the same day had the same shape from a
+  different cause: `onnx.save` of a 500 MB graph onto a 99%-full disk reported success and was
+  parsed twice by TensorRT out of **page cache**, then failed an hour later off disk with
+  `google.protobuf.message.DecodeError`.
+- Rule: build engines **one at a time** — never two `trtexec` processes on one machine, even on
+  different GPUs. **Never validate an engine on a handful of inputs**; score the real set, because
+  a bad engine can be indistinguishable from a good one on a small sample. Treat an *impossible
+  ordering* as a corruption signal rather than a result — an fp32 engine scoring below its own
+  fp16 twin is not a finding, it is a bad build, and that ordering is what caught both cases here.
+  Generally: when a number is surprising, first ask whether the artifact that produced it is
+  intact. After writing any large artifact, read it back and compare bytes before using it —
+  a save that cannot be re-read is a failed save, and page cache will hide that from you.
+- Tags: #tensorrt #gpu #nondeterminism #verification #silent-failure #disk #page-cache
