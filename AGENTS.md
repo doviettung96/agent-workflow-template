@@ -5,7 +5,8 @@ projects. This file lives in the `agent-workflow-template` repo. Edit it only he
 
 **Distribution** (run `scripts/bootstrap-agent-config.ps1 -Global`, elevated) — each
 agent's global instruction file links straight to this one:
-- `~/.claude/CLAUDE.md` → this file *(Claude Code)*
+- `~/.claude/CLAUDE.md` → this file *(Claude Code; it reads a project's `AGENTS.md`
+  natively, but still not a global `~/.claude/AGENTS.md`, verified on 2.1.280)*
 - `~/.codex/AGENTS.md` → this file *(Codex)*
 - add more agents the same way, e.g. `~/.gemini/GEMINI.md` → this file
 
@@ -170,6 +171,33 @@ on your own.
 - **When I do ask you to use it, discover first.** The exact commands and flags belong
   with the tool, not this file — run `herdr --help` (or the relevant subcommand's
   `--help`) for the current usage rather than assuming a syntax that may have drifted.
+- **Ask on a side channel by default. Never write into the other agent's history.** A
+  message delivered into a pane becomes a turn in that agent's main conversation: the
+  question, all of its investigating, and the answer stay in its context for the rest of
+  its session. That is my decision, not yours. Unless I say that the exchange should be
+  kept, ask a **throwaway fork** of the target's session. The fork sees everything the
+  target knows, answers on your stdout, and leaves the original untouched:
+
+      pid=$(herdr pane process-info --pane <pane_id> | python3 -c \
+        'import json,sys; print(json.load(sys.stdin)["result"]["process_info"]["foreground_processes"][0]["pid"])')
+      sid=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["sessionId"])' \
+        ~/.claude/sessions/$pid.json)
+      cd <target cwd> && claude -p --resume "$sid" --fork-session --no-session-persistence \
+        --permission-mode plan "<question>"
+
+  - Run it from the target's `cwd`, because sessions are stored per project directory.
+    `--permission-mode plan` keeps the fork read-only: it answers, it does not act.
+  - Verified on 2026-09-23: the target's transcript stayed byte-identical, no session
+    file was left behind, and the target pane never left `idle`. The rules for pane
+    messaging below do not apply here, because nothing is typed into the pane.
+  - A fork cannot see a turn that is still in flight. If the target is `working` and the
+    answer depends on what it is doing right now, wait for `idle`.
+  - Codex has `codex fork <session-id>`, but a throwaway, non-interactive fork for Codex
+    is still unverified. Test it before you rely on it (`codex exec --ephemeral`, and
+    whether `exec resume` appends to the original). Until then, tell me that the only way
+    you can reach a Codex agent writes into its history.
+  - **Only when I say to keep it** (for example "tell it", "hand it off", or "it should
+    remember this") do you deliver into the pane. The rules below cover that path.
 - **Never judge the input box from `herdr pane read --format text`.** That format drops
   the styling that carries the answer. Claude Code renders both its placeholder *and* a
   generated *suggested next message* as **dim** (SGR `2`) ghost text — and that
@@ -252,8 +280,10 @@ wires up lessons — it **never** writes a project's own `AGENTS.md`.
 - **Global, once per machine** — `bootstrap-agent-config.ps1 -Global`: creates the global
   symlinks above and inits `~/.agents/LESSONS.md` if missing.
 - **Per project** — `bootstrap-agent-config.ps1 -ProjectPath <repo>`: inits
-  `<repo>/LESSONS.md` if missing, and — only if the project already has its own
-  `AGENTS.md` — symlinks `<repo>/CLAUDE.md` → `<repo>/AGENTS.md`. It does not touch the
+  `<repo>/LESSONS.md` if missing. No `CLAUDE.md` link is needed, because Claude Code
+  reads the project's `AGENTS.md` as is. Old `CLAUDE.md` → `AGENTS.md` links are
+  removed. A real `CLAUDE.md` gets a warning instead, because it **shadows** `AGENTS.md`
+  (Claude Code loads only the `CLAUDE.md` when both exist). It does not touch the
   project's `AGENTS.md`.
 
 Symlink creation needs an elevated shell on Windows unless Developer Mode is on.

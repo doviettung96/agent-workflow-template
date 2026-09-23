@@ -7,7 +7,8 @@
 
 .DESCRIPTION
   The repo's AGENTS.md is the single source of truth for general guidelines. This script
-  symlinks the global instruction files to it and initializes lessons stores. It NEVER
+  symlinks the global instruction files to it and initializes lessons stores. Projects
+  need no link: Claude Code and Codex both read a project's AGENTS.md as is. It NEVER
   creates or edits a project's own AGENTS.md - that is the project's responsibility.
 
   Symlinks need an elevated shell on Windows unless Developer Mode is on.
@@ -88,18 +89,17 @@ if ($ProjectPath) {
   if (-not (Test-Path -LiteralPath $proj)) { throw "Project path not found: $proj" }
   Write-Host "Project setup: $proj"
   New-LessonsIfMissing (Join-Path $proj 'LESSONS.md')
-  $projAgents = Join-Path $proj 'AGENTS.md'
+  # Claude Code reads a project's AGENTS.md natively, but only when no CLAUDE.md sits next
+  # to it: a CLAUDE.md shadows AGENTS.md. So a CLAUDE.md -> AGENTS.md link is redundant;
+  # remove the ones older versions of this script created, and flag a real CLAUDE.md.
   $projClaude = Join-Path $proj 'CLAUDE.md'
-  if (Test-Path -LiteralPath $projAgents) {
-    if (Test-Path -LiteralPath $projClaude) { Remove-Item -LiteralPath $projClaude -Force }
-    # Relative in-repo target so the link survives clone/move.
-    Push-Location $proj
-    try { New-Item -ItemType SymbolicLink -Path 'CLAUDE.md' -Target 'AGENTS.md' | Out-Null }
-    finally { Pop-Location }
-    Write-Host "  linked  $projClaude  ->  AGENTS.md"
-  } else {
-    Write-Host "  SKIP CLAUDE.md - no project AGENTS.md yet. The project owns its AGENTS.md;"
-    Write-Host "       create it, then re-run with -ProjectPath to link CLAUDE.md."
+  $item = Get-Item -LiteralPath $projClaude -Force -ErrorAction SilentlyContinue
+  if ($item -and $item.LinkType -eq 'SymbolicLink' -and $item.Target -eq 'AGENTS.md') {
+    Remove-Item -LiteralPath $projClaude -Force
+    Write-Host "  removed $projClaude (obsolete link; Claude Code reads AGENTS.md)"
+  } elseif ($item) {
+    Write-Host "  WARN    $projClaude exists and shadows AGENTS.md for Claude Code."
+    Write-Host "          Fold its content into AGENTS.md and delete it."
   }
 }
 
