@@ -141,7 +141,26 @@ At the end of a task that produced committable changes, don't leave the work loo
 - One exception to "don't wait": a genuinely irreversible or broadly outward-facing push
   (force-push, production deploy, a shared default branch) still deserves a heads-up first.
 
-## 9. Agent-to-agent communication — herdr
+## 9. Machine roles — my laptop is the base, servers are runtime
+
+Code is authored on my laptop and synced out to the GPU/training servers. The servers are
+**runtime**, not a source of truth: they exist to run jobs, and what is unique to them is
+**artifacts** (datasets, checkpoints, logs, outputs), not code.
+
+- **Never treat a server as the authority for code.** When a repo differs between laptop and
+  server, the laptop (and its git remote) wins. Before acting on that assumption, *verify*
+  it — `git cat-file -e <server-commit>` plus `git merge-base --is-ancestor` tells you
+  whether the server is merely behind or actually holds history the laptop lacks.
+- **The assumption breaks in two ways, both of which have happened.** A project may exist
+  only on the server (never cloned locally), and a server checkout accumulates **uncommitted
+  source edits** — modified `.py`/`.yaml`/Dockerfiles and untracked scripts — that exist
+  nowhere else. Check `git status` on the server before deleting or re-imaging it; commit or
+  bundle anything real first.
+- **Artifacts need their own backup.** Because they are unique to the server, git and the
+  laptop do not cover them. An object store (S3) or a second machine is the only copy —
+  confirm which, per item, before deleting.
+
+## 10. Agent-to-agent communication — herdr
 
 `herdr` is a CLI tool available on my machines that lets one agent talk to another —
 ask a question, hand off a subtask, or get a second opinion. Just be aware it exists; I
@@ -209,7 +228,7 @@ on your own.
   - If a repo ships a helper that does all of this (chief-of-staffs has
     `scripts/herdr-send.py`), use it rather than re-deriving the sequence.
 
-## 10. Windows PowerShell — keep `.ps1` source ASCII (or BOM it)
+## 11. Windows PowerShell — keep `.ps1` source ASCII (or BOM it)
 
 Windows PowerShell 5.1 decodes a `.ps1` that has **no BOM** as the legacy ANSI codepage,
 not UTF-8. Any raw multibyte Unicode in the source — em-dashes (`—`), box-drawing (`──`),
