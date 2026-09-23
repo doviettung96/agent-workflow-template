@@ -171,12 +171,13 @@ on your own.
 - **When I do ask you to use it, discover first.** The exact commands and flags belong
   with the tool, not this file — run `herdr --help` (or the relevant subcommand's
   `--help`) for the current usage rather than assuming a syntax that may have drifted.
-- **Ask on a side channel by default. Never write into the other agent's history.** A
-  message delivered into a pane becomes a turn in that agent's main conversation: the
-  question, all of its investigating, and the answer stay in its context for the rest of
-  its session. That is my decision, not yours. Unless I say that the exchange should be
-  kept, ask a **throwaway fork** of the target's session. The fork sees everything the
-  target knows, answers on your stdout, and leaves the original untouched:
+- **When I tell you to *ask* another agent, ask a copy, not the agent.** A message
+  delivered into a pane becomes a turn in that agent's main conversation, and a question
+  is not worth that: the question, its investigating, and the answer would stay in the
+  other agent's context for the rest of its session. So for a pure question (you want
+  to know something, then carry on with your own work), ask a **throwaway fork** of the
+  target's session. The fork sees everything the target knows, answers on your stdout,
+  and leaves the original untouched:
 
       pid=$(herdr pane process-info --pane <pane_id> | python3 -c \
         'import json,sys; print(json.load(sys.stdin)["result"]["process_info"]["foreground_processes"][0]["pid"])')
@@ -196,8 +197,11 @@ on your own.
     is still unverified. Test it before you rely on it (`codex exec --ephemeral`, and
     whether `exec resume` appends to the original). Until then, tell me that the only way
     you can reach a Codex agent writes into its history.
-  - **Only when I say to keep it** (for example "tell it", "hand it off", or "it should
-    remember this") do you deliver into the pane. The rules below cover that path.
+  - **Everything else is unchanged.** When I tell you to tell, collaborate with, or hand
+    off to another agent, deliver into its pane as before. The rules below cover that
+    path. Judge by intent, not wording: "talk to X and find out Y" is a question, so use
+    the fork. If a request mixes both (ask it something, then tell it to act), use the
+    fork for the question and the pane for the rest.
 - **Never judge the input box from `herdr pane read --format text`.** That format drops
   the styling that carries the answer. Claude Code renders both its placeholder *and* a
   generated *suggested next message* as **dim** (SGR `2`) ghost text — and that
