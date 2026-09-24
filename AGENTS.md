@@ -5,7 +5,8 @@ projects. This file lives in the `agent-workflow-template` repo. Edit it only he
 
 **Distribution** (run `scripts/bootstrap-agent-config.ps1 -Global`, elevated) — each
 agent's global instruction file links straight to this one:
-- `~/.claude/CLAUDE.md` → this file *(Claude Code)*
+- `~/.claude/CLAUDE.md` → this file *(Claude Code; it reads a project's `AGENTS.md`
+  natively, but still not a global `~/.claude/AGENTS.md`, verified on 2.1.280)*
 - `~/.codex/AGENTS.md` → this file *(Codex)*
 - add more agents the same way, e.g. `~/.gemini/GEMINI.md` → this file
 
@@ -141,7 +142,26 @@ At the end of a task that produced committable changes, don't leave the work loo
 - One exception to "don't wait": a genuinely irreversible or broadly outward-facing push
   (force-push, production deploy, a shared default branch) still deserves a heads-up first.
 
-## 9. Agent-to-agent communication — herdr
+## 9. Machine roles — my laptop is the base, servers are runtime
+
+Code is authored on my laptop and synced out to the GPU/training servers. The servers are
+**runtime**, not a source of truth: they exist to run jobs, and what is unique to them is
+**artifacts** (datasets, checkpoints, logs, outputs), not code.
+
+- **Never treat a server as the authority for code.** When a repo differs between laptop and
+  server, the laptop (and its git remote) wins. Before acting on that assumption, *verify*
+  it — `git cat-file -e <server-commit>` plus `git merge-base --is-ancestor` tells you
+  whether the server is merely behind or actually holds history the laptop lacks.
+- **The assumption breaks in two ways, both of which have happened.** A project may exist
+  only on the server (never cloned locally), and a server checkout accumulates **uncommitted
+  source edits** — modified `.py`/`.yaml`/Dockerfiles and untracked scripts — that exist
+  nowhere else. Check `git status` on the server before deleting or re-imaging it; commit or
+  bundle anything real first.
+- **Artifacts need their own backup.** Because they are unique to the server, git and the
+  laptop do not cover them. An object store (S3) or a second machine is the only copy —
+  confirm which, per item, before deleting.
+
+## 10. Agent-to-agent communication — herdr
 
 `herdr` is a CLI tool available on my machines that lets one agent talk to another —
 ask a question, hand off a subtask, or get a second opinion. Just be aware it exists; I
@@ -151,6 +171,37 @@ on your own.
 - **When I do ask you to use it, discover first.** The exact commands and flags belong
   with the tool, not this file — run `herdr --help` (or the relevant subcommand's
   `--help`) for the current usage rather than assuming a syntax that may have drifted.
+- **When I tell you to *ask* another agent, ask a copy, not the agent.** A message
+  delivered into a pane becomes a turn in that agent's main conversation, and a question
+  is not worth that: the question, its investigating, and the answer would stay in the
+  other agent's context for the rest of its session. So for a pure question (you want
+  to know something, then carry on with your own work), ask a **throwaway fork** of the
+  target's session. The fork sees everything the target knows, answers on your stdout,
+  and leaves the original untouched:
+
+      pid=$(herdr pane process-info --pane <pane_id> | python3 -c \
+        'import json,sys; print(json.load(sys.stdin)["result"]["process_info"]["foreground_processes"][0]["pid"])')
+      sid=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["sessionId"])' \
+        ~/.claude/sessions/$pid.json)
+      cd <target cwd> && claude -p --resume "$sid" --fork-session --no-session-persistence \
+        --permission-mode plan "<question>"
+
+  - Run it from the target's `cwd`, because sessions are stored per project directory.
+    `--permission-mode plan` keeps the fork read-only: it answers, it does not act.
+  - Verified on 2026-09-23: the target's transcript stayed byte-identical, no session
+    file was left behind, and the target pane never left `idle`. The rules for pane
+    messaging below do not apply here, because nothing is typed into the pane.
+  - A fork cannot see a turn that is still in flight. If the target is `working` and the
+    answer depends on what it is doing right now, wait for `idle`.
+  - Codex has `codex fork <session-id>`, but a throwaway, non-interactive fork for Codex
+    is still unverified. Test it before you rely on it (`codex exec --ephemeral`, and
+    whether `exec resume` appends to the original). Until then, tell me that the only way
+    you can reach a Codex agent writes into its history.
+  - **Everything else is unchanged.** When I tell you to tell, collaborate with, or hand
+    off to another agent, deliver into its pane as before. The rules below cover that
+    path. Judge by intent, not wording: "talk to X and find out Y" is a question, so use
+    the fork. If a request mixes both (ask it something, then tell it to act), use the
+    fork for the question and the pane for the rest.
 - **Never judge the input box from `herdr pane read --format text`.** That format drops
   the styling that carries the answer. Claude Code renders both its placeholder *and* a
   generated *suggested next message* as **dim** (SGR `2`) ghost text — and that
@@ -209,7 +260,7 @@ on your own.
   - If a repo ships a helper that does all of this (chief-of-staffs has
     `scripts/herdr-send.py`), use it rather than re-deriving the sequence.
 
-## 10. Windows PowerShell — keep `.ps1` source ASCII (or BOM it)
+## 11. Windows PowerShell — keep `.ps1` source ASCII (or BOM it)
 
 Windows PowerShell 5.1 decodes a `.ps1` that has **no BOM** as the legacy ANSI codepage,
 not UTF-8. Any raw multibyte Unicode in the source — em-dashes (`—`), box-drawing (`──`),
@@ -233,8 +284,10 @@ wires up lessons — it **never** writes a project's own `AGENTS.md`.
 - **Global, once per machine** — `bootstrap-agent-config.ps1 -Global`: creates the global
   symlinks above and inits `~/.agents/LESSONS.md` if missing.
 - **Per project** — `bootstrap-agent-config.ps1 -ProjectPath <repo>`: inits
-  `<repo>/LESSONS.md` if missing, and — only if the project already has its own
-  `AGENTS.md` — symlinks `<repo>/CLAUDE.md` → `<repo>/AGENTS.md`. It does not touch the
+  `<repo>/LESSONS.md` if missing. No `CLAUDE.md` link is needed, because Claude Code
+  reads the project's `AGENTS.md` as is. Old `CLAUDE.md` → `AGENTS.md` links are
+  removed. A real `CLAUDE.md` gets a warning instead, because it **shadows** `AGENTS.md`
+  (Claude Code loads only the `CLAUDE.md` when both exist). It does not touch the
   project's `AGENTS.md`.
 
 Symlink creation needs an elevated shell on Windows unless Developer Mode is on.

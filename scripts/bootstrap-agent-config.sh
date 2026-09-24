@@ -2,7 +2,8 @@
 # Distribute the global agent guidelines (this repo's AGENTS.md) and init LESSONS.md.
 #
 # The repo's AGENTS.md is the single source of truth for general guidelines. This script
-# symlinks the global instruction files to it and initializes lessons stores. It NEVER
+# symlinks the global instruction files to it and initializes lessons stores. Projects need
+# no link: Claude Code and Codex both read a project's AGENTS.md as is. It NEVER
 # creates or edits a project's own AGENTS.md — that is the project's responsibility.
 #
 # Usage:
@@ -66,13 +67,15 @@ if [ -n "$PROJECT" ]; then
   PROJ="$(cd "$PROJECT" && pwd)"
   echo "Project setup: $PROJ"
   lessons_if_missing "$PROJ/LESSONS.md"
-  if [ -f "$PROJ/AGENTS.md" ]; then
-    # Relative in-repo target so the link survives clone/move.
-    ( cd "$PROJ" && ln -sf "AGENTS.md" "CLAUDE.md" )
-    echo "  linked  $PROJ/CLAUDE.md -> AGENTS.md"
-  else
-    echo "  SKIP CLAUDE.md — no project AGENTS.md yet. The project owns its AGENTS.md;"
-    echo "       create it, then re-run with --project to link CLAUDE.md."
+  # Claude Code reads a project's AGENTS.md natively, but only when no CLAUDE.md sits next
+  # to it: a CLAUDE.md shadows AGENTS.md. So a CLAUDE.md -> AGENTS.md link is redundant;
+  # remove the ones older versions of this script created, and flag a real CLAUDE.md.
+  CLAUDE="$PROJ/CLAUDE.md"
+  if [ -L "$CLAUDE" ] && [ "$(readlink "$CLAUDE")" = "AGENTS.md" ]; then
+    rm "$CLAUDE"; echo "  removed $CLAUDE (obsolete link; Claude Code reads AGENTS.md)"
+  elif [ -e "$CLAUDE" ] || [ -L "$CLAUDE" ]; then
+    echo "  WARN    $CLAUDE exists and shadows AGENTS.md for Claude Code."
+    echo "          Fold its content into AGENTS.md and delete it."
   fi
 fi
 
